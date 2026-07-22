@@ -55,8 +55,6 @@ CrowdControl* CrowdControl::Instance;
 #include "2s2h/Enhancements/GfxPatcher/AuthenticGfxPatches.h"
 #include "2s2h/Enhancements/GfxPatcher/PlayerCustomFlipbooks.h"
 #include "2s2h/DeveloperTools/DebugConsole.h"
-#include "2s2h/Rando/Rando.h"
-#include "2s2h/Rando/Spoiler/Spoiler.h"
 #include "2s2h/SaveManager/SaveManager.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/CustomItem/CustomItem.h"
@@ -286,7 +284,6 @@ OTRGlobals::OTRGlobals() {
                                     "KeyFrameSkel", static_cast<uint32_t>(SOH::ResourceType::TSH_CKeyFrameSkel), 0);
 
     // gSaveStateMgr = std::make_shared<SaveStateMgr>();
-    // gRandomizer = std::make_shared<Randomizer>();
 
     auto versions = context->GetResourceManager()->GetArchiveManager()->GetGameVersions();
     for (uint32_t version : versions) {
@@ -713,13 +710,11 @@ extern "C" void InitOTR() {
     LoadGuiTextures();
     BenGui::SetupGuiElements();
     ShipInit::InitAll();
-    Rando::Init();
     GfxPatcher_ApplyNecessaryAuthenticPatches();
     DebugConsole_Init();
     GameInteractor::Instance->RegisterOwnHooks();
     CustomItem::RegisterHooks();
     CustomMessage::RegisterHooks();
-    Rando::StaticData::PopulateCheckNames();
 
     OTRMessage_Init();
     OTRAudio_Init();
@@ -1183,10 +1178,6 @@ extern "C" char* ResourceMgr_LoadIfDListByName(const char* filePath) {
 
     return nullptr;
 }
-
-// extern "C" Sprite* GetSeedTexture(uint8_t index) {
-//     return OTRGlobals::Instance->gRandomizer->GetSeedTexture(index);
-// }
 
 extern "C" char* ResourceMgr_LoadPlayerAnimByName(const char* animPath) {
     auto anim = std::static_pointer_cast<SOH::PlayerAnimation>(GetResourceByName(animPath));

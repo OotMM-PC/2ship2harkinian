@@ -18,7 +18,6 @@
 #include <map>
 #include <vector>
 #include <imgui.h>
-#include "Rando/Rando.h"
 void LoadGuiTextures();
 std::string convertEnumToReadableName(const std::string& input);
 std::string Ship_RemoveSpecialCharacters(const std::string& str);
@@ -26,7 +25,6 @@ extern u16 sOwlWarpEntrancesForMods[];
 extern std::array<const char*, 11> digitList;
 extern std::string Ship_FormatTimeDisplay(uint32_t value);
 extern ImVec4 Ship_GetItemColorTint(uint32_t itemId);
-extern ImVec4 Ship_GetRandoItemColorTint(uint32_t randoItemId);
 extern uint32_t Ship_Hash(std::string str);
 extern std::string GetActorDescription(u16 actorNum);
 extern std::string GetActorDebugName(u16 actorNum);

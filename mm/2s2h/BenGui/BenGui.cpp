@@ -168,14 +168,6 @@ void SetupGuiElements() {
     gui->AddGuiWindow(mNotificationWindow);
     mNotificationWindow->Show();
 
-    mRandoCheckTrackerWindow = std::make_shared<Rando::CheckTracker::CheckTrackerWindow>(
-        "gWindows.CheckTracker", "Check Tracker", ImVec2(375, 460));
-    gui->AddGuiWindow(mRandoCheckTrackerWindow);
-
-    mRandoCheckTrackerSettingsWindow = std::make_shared<Rando::CheckTracker::SettingsWindow>(
-        "gWindows.CheckTrackerSettings", "Check Tracker Settings");
-    gui->AddGuiWindow(mRandoCheckTrackerSettingsWindow);
-
     mInputViewer = std::make_shared<InputViewer>("gWindows.InputViewer", "Input Viewer");
     gui->AddGuiWindow(mInputViewer);
     mInputViewerSettings = std::make_shared<InputViewerSettingsWindow>("gWindows.InputViewerSettings",
@@ -200,8 +192,6 @@ void Destroy() {
     mCollisionViewerWindow = nullptr;
     mEventLogWindow = nullptr;
     mNotificationWindow = nullptr;
-    mRandoCheckTrackerWindow = nullptr;
-    mRandoCheckTrackerSettingsWindow = nullptr;
 
     mHookDebuggerWindow = nullptr;
     mSaveEditorWindow = nullptr;

@@ -2,7 +2,6 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
 #include "2s2h/CustomMessage/CustomMessage.h"
-#include "2s2h/Rando/Rando.h"
 
 extern "C" {
 #include "overlays/actors/ovl_En_Fsn/z_en_fsn.h"
@@ -28,18 +27,15 @@ struct RefillItem {
     GetItemId gi;
     GetItemDrawId drawId;
     u16 weekEventFlag;
-    RandoItemId randoItem;
     const char* name;
     u16 price;
 };
 
 static constexpr RefillItem sRefillItems[] = {
-    { ITEM_SEAHORSE, GI_SEAHORSE_CAUGHT, GID_SEAHORSE_CAUGHT, WEEKEVENTREG_RECEIVED_SEAHORSE_HEART_PIECE, RI_NONE,
-      "Seahorse", 100 },
-    { ITEM_GOLD_DUST, GI_GOLD_DUST_2, GID_GOLD_DUST, WEEKEVENTREG_RECEIVED_GORON_RACE_BOTTLE, RI_BOTTLE_GOLD_DUST,
-      "Gold Dust", 200 },
-    { ITEM_CHATEAU, GI_CHATEAU, GID_CHATEAU, WEEKEVENTREG_ESCORTED_CREMIA, RI_BOTTLE_CHATEAU_ROMANI, "Chateau Romani",
-      200 },
+    { ITEM_SEAHORSE, GI_SEAHORSE_CAUGHT, GID_SEAHORSE_CAUGHT, WEEKEVENTREG_RECEIVED_SEAHORSE_HEART_PIECE, "Seahorse",
+      100 },
+    { ITEM_GOLD_DUST, GI_GOLD_DUST_2, GID_GOLD_DUST, WEEKEVENTREG_RECEIVED_GORON_RACE_BOTTLE, "Gold Dust", 200 },
+    { ITEM_CHATEAU, GI_CHATEAU, GID_CHATEAU, WEEKEVENTREG_ESCORTED_CREMIA, "Chateau Romani", 200 },
 };
 
 // Shop item positions
@@ -91,10 +87,6 @@ static bool HasSeahorseRequirements() {
         return false;
     }
 
-    if (IS_RANDO && RANDO_SAVE_OPTIONS[RO_SHUFFLE_SWIM] && !Flags_GetRandoInf(RANDO_INF_OBTAINED_SWIM)) {
-        return false;
-    }
-
     return true;
 }
 
@@ -108,14 +100,6 @@ static bool IsRefillAvailable(const RefillItem& item) {
         return HasSeahorseRequirements();
     }
 
-    if (IS_RANDO) {
-        if (item.randoItem != RI_NONE) {
-            RandoCheckId itemPlacement = Rando::FindItemPlacement(item.randoItem);
-            return itemPlacement != RC_UNKNOWN && RANDO_SAVE_CHECKS[itemPlacement].obtained;
-        }
-    }
-
-    // Vanilla: check the relevant quest flag
     return CHECK_WEEKEVENTREG(item.weekEventFlag);
 }
 

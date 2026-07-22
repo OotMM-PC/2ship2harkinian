@@ -1,7 +1,6 @@
 #include <libultraship/bridge/consolevariablebridge.h>
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/CustomItem/CustomItem.h"
-#include "2s2h/Rando/Rando.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
 
@@ -12,9 +11,8 @@ extern "C" {
 #define CVAR_NAME "gEnhancements.Cutscenes.SkipStoryCutscenes"
 #define CVAR CVarGetInteger(CVAR_NAME, 0)
 
-// Forced on in rando for now
 void RegisterSkipLearningNewWaveBossaNova() {
-    COND_VB_SHOULD(VB_START_CUTSCENE, CVAR || IS_RANDO, {
+    COND_VB_SHOULD(VB_START_CUTSCENE, CVAR, {
         s16* csId = va_arg(args, s16*);
         if (gPlayState->sceneId == SCENE_LABO && *csId == 11) {
             if (GameInteractor_Should(VB_GIVE_NEW_WAVE_BOSSA_NOVA, true)) {
@@ -30,11 +28,6 @@ void RegisterSkipLearningNewWaveBossaNova() {
                                                             { .textboxType = 2 });
                             }
                             Item_Give(gPlayState, ITEM_SONG_NOVA);
-                        },
-                    .drawItem =
-                        [](Actor* actor, PlayState* play) {
-                            Matrix_Scale(30.0f, 30.0f, 30.0f, MTXMODE_APPLY);
-                            Rando::DrawItem(RI_SONG_NOVA);
                         } });
             }
             SET_WEEKEVENTREG(WEEKEVENTREG_20_40);
@@ -43,4 +36,4 @@ void RegisterSkipLearningNewWaveBossaNova() {
     });
 }
 
-static RegisterShipInitFunc initFunc(RegisterSkipLearningNewWaveBossaNova, { CVAR_NAME, "IS_RANDO" });
+static RegisterShipInitFunc initFunc(RegisterSkipLearningNewWaveBossaNova, { CVAR_NAME });

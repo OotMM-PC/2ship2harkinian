@@ -2,7 +2,6 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/CustomItem/CustomItem.h"
-#include "2s2h/Rando/Rando.h"
 #include "2s2h/ShipInit.hpp"
 
 extern "C" {
@@ -25,7 +24,7 @@ void RegisterSkipRosaSistersDance() {
                 enRz->actionFunc = func_80BFC270;
                 // Queue the item check, as Actor_OfferGetItem won't work normally
                 // WEEKEVENTREG_RECEIVED_ROSA_SISTERS_HEART_PIECE is set once the player obtains this Heart Piece.
-                if (!CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_ROSA_SISTERS_HEART_PIECE) && !IS_RANDO) {
+                if (!CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_ROSA_SISTERS_HEART_PIECE)) {
                     GameInteractor::Instance->events.emplace_back(GIEventGiveItem{
                         .showGetItemCutscene = true,
                         .param = GID_HEART_PIECE,
@@ -49,11 +48,6 @@ void RegisterSkipRosaSistersDance() {
                 *should = false;
             } else if (*csId == 12) { // The sisters applaud Link
                 Actor* actor = va_arg(args, Actor*);
-                /*
-                 * The randomizer actor behavior unsets this flag to prevent an extra textbox from appearing when
-                 * this cutscene plays. If we're skipping the cutscene, we have to set it again to prevent the
-                 * dialog from hanging. This does not affect vanilla.
-                 */
                 actor->flags |= ACTOR_FLAG_TALK;
                 *should = false;
             }

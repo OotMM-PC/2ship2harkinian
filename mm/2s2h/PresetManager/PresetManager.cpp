@@ -18,7 +18,6 @@ std::unordered_map<std::string, std::string> tagMap = {
     { "gModes", "Enhancements" },
     { "gHudEditor", "HUD" },
     { "ItemTracker", "HUD" },
-    { "gRando", "Rando" },
 };
 
 nlohmann::json defaultsPresetJ = R"(
@@ -35,7 +34,6 @@ nlohmann::json defaultsPresetJ = R"(
         "gModes",
         "gNetwork",
         "gNotifications",
-        "gRando",
         "gWindows",
         "ItemTracker"
     ],
@@ -275,7 +273,7 @@ const std::filesystem::path presetsFolderPath(Ship::Context::GetPathRelativeToAp
 void PresetManager_RefreshPresets() {
     presets.clear();
     presets.insert(
-        { "Defaults (Everything Off)", { defaultsPresetJ, { "Developer Tools", "Enhancements", "HUD", "Rando" } } });
+        { "Defaults (Everything Off)", { defaultsPresetJ, { "Developer Tools", "Enhancements", "HUD" } } });
     presets.insert({ "Curated", { curatedPresetJ, { "Developer Tools", "Enhancements", "HUD" } } });
 
     // ensure the presets folder exists

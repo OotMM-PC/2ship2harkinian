@@ -15,7 +15,6 @@
 #include <variant>
 #include <tuple>
 #include "ResolutionEditor.h"
-#include "2s2h/Rando/Rando.h"
 #include "build.h"
 
 extern "C" {
@@ -1089,7 +1088,7 @@ void BenMenu::AddEnhancements() {
         .CVar("gEnhancements.Shops.CuriosityShopRefills")
         .Options(CheckboxOptions().Tooltip(
             "Adds refillable bottles to the Curiosity Shop after completing certain prerequisites:\n"
-            "- Seahorse: After obtaining a Bottle, Zora Mask, Pictograph Box & (Rando Only) Swim Ability\n"
+            "- Seahorse: After obtaining a Bottle, Zora Mask & Pictograph Box\n"
             "- Gold Dust: After obtaining the Gold Dust bottle\n"
             "- Chateau Romani: After obtaining Chateau Romani"));
     AddWidget(path, "Accessibility", WIDGET_SEPARATOR_TEXT);
@@ -1141,8 +1140,7 @@ void BenMenu::AddEnhancements() {
     AddWidget(path, "Save Game on Moon Crash", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.Cycle.SaveOnMoonCrash")
         .Options(CheckboxOptions().Tooltip("Moon Crashes will save game data similar to the Song of Time,\n"
-                                           "instead of wiping owl save data. Automatically enabled in glitchless \n"
-                                           "rando seeds."));
+                                           "instead of wiping owl save data."));
     AddWidget(path, "Do not reset Bottle content", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.Cycle.DoNotResetBottleContent")
         .Options(CheckboxOptions().Tooltip("Playing the Song of Time will not reset the bottles' content."));
@@ -1168,7 +1166,7 @@ void BenMenu::AddEnhancements() {
         .CVar("gEnhancements.Cycle.StopOceansideSpiderHouseSquatter")
         .Options(
             CheckboxOptions().Tooltip("The Oceanside Spider House squatter will not move in until the player interacts "
-                                      "with him. Forced on for randomizers."));
+                                      "with him."));
     AddWidget(path, "Oceanside wallet any day", WIDGET_CVAR_CHECKBOX)
         .CVar("gEnhancements.Cycle.OceansideWalletAnyDay")
         .Options(CheckboxOptions().Tooltip("Allows the wallet reward to be collected on any day."));
@@ -1407,7 +1405,7 @@ void BenMenu::AddEnhancements() {
     AddWidget(path, "Skip Item Get Cutscene", WIDGET_CVAR_COMBOBOX)
         .CVar("gEnhancements.Cutscenes.SkipGetItemCutscenes")
         .Options(ComboboxOptions()
-                     .Tooltip("Note: This only works in Randomizer currently.")
+                     .Tooltip("Applies to items given by the story cutscene skips.")
                      .ComboVec(&skipGetItemCutscenesOptions));
 
     // Dialogue Enhancements

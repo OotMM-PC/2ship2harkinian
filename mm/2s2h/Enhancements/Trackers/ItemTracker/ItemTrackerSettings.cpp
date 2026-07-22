@@ -41,53 +41,42 @@ std::vector<std::pair<TrackerItemType, u32>> GetItemsFromRange(TrackerItemType i
 
 std::string GetItemTrackerItemName(TrackerItemType itemType, u32 itemId) {
     switch (itemType) {
-        case TRACKER_ITEM_RANDO: {
-            return Rando::StaticData::Items[(RandoItemId)itemId].name;
-        } break;
-        case TRACKER_ITEM_SLOT: {
-            auto vanillaItemId = gSaveContext.save.saveInfo.inventory.items[itemId];
-            if (vanillaItemId == ITEM_NONE) {
-                vanillaItemId = safeItemsForInventorySlot[itemId][0];
-            }
-            RandoItemId randoItemId = Rando::StaticData::GetItemIdFromVanillaItemId(vanillaItemId);
-            return Rando::StaticData::Items[randoItemId].name;
-        } break;
         case TRACKER_ITEM_SWORD: {
             if (GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SWORD) == EQUIP_VALUE_SWORD_KOKIRI) {
-                return Rando::StaticData::Items[RI_SWORD_KOKIRI].name;
+                return "Kokiri Sword";
             }
             if (GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SWORD) == EQUIP_VALUE_SWORD_RAZOR) {
-                return Rando::StaticData::Items[RI_SWORD_RAZOR].name;
+                return "Razor Sword";
             }
             if (GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SWORD) == EQUIP_VALUE_SWORD_GILDED) {
-                return Rando::StaticData::Items[RI_SWORD_GILDED].name;
+                return "Gilded Sword";
             }
             return "Sword (None)";
         } break;
         case TRACKER_ITEM_SHIELD: {
             if (GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD) == EQUIP_VALUE_SHIELD_HERO) {
-                return Rando::StaticData::Items[RI_SHIELD_HERO].name;
+                return "Hero's Shield";
             }
             if (GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD) == EQUIP_VALUE_SHIELD_MIRROR) {
-                return Rando::StaticData::Items[RI_SHIELD_MIRROR].name;
+                return "Mirror Shield";
             }
             return "Shield (None)";
         } break;
         case TRACKER_ITEM_WALLET: {
             if (CUR_UPG_VALUE(UPG_WALLET) >= 2) {
-                return Rando::StaticData::Items[RI_WALLET_GIANT].name;
+                return "Giant's Wallet";
             }
             if (CUR_UPG_VALUE(UPG_WALLET) >= 1) {
-                return Rando::StaticData::Items[RI_WALLET_ADULT].name;
+                return "Adult's Wallet";
             }
             return "Wallet (None)";
         } break;
         case TRACKER_ITEM_MAGIC: {
             if (gSaveContext.save.saveInfo.playerData.isDoubleMagicAcquired) {
-                return Rando::StaticData::Items[RI_DOUBLE_MAGIC].name;
+                return "Magic Upgrade";
             }
             if (gSaveContext.save.saveInfo.playerData.isMagicAcquired) {
-                return Rando::StaticData::Items[RI_SINGLE_MAGIC].name;
+                return "Power of Magic";
             }
             return "Magic (None)";
         } break;
@@ -107,7 +96,7 @@ struct DragDropPayload {
 };
 
 void DrawItemTrackerGroupPreview(TrackerGroup& group, bool addMode, int groupIndex) {
-    static std::pair<TrackerItemType, u32> selectedItem = { TRACKER_ITEM_RANDO, 0 };
+    static std::pair<TrackerItemType, u32> selectedItem = { TRACKER_ITEM_SLOT, 0 };
 
     if (ImGui::BeginChild(group.name.c_str(), ImVec2(0, 0),
                           ImGuiChildFlags_AlwaysAutoResize | ImGuiChildFlags_AutoResizeX |
@@ -283,153 +272,14 @@ void LoadAvailableWindows() {
     });
 
     itemTrackerGroupsAvailable.push_back(TrackerGroup{
-        .name = "Songs",
-        .columns = 5,
-        .scale = 1.0f,
-        .items = {
-            { TRACKER_ITEM_RANDO, RI_SONG_TIME },
-            { TRACKER_ITEM_RANDO, RI_SONG_HEALING },
-            { TRACKER_ITEM_RANDO, RI_SONG_EPONA },
-            { TRACKER_ITEM_RANDO, RI_SONG_SOARING },
-            { TRACKER_ITEM_RANDO, RI_SONG_STORMS },
-            { TRACKER_ITEM_RANDO, RI_SONG_SONATA },
-            { TRACKER_ITEM_RANDO, RI_SONG_LULLABY },
-            { TRACKER_ITEM_RANDO, RI_SONG_NOVA },
-            { TRACKER_ITEM_RANDO, RI_SONG_ELEGY },
-            { TRACKER_ITEM_RANDO, RI_SONG_OATH },
-            { TRACKER_ITEM_RANDO, RI_SONG_DOUBLE_TIME },
-            { TRACKER_ITEM_RANDO, RI_SONG_INVERTED_TIME },
-            { TRACKER_ITEM_RANDO, RI_SONG_SUN },
-            { TRACKER_ITEM_RANDO, RI_SONG_SARIA },
-        },
-    });
-
-    itemTrackerGroupsAvailable.push_back(TrackerGroup{
         .name = "Quest",
-        .columns = 5,
-        .scale = 1.0f,
-        .items = {
-            { TRACKER_ITEM_RANDO, RI_REMAINS_ODOLWA },
-            { TRACKER_ITEM_RANDO, RI_REMAINS_GOHT },
-            { TRACKER_ITEM_RANDO, RI_REMAINS_GYORG },
-            { TRACKER_ITEM_RANDO, RI_REMAINS_TWINMOLD },
-            { TRACKER_ITEM_RANDO, RI_BOMBERS_NOTEBOOK },
-            { TRACKER_ITEM_SWORD, RI_PROGRESSIVE_SWORD },
-            { TRACKER_ITEM_SHIELD, RI_SHIELD_HERO },
-            { TRACKER_ITEM_MAGIC, RI_PROGRESSIVE_MAGIC },
-            { TRACKER_ITEM_RANDO, RI_DOUBLE_DEFENSE },
-            { TRACKER_ITEM_WALLET, RI_PROGRESSIVE_WALLET },
-        },
-    });
-
-    itemTrackerGroupsAvailable.push_back(TrackerGroup{
-        .name = "Tokens",
-        .columns = 2,
-        .scale = 1.0f,
-        .items = {
-            { TRACKER_ITEM_RANDO, RI_GS_TOKEN_SWAMP },
-            { TRACKER_ITEM_RANDO, RI_GS_TOKEN_OCEAN },
-        },
-    });
-
-    itemTrackerGroupsAvailable.push_back(TrackerGroup{
-        .name = "Stray Fairies",
-        .columns = 5,
-        .scale = 1.0f,
-        .items = {
-            { TRACKER_ITEM_RANDO, RI_CLOCK_TOWN_STRAY_FAIRY },
-            { TRACKER_ITEM_RANDO, RI_WOODFALL_STRAY_FAIRY },
-            { TRACKER_ITEM_RANDO, RI_SNOWHEAD_STRAY_FAIRY },
-            { TRACKER_ITEM_RANDO, RI_GREAT_BAY_STRAY_FAIRY },
-            { TRACKER_ITEM_RANDO, RI_STONE_TOWER_STRAY_FAIRY },
-        },
-    });
-
-    itemTrackerGroupsAvailable.push_back(TrackerGroup{
-        .name = "Dungeon",
         .columns = 4,
         .scale = 1.0f,
         .items = {
-            { TRACKER_ITEM_RANDO, RI_WOODFALL_BOSS_KEY },
-            { TRACKER_ITEM_RANDO, RI_SNOWHEAD_BOSS_KEY },
-            { TRACKER_ITEM_RANDO, RI_GREAT_BAY_BOSS_KEY },
-            { TRACKER_ITEM_RANDO, RI_STONE_TOWER_BOSS_KEY },
-            { TRACKER_ITEM_RANDO, RI_WOODFALL_SMALL_KEY },
-            { TRACKER_ITEM_RANDO, RI_SNOWHEAD_SMALL_KEY },
-            { TRACKER_ITEM_RANDO, RI_GREAT_BAY_SMALL_KEY },
-            { TRACKER_ITEM_RANDO, RI_STONE_TOWER_SMALL_KEY },
-        },
-    });
-
-    itemTrackerGroupsAvailable.push_back(TrackerGroup{
-        .name = "Frogs",
-        .columns = 4,
-        .scale = 1.0f,
-        .items = GetItemsFromRange(TRACKER_ITEM_RANDO, RI_FROG_BLUE, RI_FROG_WHITE),
-    });
-
-    itemTrackerGroupsAvailable.push_back(TrackerGroup{
-        .name = "Ocarina Buttons",
-        .columns = 5,
-        .scale = 1.0f,
-        .items = GetItemsFromRange(TRACKER_ITEM_RANDO, RI_OCARINA_BUTTON_A, RI_OCARINA_BUTTON_C_UP),
-    });
-
-    itemTrackerGroupsAvailable.push_back(TrackerGroup{ .name = "Boss Souls",
-                                                       .columns = 5,
-                                                       .scale = 1.0f,
-                                                       .items = {
-                                                           { TRACKER_ITEM_RANDO, RI_SOUL_BOSS_ODOLWA },
-                                                           { TRACKER_ITEM_RANDO, RI_SOUL_BOSS_GOHT },
-                                                           { TRACKER_ITEM_RANDO, RI_SOUL_BOSS_GYORG },
-                                                           { TRACKER_ITEM_RANDO, RI_SOUL_BOSS_TWINMOLD },
-                                                           { TRACKER_ITEM_RANDO, RI_SOUL_BOSS_MAJORA },
-                                                       } });
-
-    itemTrackerGroupsAvailable.push_back(TrackerGroup{
-        .name = "Enemy Souls",
-        .columns = 6,
-        .scale = 1.0f,
-        .items = GetItemsFromRange(TRACKER_ITEM_RANDO, RI_SOUL_ENEMY_ALIEN, RI_SOUL_ENEMY_WOLFOS),
-    });
-
-    itemTrackerGroupsAvailable.push_back(TrackerGroup{ .name = "Owl Statues",
-                                                       .columns = 5,
-                                                       .scale = 1.0f,
-                                                       .items = {
-                                                           { TRACKER_ITEM_RANDO, RI_OWL_CLOCK_TOWN_SOUTH },
-                                                           { TRACKER_ITEM_RANDO, RI_OWL_MILK_ROAD },
-                                                           { TRACKER_ITEM_RANDO, RI_OWL_SOUTHERN_SWAMP },
-                                                           { TRACKER_ITEM_RANDO, RI_OWL_WOODFALL },
-                                                           { TRACKER_ITEM_RANDO, RI_OWL_MOUNTAIN_VILLAGE },
-                                                           { TRACKER_ITEM_RANDO, RI_OWL_SNOWHEAD },
-                                                           { TRACKER_ITEM_RANDO, RI_OWL_GREAT_BAY_COAST },
-                                                           { TRACKER_ITEM_RANDO, RI_OWL_ZORA_CAPE },
-                                                           { TRACKER_ITEM_RANDO, RI_OWL_IKANA_CANYON },
-                                                           { TRACKER_ITEM_RANDO, RI_OWL_STONE_TOWER },
-                                                       } });
-
-    itemTrackerGroupsAvailable.push_back(TrackerGroup{
-        .name = "Time",
-        .columns = 6,
-        .scale = 1.0f,
-        .items = {
-            { TRACKER_ITEM_RANDO, RI_TIME_DAY_1 },
-            { TRACKER_ITEM_RANDO, RI_TIME_NIGHT_1 },
-            { TRACKER_ITEM_RANDO, RI_TIME_DAY_2 },
-            { TRACKER_ITEM_RANDO, RI_TIME_NIGHT_2 },
-            { TRACKER_ITEM_RANDO, RI_TIME_DAY_3 },
-            { TRACKER_ITEM_RANDO, RI_TIME_NIGHT_3 },
-        },
-    });
-
-    itemTrackerGroupsAvailable.push_back(TrackerGroup{
-        .name = "Misc",
-        .columns = 6,
-        .scale = 1.0f,
-        .items = {
-            { TRACKER_ITEM_RANDO, RI_TRIFORCE_PIECE },
-            { TRACKER_ITEM_RANDO, RI_ABILITY_SWIM },
+            { TRACKER_ITEM_SWORD, 0 },
+            { TRACKER_ITEM_SHIELD, 0 },
+            { TRACKER_ITEM_MAGIC, 0 },
+            { TRACKER_ITEM_WALLET, 0 },
         },
     });
 }
@@ -438,20 +288,13 @@ void ApplyDefaultItemPreset() {
     itemTrackerGroups.clear();
 
     std::set<std::string> defaultGroups = {
-        "Inventory", "Masks", "Songs", "Quest", "Tokens", "Stray Fairies", "Dungeon",
+        "Inventory",
+        "Masks",
+        "Quest",
     };
 
     for (auto& group : itemTrackerGroupsAvailable) {
         if (defaultGroups.count(group.name)) {
-            if (group.name == "Songs") {
-                // Limit songs to first 10 in default preset
-                TrackerGroup limitedGroup = group;
-                limitedGroup.items =
-                    std::vector<std::pair<TrackerItemType, u32>>(group.items.begin(), group.items.begin() + 10);
-                itemTrackerGroups.push_back(limitedGroup);
-                continue;
-            }
-
             itemTrackerGroups.push_back(group);
         }
     }

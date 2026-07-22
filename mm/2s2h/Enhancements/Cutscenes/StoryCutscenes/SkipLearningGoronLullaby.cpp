@@ -2,7 +2,6 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/CustomItem/CustomItem.h"
-#include "2s2h/Rando/Rando.h"
 #include "2s2h/ShipInit.hpp"
 
 extern "C" {
@@ -20,10 +19,9 @@ void EnGo_Sleep(EnGo* enGoActor, PlayState* play);
 
 static bool isGoronSleepQueued = false;
 
-// This is a song tutorial, so the skip is forced on in rando for now
 void RegisterSkipLearningGoronLullaby() {
     // Played Lullaby Intro for Baby Goron
-    COND_VB_SHOULD(VB_START_CUTSCENE, CVAR || IS_RANDO, {
+    COND_VB_SHOULD(VB_START_CUTSCENE, CVAR, {
         s16* csId = va_arg(args, s16*);
         Actor* actor = va_arg(args, Actor*);
 
@@ -60,16 +58,11 @@ void RegisterSkipLearningGoronLullaby() {
                                                         { .textboxType = 2 });
                         }
                         Item_Give(gPlayState, ITEM_SONG_LULLABY);
-                    },
-                .drawItem =
-                    [](Actor* actor, PlayState* play) {
-                        Matrix_Scale(30.0f, 30.0f, 30.0f, MTXMODE_APPLY);
-                        Rando::DrawItem(RI_SONG_LULLABY);
                     } });
         }
     });
 
-    COND_ID_HOOK(OnActorUpdate, ACTOR_EN_GO, CVAR || IS_RANDO, [](Actor* actor) {
+    COND_ID_HOOK(OnActorUpdate, ACTOR_EN_GO, CVAR, [](Actor* actor) {
         EnGo* enGo = (EnGo*)actor;
 
         // Should only apply this to the Goron next to the Elder's Son
@@ -91,4 +84,4 @@ void RegisterSkipLearningGoronLullaby() {
     });
 }
 
-static RegisterShipInitFunc initFunc(RegisterSkipLearningGoronLullaby, { CVAR_NAME, "IS_RANDO" });
+static RegisterShipInitFunc initFunc(RegisterSkipLearningGoronLullaby, { CVAR_NAME });

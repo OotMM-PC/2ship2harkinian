@@ -2,7 +2,6 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/CustomItem/CustomItem.h"
-#include "2s2h/Rando/Rando.h"
 #include "2s2h/ShipInit.hpp"
 
 extern "C" {
@@ -14,12 +13,7 @@ extern "C" {
 #define CVAR CVarGetInteger(CVAR_NAME, 0)
 
 void RegisterSkipLearningSonataOfAwakening() {
-    /*
-     * Forced on for rando for now. If this ever changes, look at the Item_Give calls in
-     * Message_DrawMain. The player actually "learns" the song upon hitting the final correct note in
-     * the tutorial prompt.
-     */
-    COND_VB_SHOULD(VB_START_CUTSCENE, CVAR || IS_RANDO, {
+    COND_VB_SHOULD(VB_START_CUTSCENE, CVAR, {
         s16* csId = va_arg(args, s16*);
         // Cutscenes 11 and 12 in the Deku Palace King's chamber play when Link pulls out Deku Pipes for the monkey.
         if (gPlayState->sceneId == SCENE_DEKU_KING) {
@@ -39,11 +33,6 @@ void RegisterSkipLearningSonataOfAwakening() {
                                                                 { .textboxType = 2 });
                                 }
                                 Item_Give(gPlayState, ITEM_SONG_SONATA);
-                            },
-                        .drawItem =
-                            [](Actor* actor, PlayState* play) {
-                                Matrix_Scale(30.0f, 30.0f, 30.0f, MTXMODE_APPLY);
-                                Rando::DrawItem(RI_SONG_SONATA);
                             } });
                 }
                 gPlayState->nextEntrance = ENTRANCE(DEKU_PALACE, 1);
@@ -58,4 +47,4 @@ void RegisterSkipLearningSonataOfAwakening() {
     });
 }
 
-static RegisterShipInitFunc initFunc(RegisterSkipLearningSonataOfAwakening, { CVAR_NAME, "IS_RANDO" });
+static RegisterShipInitFunc initFunc(RegisterSkipLearningSonataOfAwakening, { CVAR_NAME });

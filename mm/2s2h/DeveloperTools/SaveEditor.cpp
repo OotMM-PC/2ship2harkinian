@@ -1,12 +1,9 @@
 #include "SaveEditor.h"
 #include "2s2h/BenGui/UIWidgets.hpp"
 #include "2s2h/GameInteractor/GameInteractor.h"
-#include "2s2h/Rando/Rando.h"
-#include "2s2h/Rando/MiscBehavior/ClockShuffle.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/CustomItem/CustomItem.h"
 #include "2s2h/BenGui/Notification.h"
-#include "2s2h/Rando/Spoiler/Spoiler.h"
 #include "2s2h/ShipUtils.h"
 
 #include "interface/icon_item_dungeon_static/icon_item_dungeon_static.h"
@@ -66,7 +63,6 @@ const char* songTooltip;
 const char* curForm;
 UIWidgets::Colors formColor;
 uint32_t formObject;
-static std::unordered_map<RandoItemId, const char*> randoItemIdComboboxMap;
 
 InventorySlot selectedInventorySlot = SLOT_NONE;
 std::vector<ItemId> safeItemsForInventorySlot[SLOT_MASK_FIERCE_DEITY + 1] = {};
@@ -895,146 +891,6 @@ void DrawItemsAndMasksTab() {
         Inventory_ChangeUpgrade(UPG_QUIVER, 0);
     }
     UIWidgets::Checkbox("Safe Mode", &safeMode);
-
-    if (gSaveContext.save.shipSaveInfo.saveType == SAVETYPE_RANDO) {
-        if (RANDO_SAVE_OPTIONS[RO_CLOCK_SHUFFLE]) {
-            // Time Items Management Section
-            ImGui::SeparatorText("Time Items");
-
-            // Individual time items in 3x2 grid with static positioning
-            RandoItemId clockItems[] = { RI_TIME_DAY_1,   RI_TIME_DAY_2,   RI_TIME_DAY_3,
-                                         RI_TIME_NIGHT_1, RI_TIME_NIGHT_2, RI_TIME_NIGHT_3 };
-
-            const char* clockNames[] = { "Day 1", "Day 2", "Day 3", "Night 1", "Night 2", "Night 3" };
-
-            // Use table for static positioning - 3 columns, 2 rows
-            if (ImGui::BeginTable("ClockItemsTable", 3, ImGuiTableFlags_None)) {
-                ImGui::TableSetupColumn("Day 1", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Day 2", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("Day 3", ImGuiTableColumnFlags_WidthStretch);
-
-                // First row - Day items
-                ImGui::TableNextRow();
-                for (int i = 0; i < 3; i++) {
-                    ImGui::TableNextColumn();
-                    RandoItemId clockItem = clockItems[i];
-                    int halfIndex = Rando::ClockItems::GetHalfDayIndexFromClockItem(clockItem);
-                    bool isOwned = Flags_GetRandoInf(static_cast<RandoInf>(RANDO_INF_OBTAINED_CLOCK_DAY_1 + halfIndex));
-
-                    std::string buttonText =
-                        isOwned ? ("Remove " + std::string(clockNames[i])) : ("No Item##" + std::to_string(i));
-                    std::string tooltipText = "";
-                    if (!isOwned) {
-                        tooltipText = "You don't own " + std::string(clockNames[i]);
-                    }
-                    UIWidgets::ButtonOptions buttonOpts;
-                    buttonOpts.disabled = !isOwned;
-                    buttonOpts.disabledTooltip = !isOwned ? tooltipText.c_str() : "";
-                    if (UIWidgets::Button(buttonText.c_str(), buttonOpts)) {
-                        Rando::RemoveItem(clockItem);
-                    }
-                }
-
-                // Second row - Night items
-                ImGui::TableNextRow();
-                for (int i = 3; i < 6; i++) {
-                    ImGui::TableNextColumn();
-                    RandoItemId clockItem = clockItems[i];
-                    int halfIndex = Rando::ClockItems::GetHalfDayIndexFromClockItem(clockItem);
-                    bool isOwned = Flags_GetRandoInf(static_cast<RandoInf>(RANDO_INF_OBTAINED_CLOCK_DAY_1 + halfIndex));
-
-                    std::string buttonText =
-                        isOwned ? ("Remove " + std::string(clockNames[i])) : ("No Item##" + std::to_string(i));
-                    std::string tooltipText = "";
-                    if (!isOwned) {
-                        tooltipText = "You don't own " + std::string(clockNames[i]);
-                    }
-                    UIWidgets::ButtonOptions buttonOpts;
-                    buttonOpts.disabled = !isOwned;
-                    buttonOpts.disabledTooltip = !isOwned ? tooltipText.c_str() : "";
-                    if (UIWidgets::Button(buttonText.c_str(), buttonOpts)) {
-                        Rando::RemoveItem(clockItem);
-                    }
-                }
-
-                ImGui::EndTable();
-            }
-        }
-
-        // Queue Randomizer Item Gives section
-        ImGui::Spacing();
-        ImGui::SeparatorText("Queue Randomizer Item Gives");
-
-        static ImGuiTextFilter riFilter;
-        UIWidgets::PushStyleCombobox();
-        riFilter.Draw("##filter", ImGui::GetContentRegionAvail().x);
-        UIWidgets::PopStyleCombobox();
-        if (!riFilter.IsActive()) {
-            ImGui::SameLine(18.0f);
-            ImGui::Text("Search");
-        }
-        std::string riFilterString(riFilter.InputBuf);
-
-        for (auto& [randoItemId, randoStaticItem] : Rando::StaticData::Items) {
-            if (!riFilter.PassFilter(randoStaticItem.name)) {
-                continue;
-            }
-            if (randoItemId == RI_TRIFORCE_PIECE_PREVIOUS) {
-                continue;
-            }
-
-            std::string buttonLabel = "Give ";
-            buttonLabel += randoStaticItem.name;
-            if (UIWidgets::Button(buttonLabel.c_str())) {
-                GameInteractor::Instance->events.emplace_back(GIEventGiveItem{
-                    .showGetItemCutscene =
-                        Rando::StaticData::ShouldShowGetItemCutscene(Rando::ConvertItem(randoItemId)),
-                    .param = (int16_t)randoItemId,
-                    .giveItem =
-                        [](Actor* actor, PlayState* play) {
-                            RandoItemId randoItemId = Rando::ConvertItem((RandoItemId)CUSTOM_ITEM_PARAM);
-                            std::string prefix = "You found";
-                            std::string message = Rando::StaticData::GetItemName(randoItemId);
-
-                            CustomMessage::Entry entry = {
-                                .textboxType = 2,
-                                .icon = Rando::StaticData::GetIconForZMessage(randoItemId),
-                                .msg = prefix + " " + message + "!",
-                            };
-
-                            if (CUSTOM_ITEM_FLAGS & CustomItem::GIVE_ITEM_CUTSCENE) {
-                                CustomMessage::SetActiveCustomMessage(entry.msg, entry);
-                            } else if (Rando::StaticData::ShouldShowGetItemCutscene(
-                                           Rando::ConvertItem((RandoItemId)CUSTOM_ITEM_PARAM))) {
-                                CustomMessage::StartTextbox(entry.msg + "\x1C\x02\x10", entry);
-                            } else {
-                                Notification::Emit({
-                                    .itemIcon = Rando::StaticData::GetIconTexturePath(randoItemId),
-                                    .message = prefix,
-                                    .suffix = message,
-                                });
-                            }
-                            Rando::GiveItem(randoItemId);
-                            CUSTOM_ITEM_PARAM = randoItemId;
-                        },
-                    .drawItem =
-                        [](Actor* actor, PlayState* play) {
-                            RandoItemId randoItemId;
-
-                            // If the item has been given, the CUSTOM_ITEM_PARAM is set to the RI, prior to that it's
-                            // the RC
-                            if (CUSTOM_ITEM_FLAGS & CustomItem::CALLED_ACTION) {
-                                randoItemId = (RandoItemId)CUSTOM_ITEM_PARAM;
-                            } else {
-                                randoItemId = Rando::ConvertItem((RandoItemId)CUSTOM_ITEM_PARAM);
-                            }
-
-                            Matrix_Scale(30.0f, 30.0f, 30.0f, MTXMODE_APPLY);
-                            Rando::DrawItem(randoItemId, RC_UNKNOWN, actor);
-                        } });
-            }
-        }
-    }
 
     // Expose inputs to edit raw number values of equips
     // ImGui::Text("Equips");
@@ -2257,74 +2113,6 @@ void DrawFlagsTab() {
     ImGui::PopStyleVar(2);
 }
 
-void DrawRandoTab() {
-    if (UIWidgets::Button("Generate Spoiler from Save", { .size = UIWidgets::Sizes::Inline })) {
-        nlohmann::json spoiler = Rando::Spoiler::GenerateFromSaveContext();
-        std::string inputSeed = std::to_string(Ship_Random(0, 1000000));
-        spoiler["inputSeed"] = inputSeed;
-
-        std::string fileName = inputSeed + ".json";
-        Rando::Spoiler::SaveToFile(fileName, spoiler);
-    }
-
-    static ImGuiTextFilter rcFilter;
-    UIWidgets::PushStyleCombobox();
-    rcFilter.Draw("##filter", ImGui::GetContentRegionAvail().x);
-    UIWidgets::PopStyleCombobox();
-    if (!rcFilter.IsActive()) {
-        ImGui::SameLine(18.0f);
-        ImGui::Text("Search");
-    }
-
-    ImGui::BeginChild("RandoChild");
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(1.0f, 1.0f, 1.0f, 0.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(1.0f, 1.0f, 1.0f, 0.2f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(1.0f, 1.0f, 1.0f, 0.1f));
-
-    ImGui::BeginTable("Check List", 5);
-    ImGui::TableSetupColumn("Shuffled", ImGuiTableColumnFlags_NoHeaderLabel | ImGuiTableColumnFlags_WidthFixed, 30.0f);
-    ImGui::TableSetupColumn("Eligible", ImGuiTableColumnFlags_NoHeaderLabel | ImGuiTableColumnFlags_WidthFixed, 30.0f);
-    ImGui::TableSetupColumn("Obtained", ImGuiTableColumnFlags_NoHeaderLabel | ImGuiTableColumnFlags_WidthFixed, 30.0f);
-    ImGui::TableSetupColumn("Check Name");
-    ImGui::TableSetupColumn("Reward");
-    ImGui::TableSetupScrollFreeze(5, 1);
-    ImGui::TableHeadersRow();
-
-    for (auto& [_, randoStaticCheck] : Rando::StaticData::Checks) {
-        RandoSaveCheck& randoSaveCheck = RANDO_SAVE_CHECKS[randoStaticCheck.randoCheckId];
-
-        if (!rcFilter.PassFilter(randoStaticCheck.name) &&
-            !rcFilter.PassFilter(Rando::StaticData::Items[randoSaveCheck.randoItemId].spoilerName)) {
-            continue;
-        }
-
-        if (randoStaticCheck.randoCheckId == RC_UNKNOWN) {
-            continue;
-        }
-        std::string hiddenName = "##";
-        hiddenName += randoStaticCheck.name;
-        ImGui::TableNextColumn();
-        UIWidgets::Checkbox((hiddenName + "shuffled").c_str(), &randoSaveCheck.shuffled);
-        UIWidgets::Tooltip("Shuffled");
-        ImGui::TableNextColumn();
-        UIWidgets::Checkbox((hiddenName + "eligible").c_str(), &randoSaveCheck.eligible);
-        UIWidgets::Tooltip("Eligible");
-        ImGui::TableNextColumn();
-        UIWidgets::Checkbox((hiddenName + "obtained").c_str(), &randoSaveCheck.obtained);
-        UIWidgets::Tooltip("Obtained");
-        ImGui::TableNextColumn();
-        ImGui::TextColored(randoSaveCheck.obtained ? UIWidgets::ColorValues.at(UIWidgets::Colors::Green)
-                                                   : UIWidgets::ColorValues.at(UIWidgets::Colors::White),
-                           randoStaticCheck.name);
-        ImGui::TableNextColumn();
-        UIWidgets::ComboboxWithSearch((hiddenName + "reward").c_str(), &randoSaveCheck.randoItemId,
-                                      &randoItemIdComboboxMap, { .labelPosition = UIWidgets::LabelPosition::None });
-    }
-
-    ImGui::EndTable();
-    ImGui::PopStyleColor(3);
-    ImGui::EndChild();
-}
 
 void SaveEditorWindow::DrawElement() {
     UIWidgets::PushStyleTabs(UIWidgets::Colors(CVarGetInteger("gSettings.Menu.Theme", 5)));
@@ -2369,13 +2157,6 @@ void SaveEditorWindow::DrawElement() {
             ImGui::EndTabItem();
         }
 
-        if (IS_RANDO) {
-            if (ImGui::BeginTabItem("Rando")) {
-                DrawRandoTab();
-                ImGui::EndTabItem();
-            }
-        }
-
         ImGui::EndTabBar();
     }
     UIWidgets::PopStyleTabs();
@@ -2383,8 +2164,4 @@ void SaveEditorWindow::DrawElement() {
 
 void SaveEditorWindow::InitElement() {
     initSafeItemsForInventorySlot();
-    randoItemIdComboboxMap.clear();
-    for (auto& [_, randoItem] : Rando::StaticData::Items) {
-        randoItemIdComboboxMap[randoItem.randoItemId] = randoItem.spoilerName;
-    }
 }

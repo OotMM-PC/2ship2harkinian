@@ -147,44 +147,6 @@ ImVec4 Ship_GetItemColorTint(uint32_t itemId) {
     }
 }
 
-std::unordered_map<uint32_t, ImVec4> randoItemColorMap = {
-    { RI_OCARINA_BUTTON_A, ImVec4(0.085f, 0.494f, 0.796f, 1) },
-    { RI_OCARINA_BUTTON_C_DOWN, ImVec4(0.84f, 0.768f, 0.089f, 1) },
-    { RI_OCARINA_BUTTON_C_LEFT, ImVec4(0.84f, 0.768f, 0.089f, 1) },
-    { RI_OCARINA_BUTTON_C_RIGHT, ImVec4(0.84f, 0.768f, 0.089f, 1) },
-    { RI_OCARINA_BUTTON_C_UP, ImVec4(0.84f, 0.768f, 0.089f, 1) },
-    { RI_CLOCK_TOWN_STRAY_FAIRY, ImVec4(1.0f, 0.9f, 0.5f, 0.4f) },
-    { RI_WOODFALL_SMALL_KEY, ImVec4(0.9f, 0.33f, 0.56f, 0.4f) },
-    { RI_SNOWHEAD_SMALL_KEY, ImVec4(0.1f, 0.54f, 0.16f, 0.4f) },
-    { RI_GREAT_BAY_SMALL_KEY, ImVec4(0.61f, 0.04f, 0.86f, 0.4f) },
-    { RI_STONE_TOWER_SMALL_KEY, ImVec4(0.58f, 0.65f, 0.15f, 0.4f) },
-    { RI_WOODFALL_BOSS_KEY, ImVec4(0.9f, 0.33f, 0.56f, 0.4f) },
-    { RI_SNOWHEAD_BOSS_KEY, ImVec4(0.1f, 0.54f, 0.16f, 0.4f) },
-    { RI_GREAT_BAY_BOSS_KEY, ImVec4(0.61f, 0.04f, 0.86f, 0.4f) },
-    { RI_STONE_TOWER_BOSS_KEY, ImVec4(0.58f, 0.65f, 0.15f, 0.4f) },
-    { RI_TIME_DAY_1, ImVec4(1.0f, 0.9f, 0.3f, 1.0f) },
-    { RI_TIME_DAY_2, ImVec4(1.0f, 0.9f, 0.3f, 1.0f) },
-    { RI_TIME_DAY_3, ImVec4(1.0f, 0.9f, 0.3f, 1.0f) },
-    { RI_TIME_NIGHT_1, ImVec4(0.5f, 0.7f, 1.0f, 1.0f) },
-    { RI_TIME_NIGHT_2, ImVec4(0.5f, 0.7f, 1.0f, 1.0f) },
-    { RI_TIME_NIGHT_3, ImVec4(0.5f, 0.7f, 1.0f, 1.0f) },
-    { RI_SONG_SONATA, ImVec4(0.588f, 1.0f, 0.392f, 1.0f) },
-    { RI_SONG_LULLABY, ImVec4(1.0f, 0.313f, 0.156f, 1.0f) },
-    { RI_SONG_NOVA, ImVec4(0.392f, 0.588f, 1.0f, 1.0f) },
-    { RI_SONG_ELEGY, ImVec4(1.0f, 0.627f, 0.0f, 1.0f) },
-    { RI_SONG_OATH, ImVec4(1.0f, 0.392f, 1.0f, 1.0f) },
-    { RI_SONG_LULLABY_INTRO, ImVec4(1.0f, 0.313f, 0.156f, 1.0f) },
-};
-
-ImVec4 Ship_GetRandoItemColorTint(uint32_t randoItemId) {
-    auto findColor = randoItemColorMap.find(randoItemId);
-    if (findColor != randoItemColorMap.end()) {
-        return findColor->second;
-    } else {
-        return ImVec4(1, 1, 1, 1);
-    }
-}
-
 extern "C" const char* Ship_GetSceneName(s16 sceneId) {
     if (sceneNames.contains(sceneId)) {
         return sceneNames[sceneId];

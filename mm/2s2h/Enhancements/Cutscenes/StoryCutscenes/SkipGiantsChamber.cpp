@@ -2,7 +2,6 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/CustomItem/CustomItem.h"
-#include "2s2h/Rando/Rando.h"
 #include "2s2h/ShipInit.hpp"
 
 extern "C" {
@@ -14,8 +13,7 @@ extern "C" {
 #define CVAR CVarGetInteger(CVAR_NAME, 0)
 
 /*
- * Utility function made common so that rando actor behavior can access it while also doing other things. Mimics the
- * flags and transitions set by func_808BA10C in z_door_warp1.c.
+ * Mimics the flags and transitions set by func_808BA10C in z_door_warp1.c.
  */
 void HandleGiantsCutsceneSkip() {
     GIEventTransition transition;
@@ -55,80 +53,27 @@ void HandleGiantsCutsceneSkip() {
 
 // Only reached if the cutscene is skipped
 void handleGiantsCheck(SceneId sceneId) {
-    /*
-     * This whole block comes from func_808B9CE8 in z_door_warp1.c. unk_EA8[0] represents which particular Giants have
-     * been freed (e.g. Woodfall Giant). unk_EA8[1] represents the total number of Giants freed (0-4). These flags only
-     * seem to matter for Giants' Chamber cutscenes. The Clock Tower scene instead checks for Boss Remains that the
-     * player has.
-     */
-    if (IS_RANDO) {
-        switch (sceneId) {
-            case SCENE_MITURIN_BS:
-                // Mark Woodfall Giant as freed
-                gSaveContext.save.saveInfo.unk_EA8[0] =
-                    (((void)0, gSaveContext.save.saveInfo.unk_EA8[0]) & 0xFFFFFF00) |
-                    (((u8)gSaveContext.save.saveInfo.unk_EA8[1]) & 0xFF);
-                break;
-            case SCENE_HAKUGIN_BS:
-                // Mark Snowhead Giant as freed
-                gSaveContext.save.saveInfo.unk_EA8[0] =
-                    (((void)0, gSaveContext.save.saveInfo.unk_EA8[0]) & 0xFFFF00FF) |
-                    ((((u8)gSaveContext.save.saveInfo.unk_EA8[1]) & 0xFF) << 8);
-                break;
-            case SCENE_INISIE_BS:
-                // Mark Stone Tower Giant as freed
-                gSaveContext.save.saveInfo.unk_EA8[0] =
-                    (((void)0, gSaveContext.save.saveInfo.unk_EA8[0]) & 0xFF00FFFF) |
-                    ((((u8)gSaveContext.save.saveInfo.unk_EA8[1]) & 0xFF) << 0x10);
-                break;
-            case SCENE_SEA_BS:
-                // Mark Great Bay Giant as freed
-                gSaveContext.save.saveInfo.unk_EA8[0] =
-                    (((void)0, gSaveContext.save.saveInfo.unk_EA8[0]) & 0x00FFFFFF) |
-                    ((((u8)gSaveContext.save.saveInfo.unk_EA8[1]) & 0xFF) << 0x18);
-                break;
-            default:
-                break;
-        }
-        // This is a fancy way of incrementing the flag that represents the total number of Giants freed.
-        gSaveContext.save.saveInfo.unk_EA8[1] = (gSaveContext.save.saveInfo.unk_EA8[1] & 0xFFFFFF00) |
-                                                ((((u8)gSaveContext.save.saveInfo.unk_EA8[1]) + 1) & 0xFF);
-    }
-
     // The Oath to Order check only occurs when freeing a Giant for the first time.
     if (gSaveContext.save.saveInfo.unk_EA8[1] == 1) {
-        if (IS_RANDO) {
-            RANDO_SAVE_CHECKS[RC_GIANTS_CHAMBER_OATH_TO_ORDER].eligible = true;
-        } else {
-            GameInteractor::Instance->events.emplace_back(GIEventGiveItem{
-                .showGetItemCutscene = !CVarGetInteger("gEnhancements.Cutscenes.SkipGetItemCutscenes", 0),
-                .giveItem =
-                    [](Actor* actor, PlayState* play) {
-                        if (CUSTOM_ITEM_FLAGS & CustomItem::GIVE_ITEM_CUTSCENE) {
-                            CustomMessage::SetActiveCustomMessage("You learned the Oath to Order!",
-                                                                  { .textboxType = 2 });
-                        } else {
-                            CustomMessage::StartTextbox("You learned the Oath to Order!\x1C\x02\x10",
-                                                        { .textboxType = 2 });
-                        }
-                        Item_Give(gPlayState, ITEM_SONG_OATH);
-                    },
-                .drawItem =
-                    [](Actor* actor, PlayState* play) {
-                        Matrix_Scale(30.0f, 30.0f, 30.0f, MTXMODE_APPLY);
-                        Rando::DrawItem(RI_SONG_OATH);
-                    } });
-        }
+        GameInteractor::Instance->events.emplace_back(GIEventGiveItem{
+            .showGetItemCutscene = !CVarGetInteger("gEnhancements.Cutscenes.SkipGetItemCutscenes", 0),
+            .giveItem =
+                [](Actor* actor, PlayState* play) {
+                    if (CUSTOM_ITEM_FLAGS & CustomItem::GIVE_ITEM_CUTSCENE) {
+                        CustomMessage::SetActiveCustomMessage("You learned the Oath to Order!", { .textboxType = 2 });
+                    } else {
+                        CustomMessage::StartTextbox("You learned the Oath to Order!\x1C\x02\x10", { .textboxType = 2 });
+                    }
+                    Item_Give(gPlayState, ITEM_SONG_OATH);
+                } });
     }
 }
 
 void RegisterSkipGiantsChamber() {
     /*
-     * Skip Giants' Chamber cutscenes. This is forced on for rando for now, as the first scene the player sees contains
-     * a song tutorial prompt. The other cutscenes do not, but it might seem weird to force the skip for only the first
-     * one and not others.
+     * Skip Giants' Chamber cutscenes.
      */
-    COND_VB_SHOULD(VB_PLAY_TRANSITION_CS, CVAR || IS_RANDO, {
+    COND_VB_SHOULD(VB_PLAY_TRANSITION_CS, CVAR, {
         if (gSaveContext.save.entrance == ENTRANCE(GIANTS_CHAMBER, 0)) {
             /*
              * The warp gate processing silently queues up an event transition with information for the particular
@@ -155,8 +100,7 @@ void RegisterSkipGiantsChamber() {
         }
     });
 
-    // Handle Giants' Chamber cutscene skip for non-rando. Rando has its own skip with additional check processing.
-    COND_VB_SHOULD(VB_GIVE_ITEM_FROM_OFFER, CVAR && !IS_RANDO, {
+    COND_VB_SHOULD(VB_GIVE_ITEM_FROM_OFFER, CVAR, {
         GetItemId* item = va_arg(args, GetItemId*);
         Actor* actor = va_arg(args, Actor*);
         if (actor->id == ACTOR_DOOR_WARP1) {
@@ -165,4 +109,4 @@ void RegisterSkipGiantsChamber() {
     });
 }
 
-static RegisterShipInitFunc initFunc(RegisterSkipGiantsChamber, { CVAR_NAME, "IS_RANDO" });
+static RegisterShipInitFunc initFunc(RegisterSkipGiantsChamber, { CVAR_NAME });

@@ -2,7 +2,6 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/CustomItem/CustomItem.h"
-#include "2s2h/Rando/Rando.h"
 #include "2s2h/ShipInit.hpp"
 
 extern "C" {
@@ -21,14 +20,14 @@ void RegisterSkipLearningSongOfSoaring() {
      * determined by whether the player has obtained the Song of Soaring or not. We bypass the cutscene by always
      * setting this textId.
      */
-    COND_ID_HOOK(OnActorInit, ACTOR_EN_TIME_TAG, CVAR || IS_RANDO, [](Actor* actor) {
+    COND_ID_HOOK(OnActorInit, ACTOR_EN_TIME_TAG, CVAR, [](Actor* actor) {
         if (TIMETAG_GET_TYPE(actor) == TIMETAG_SOARING_ENGRAVING) {
             actor->textId = ENGRAVING_TEXT_ID;
         }
     });
 
-    // Then, once this textId is opened for the first time, give the player the reward. (unless we're in rando)
-    COND_ID_HOOK(OnOpenText, ENGRAVING_TEXT_ID, CVAR && !IS_RANDO, [](u16* textId, bool* loadFromMessageTable) {
+    // Then, once this textId is opened for the first time, give the player the reward.
+    COND_ID_HOOK(OnOpenText, ENGRAVING_TEXT_ID, CVAR, [](u16* textId, bool* loadFromMessageTable) {
         if (!CHECK_QUEST_ITEM(QUEST_SONG_SOARING)) {
             GameInteractor::Instance->events.emplace_back(GIEventGiveItem{
                 .showGetItemCutscene = !CVarGetInteger("gEnhancements.Cutscenes.SkipGetItemCutscenes", 0),
@@ -42,14 +41,9 @@ void RegisterSkipLearningSongOfSoaring() {
                                                         { .textboxType = 2 });
                         }
                         Item_Give(gPlayState, ITEM_SONG_SOARING);
-                    },
-                .drawItem =
-                    [](Actor* actor, PlayState* play) {
-                        Matrix_Scale(30.0f, 30.0f, 30.0f, MTXMODE_APPLY);
-                        Rando::DrawItem(RI_SONG_SOARING);
                     } });
         }
     });
 }
 
-static RegisterShipInitFunc initFunc(RegisterSkipLearningSongOfSoaring, { CVAR_NAME, "IS_RANDO" });
+static RegisterShipInitFunc initFunc(RegisterSkipLearningSongOfSoaring, { CVAR_NAME });

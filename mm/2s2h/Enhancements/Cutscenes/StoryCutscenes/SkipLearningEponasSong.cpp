@@ -2,7 +2,6 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
 #include "2s2h/CustomItem/CustomItem.h"
-#include "2s2h/Rando/Rando.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
 
 extern "C" {
@@ -14,7 +13,7 @@ void EnMa4_SetupDialogueHandler(EnMa4* enMa4);
 #define CVAR CVarGetInteger(CVAR_NAME, 0)
 
 void RegisterSkipLearningEponasSong() {
-    COND_VB_SHOULD(VB_QUEUE_CUTSCENE, CVAR || IS_RANDO, {
+    COND_VB_SHOULD(VB_QUEUE_CUTSCENE, CVAR, {
         s16* csId = va_arg(args, s16*);
 
         if (gPlayState->sceneId != SCENE_F01) { // Romani Ranch
@@ -42,11 +41,6 @@ void RegisterSkipLearningEponasSong() {
                             CustomMessage::StartTextbox("You received Epona's Song!\x1C\x02\x10", { .textboxType = 2 });
                         }
                         Item_Give(gPlayState, ITEM_SONG_EPONA);
-                    },
-                .drawItem =
-                    [](Actor* actor, PlayState* play) {
-                        Matrix_Scale(30.0f, 30.0f, 30.0f, MTXMODE_APPLY);
-                        Rando::DrawItem(RI_SONG_EPONA);
                     } });
         }
 
@@ -59,4 +53,4 @@ void RegisterSkipLearningEponasSong() {
     });
 }
 
-static RegisterShipInitFunc initFunc(RegisterSkipLearningEponasSong, { CVAR_NAME, "IS_RANDO" });
+static RegisterShipInitFunc initFunc(RegisterSkipLearningEponasSong, { CVAR_NAME });

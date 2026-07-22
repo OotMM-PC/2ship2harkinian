@@ -2,7 +2,6 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/CustomItem/CustomItem.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
-#include "2s2h/Rando/Rando.h"
 #include "2s2h/ShipInit.hpp"
 
 extern "C" {
@@ -33,11 +32,6 @@ void RegisterSkipLearningSongOfTime() {
                         CustomMessage::StartTextbox("You received the Song of Time!\x1C\x02\x10", { .textboxType = 2 });
                     }
                     Item_Give(gPlayState, ITEM_SONG_TIME);
-                },
-            .drawItem =
-                [](Actor* actor, PlayState* play) {
-                    Matrix_Scale(30.0f, 30.0f, 30.0f, MTXMODE_APPLY);
-                    Rando::DrawItem(RI_SONG_TIME);
                 } });
     });
 }
