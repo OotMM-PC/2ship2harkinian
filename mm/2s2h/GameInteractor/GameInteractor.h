@@ -32,7 +32,6 @@ typedef enum {
     FLAG_CYCL_SCENE_SWITCH,
     FLAG_CYCL_SCENE_CLEARED_ROOM,
     FLAG_CYCL_SCENE_COLLECTIBLE,
-    FLAG_RANDO_INF,
 } FlagType;
 
 typedef enum {

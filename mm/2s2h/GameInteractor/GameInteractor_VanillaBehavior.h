@@ -532,14 +532,6 @@ typedef enum {
     VB_DRAW_SLIME_BODY_ITEM,
 
     // #### `result`
-    // ```c
-    // true
-    // ```
-    // #### `args`
-    // - `*EnSlime`
-    VB_DRAW_SLIME_RANDO_ITEM,
-
-    // #### `result`
     // #### In `Item_DropCollectible`:
     // ```c
     // true

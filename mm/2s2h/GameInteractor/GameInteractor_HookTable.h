@@ -56,6 +56,3 @@ DEFINE_HOOK(ShouldVanillaBehavior, (GIVanillaBehavior flag, bool* should, va_lis
 
 // Audio
 DEFINE_HOOK(OnSeqPlayerInit, (s32 playerIdx, s32 seqId));
-
-// Rando
-DEFINE_HOOK(OnRandoSeedGeneration, ());

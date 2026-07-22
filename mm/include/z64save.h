@@ -7,7 +7,6 @@
 #include "z64math.h"
 #include "unk.h"
 #include "z64item.h"
-#include "Rando/Types.h"
 
 struct GameState;
 struct PlayState;
@@ -369,27 +368,6 @@ typedef enum {
     SAVETYPE_RANDO,
 } SaveType;
 
-typedef struct RandoSaveCheck {
-    RandoItemId randoItemId;
-    bool shuffled;
-    bool eligible;
-    bool cycleObtained;
-    bool obtained;
-    bool skipped;
-    u16 price; // Only applicable for shops/merchants
-} RandoSaveCheck;
-
-typedef struct RandoSaveInfo {
-    u16 randoInf[(RANDO_INF_MAX + 15) / 16];
-    u8 randoEvents[RE_MAX]; // This is purely for logic tracking, not to be used for anything else
-    RandoSaveCheck randoSaveChecks[RC_MAX];
-    u32 finalSeed;
-    u32 randoSaveOptions[RO_MAX]; // Type here may change in the future
-    u16 randoStartingItems[256]; // Max 256 starting items, using u16 in case we add more than 255 items
-    s8 foundDungeonKeys[9]; // Tracks the number of dungeon keys found, opposed to the number of keys in the inventory
-    u16 foundTriforcePieces;
-} RandoSaveInfo;
-
 // These are values added by 2S2H that we need to be persisted to the save file
 // See `ShipSaveContext` for values on the SaveContext that aren't persisted.
 typedef struct ShipSaveInfo {
@@ -401,7 +379,6 @@ typedef struct ShipSaveInfo {
     uint64_t filePlaytime;
     RespawnData respawn[RESPAWN_MODE_MAX];
     char commitHash[8];
-    RandoSaveInfo rando;
 } ShipSaveInfo;
 // #endregion
 

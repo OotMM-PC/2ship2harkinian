@@ -330,11 +330,6 @@ void Flags_ClearEventInf(s32 flag);
 s32 Ship_CalcShouldDrawAndUpdate(PlayState* play, Actor* actor, Vec3f* projectedPos, f32 projectedW, bool* shouldDraw,
                                  bool* shouldUpdate);
 // #endregion
-// #region 2S2H [Rando]
-s32 Flags_GetRandoInf(s32 flag);
-void Flags_SetRandoInf(s32 flag);
-void Flags_ClearRandoInf(s32 flag);
-// #endregion
 // #region 2S2H [Port] Stubbed methods
 void osSetThreadPri(OSThread* thread, OSPri p);
 OSPri osGetThreadPri(OSThread* t);

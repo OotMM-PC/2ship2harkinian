@@ -8,7 +8,6 @@
 #include "2s2h/Enhancements/Audio/AudioEditor.h"
 #include "CosmeticEditor.h"
 #include "Notification.h"
-#include "2s2h/Rando/CheckTracker/CheckTracker.h"
 
 #ifdef __APPLE__
 #include <fast/backends/gfx_metal.h>
@@ -57,8 +56,6 @@ std::shared_ptr<MessageViewerWindow> mMessageViewerWindow;
 std::shared_ptr<AudioEditor> mAudioEditorWindow;
 std::shared_ptr<BenMenu> mBenMenu;
 std::shared_ptr<Notification::Window> mNotificationWindow;
-std::shared_ptr<Rando::CheckTracker::CheckTrackerWindow> mRandoCheckTrackerWindow;
-std::shared_ptr<Rando::CheckTracker::SettingsWindow> mRandoCheckTrackerSettingsWindow;
 std::shared_ptr<ItemTrackerWindow> mItemTrackerWindow;
 std::shared_ptr<ItemTrackerSettingsWindow> mItemTrackerSettingsWindow;
 std::shared_ptr<DisplayOverlayWindow> mDisplayOverlayWindow;

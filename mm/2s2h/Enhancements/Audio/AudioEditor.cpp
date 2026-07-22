@@ -34,7 +34,6 @@ static WidgetInfo ovlDuration;
 static WidgetInfo voicePitch;
 static WidgetInfo voicePitchEnable;
 static WidgetInfo randoMusicOnSceneChange;
-static WidgetInfo randomAudioOnSeedGen;
 
 namespace AudioPreview {
 
@@ -552,12 +551,6 @@ void AudioEditorRegisterRandomizeAllOnNewScene() {
 }
 
 void AudioEditor::InitElement() {
-    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnRandoSeedGeneration>([]() {
-        if (CVarGetInteger(CVAR_AUDIO("RandomizeAllOnRandoGen"), 0)) {
-            AudioEditor_RandomizeAll();
-        }
-    });
-
     // This prevents preview state from getting out of sync when the menu is closed
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(AudioPreview::Update);
 }
@@ -607,7 +600,6 @@ void AudioEditor::DrawElement() {
                 BenGui::mBenMenu->MenuDrawItem(tatlCall, ImGui::GetContentRegionAvail().x, THEME_COLOR);
                 BenGui::mBenMenu->MenuDrawItem(enemyProx, ImGui::GetContentRegionAvail().x, THEME_COLOR);
                 BenGui::mBenMenu->MenuDrawItem(randoMusicOnSceneChange, ImGui::GetContentRegionAvail().x, THEME_COLOR);
-                BenGui::mBenMenu->MenuDrawItem(randomAudioOnSeedGen, ImGui::GetContentRegionAvail().x, THEME_COLOR);
                 BenGui::mBenMenu->MenuDrawItem(displaySeqName, ImGui::GetContentRegionAvail().x, THEME_COLOR);
                 BenGui::mBenMenu->MenuDrawItem(ovlDuration, ImGui::GetContentRegionAvail().x, THEME_COLOR);
                 BenGui::mBenMenu->MenuDrawItem(voicePitchEnable, ImGui::GetContentRegionAvail().x, THEME_COLOR);
@@ -921,15 +913,6 @@ void RegisterAudioWidgets() {
                      .Color(THEME_COLOR)
                      .Tooltip("Enables randomizing all unlocked music and sound effects when you enter a new scene."));
     AddAudioSearchWidget(randoMusicOnSceneChange);
-
-    randomAudioOnSeedGen = { .name = "Randomize All Music and Sound Effects on Randomizer Generation",
-                             .type = WidgetType::WIDGET_CVAR_CHECKBOX };
-    randomAudioOnSeedGen.CVar(CVAR_AUDIO("RandomizeAllOnRandoGen"))
-        .Options(CheckboxOptions()
-                     .Color(THEME_COLOR)
-                     .Tooltip("Enables randomizing all unlocked music and sound effects when you generate a new "
-                              "randomizer. Respects locks already in place."));
-    AddAudioSearchWidget(randomAudioOnSeedGen);
 
     displaySeqName = { .name = "Display Sequence Name on Overlay", .type = WidgetType::WIDGET_CVAR_CHECKBOX };
     displaySeqName.CVar(CVAR_AUDIO("SeqNameNotification"))
