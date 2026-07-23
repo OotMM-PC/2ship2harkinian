@@ -61,13 +61,15 @@ void SDL_main(int argc, char** argv /* void* arg*/) {
 
 // Attach console for windows so we can conditionally display it when running the extractor
 #ifdef _WIN32
-    AllocConsole();
-    (void)freopen("CONIN$", "r", stdin);
-    (void)freopen("CONOUT$", "w", stdout);
-    (void)freopen("CONOUT$", "w", stderr);
+    if (GetEnvironmentVariableA("OOTMM_PARENT_HWND", NULL, 0) == 0) {
+        AllocConsole();
+        (void)freopen("CONIN$", "r", stdin);
+        (void)freopen("CONOUT$", "w", stdout);
+        (void)freopen("CONOUT$", "w", stderr);
 #ifndef _DEBUG
-    ShowWindow(GetConsoleWindow(), SW_HIDE);
+        ShowWindow(GetConsoleWindow(), SW_HIDE);
 #endif
+    }
     // Allow non-ascii characters for Windows
     setlocale(LC_ALL, ".UTF8");
 #endif // _WIN32
