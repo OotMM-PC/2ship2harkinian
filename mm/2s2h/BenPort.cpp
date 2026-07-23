@@ -669,6 +669,7 @@ extern "C" void InitOTR() {
     std::string mmPathO2R = Ship::Context::LocateFileAcrossAppDirs("mm.o2r", appShortName);
     std::string mmPathZIP = Ship::Context::LocateFileAcrossAppDirs("mm.zip", appShortName);
     std::string mmPathOtr = Ship::Context::LocateFileAcrossAppDirs("mm.otr", appShortName);
+    const bool ootmmSetupOnly = getenv("OOTMM_SETUP_ONLY") != nullptr;
 
     // Check game archives in preferred order
     if (std::filesystem::exists(mmPathO2R)) {
@@ -691,18 +692,29 @@ extern "C" void InitOTR() {
             exit(1);
         }
 
-        if (Extractor::ShowYesNoBox("No O2R File", "No O2R files found. Generate one now?") == IDYES) {
+        const char* title = ootmmSetupOnly ? "OoTMM Setup" : "No O2R File";
+        const char* prompt = ootmmSetupOnly
+                                 ? "Select your Majora's Mask ROM to extract the game's assets."
+                                 : "No O2R files found. Generate one now?";
+        if (Extractor::ShowYesNoBox(title, prompt) == IDYES) {
             Extractor extract;
             if (!extract.Run(Ship::Context::GetAppDirectoryPath(appShortName))) {
+                if (ootmmSetupOnly) {
+                    exit(0);
+                }
                 Extractor::ShowErrorBox("Error", "An error occurred, no O2R file was generated. Exiting...");
                 exit(1);
             }
             extract.CallZapd(installPath, Ship::Context::GetAppDirectoryPath(appShortName));
         } else {
-            exit(1);
+            exit(ootmmSetupOnly ? 0 : 1);
         }
     }
 #endif
+
+    if (ootmmSetupOnly) {
+        exit(0);
+    }
 
     OTRGlobals::Instance = new OTRGlobals();
     GameInteractor::Instance = new GameInteractor();
