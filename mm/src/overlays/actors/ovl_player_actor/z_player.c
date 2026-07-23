@@ -48,6 +48,7 @@
 #include "2s2h/BenPort.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
+#include "2s2h/OotmmSession.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 void Player_Init(Actor* thisx, PlayState* play);
@@ -6511,6 +6512,7 @@ void func_808354A4(PlayState* play, s32 exitIndex, s32 arg2) {
         Scene_SetExitFade(play);
     }
 
+    OotmmSession_NotePlayerExitTransition();
     play->transitionTrigger = TRANS_TRIGGER_START;
 }
 

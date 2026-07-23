@@ -13,6 +13,7 @@
 
 #include "build.h"
 #include "BenPort.h"
+#include "2s2h/OotmmSession.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include <stdlib.h>
@@ -264,4 +265,5 @@ void ConsoleLogo_Init(GameState* thisx) {
     this->coverAlpha = 255;
     this->addAlpha = -12;
     this->visibleDuration = 60;
+    OotmmSession_TryBootDirectly(&this->state);
 }

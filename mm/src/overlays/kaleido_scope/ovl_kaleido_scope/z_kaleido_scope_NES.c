@@ -20,6 +20,7 @@
 #include "archives/map_name_static/map_name_static.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
+#include "2s2h/OotmmSession.h"
 
 #include "2s2h_assets.h"
 
@@ -3571,7 +3572,14 @@ void KaleidoScope_Update(PlayState* play) {
                     if (CHECK_BTN_ALL(input->press.button, BTN_A) || CHECK_BTN_ALL(input->press.button, BTN_CUP)) {
                         if (pauseCtx->promptChoice != PAUSE_PROMPT_YES) {
                             Interface_SetAButtonDoAction(play, DO_ACTION_NONE);
-                            pauseCtx->savePromptState = PAUSE_SAVEPROMPT_STATE_RETURN_TO_MENU;
+                            if (OotmmSession_IsActive()) {
+                                pauseCtx->savePromptState = PAUSE_SAVEPROMPT_STATE_3;
+                                sPauseMenuVerticalOffset = -6240.0f;
+                                D_8082B90C = pauseCtx->roll;
+                                Audio_PlaySfx_PauseMenuOpenOrClose(SFX_PAUSE_MENU_CLOSE);
+                            } else {
+                                pauseCtx->savePromptState = PAUSE_SAVEPROMPT_STATE_RETURN_TO_MENU;
+                            }
                         } else {
                             Audio_PlaySfx(NA_SE_SY_PIECE_OF_HEART);
                             // 2S2H [Enhancement] Persist this in case the user is 0th daying
@@ -3614,8 +3622,15 @@ void KaleidoScope_Update(PlayState* play) {
                         Audio_PlaySfx_PauseMenuOpenOrClose(SFX_PAUSE_MENU_CLOSE);
                     } else if (CHECK_BTN_ALL(input->press.button, BTN_B)) {
                         Interface_SetAButtonDoAction(play, DO_ACTION_NONE);
-                        pauseCtx->savePromptState = PAUSE_SAVEPROMPT_STATE_RETURN_TO_MENU;
-                        D_8082B90C = pauseCtx->roll;
+                        if (OotmmSession_IsActive()) {
+                            pauseCtx->savePromptState = PAUSE_SAVEPROMPT_STATE_3;
+                            sPauseMenuVerticalOffset = -6240.0f;
+                            D_8082B90C = pauseCtx->roll;
+                            Audio_PlaySfx_PauseMenuOpenOrClose(SFX_PAUSE_MENU_CLOSE);
+                        } else {
+                            pauseCtx->savePromptState = PAUSE_SAVEPROMPT_STATE_RETURN_TO_MENU;
+                            D_8082B90C = pauseCtx->roll;
+                        }
                     }
                     break;
 

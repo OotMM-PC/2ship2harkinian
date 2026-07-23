@@ -1,10 +1,13 @@
 #include "OotmmSession.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/Enhancements/Saving/SavingEnhancements.h"
+#include "OotmmIpc.h"
 
 #include <cstddef>
 #include <cstring>
 #include <libultraship/bridge/consolevariablebridge.h>
+#include <optional>
 #include <spdlog/spdlog.h>
 
 extern "C" {
@@ -12,13 +15,194 @@ extern "C" {
 #include "global.h"
 #include "overlays/actors/ovl_Bg_F40_Switch/z_bg_f40_switch.h"
 #include "overlays/gamestates/ovl_select/z_select.h"
-extern GameState* gGameState;
 }
 
 namespace {
 
 Ship::OotmmGameState sGameState;
 bool sBootedIntoGame = false;
+bool sPlayerExitPending = false;
+bool sCrossGamePending = false;
+bool sCrossGameAccepted = false;
+uint32_t sCrossGameWaitFrames = 0;
+std::optional<uint32_t> sLastResolvedEntrance;
+
+constexpr uint32_t kGrottoGenericBase = 0x10000;
+constexpr uint32_t kGrottoCowField = 0x1000D;
+constexpr uint32_t kGrottoCowCoast = 0x1000E;
+constexpr uint32_t kGrottoExitBase = 0x10100;
+constexpr uint32_t kGrottoExitCount = 24;
+constexpr uint16_t kGrottoTypeGeneric = 0x1440;
+constexpr uint16_t kGrottoTypeCow = 0x14A0;
+
+constexpr uint8_t kGrottoDataGeneric[13] = {
+    0x1A, 0x1F, 0x1E, 0x1C, 0x1D, 0x1B, 0x19, 0x13, 0x17, 0x15, 0x16, 0x18, 0x14,
+};
+
+struct MmGrottoExit {
+    uint16_t Entrance;
+    uint8_t Room;
+    int16_t Position[3];
+};
+
+constexpr MmGrottoExit kGrottoExits[kGrottoExitCount] = {
+    { 0x5470, 0, { 2367, 315, -192 } },   { 0x5460, 0, { 1012, -221, 3642 } },
+    { 0x7A00, 0, { 104, -182, 2202 } },   { 0xC200, 2, { 2, 0, -889 } },
+    { 0x8480, 1, { -1700, 38, 1800 } },   { 0x9A80, 1, { 2406, 1168, -1197 } },
+    { 0xB400, 0, { -1309, 320, 143 } },   { 0xB010, 0, { -987, 360, -2339 } },
+    { 0x6840, 0, { 1359, 80, 5018 } },    { 0x6A00, 0, { -562, 80, 2707 } },
+    { 0xA000, 0, { -428, 200, -335 } },   { 0x8040, 1, { 106, 314, -1777 } },
+    { 0x2000, 2, { -2475, -505, 2475 } }, { 0x5460, 0, { -375, -222, 3976 } },
+    { 0x6870, 0, { 2077, 333, -215 } },   { 0x5480, 0, { 192, 48, -3138 } },
+    { 0x5470, 0, { 4450, 254, 925 } },    { 0x5400, 0, { -2782, 48, -1654 } },
+    { 0x5460, 0, { -1592, -222, 4622 } }, { 0x5480, 0, { -2425, -281, -3291 } },
+    { 0x5470, 0, { 3223, 219, 1417 } },   { 0x5460, 0, { -2317, -221, 3418 } },
+    { 0x5400, 0, { -5159, -281, -571 } }, { 0xB400, 0, { 589, 195, 53 } },
+};
+
+constexpr MmGrottoExit kMountainVillageWinterExit = { 0x9A80, 0, { 345, 8, -150 } };
+int8_t sCowGrottoVariant = -1;
+
+void ApplyGrottoExit(const MmGrottoExit& exit) {
+    RespawnData* respawn = &gSaveContext.respawn[RESPAWN_MODE_UNK_3];
+    respawn->pos.x = static_cast<float>(exit.Position[0]);
+    respawn->pos.y = static_cast<float>(exit.Position[1]);
+    respawn->pos.z = static_cast<float>(exit.Position[2]);
+    respawn->yaw = 0;
+    respawn->entrance = exit.Entrance;
+    respawn->playerParams = 0x04FF;
+    respawn->data = 0;
+    respawn->roomIndex = exit.Room;
+    respawn->tempSwitchFlags = 0;
+    respawn->unk_18 = 0;
+    respawn->tempCollectFlags = 0;
+    gSaveContext.respawn[RESPAWN_MODE_DOWN] = *respawn;
+    gSaveContext.respawn[RESPAWN_MODE_TOP] = *respawn;
+    gSaveContext.respawnFlag = 4;
+}
+
+std::optional<uint32_t> CurrentGrottoExitId() {
+    if (gPlayState == nullptr || gPlayState->sceneId != SCENE_KAKUSIANA) {
+        return std::nullopt;
+    }
+
+    switch (gPlayState->roomCtx.curRoom.num) {
+        case 0x00:
+            return kGrottoExitBase + 17;
+        case 0x01:
+            return kGrottoExitBase + 18;
+        case 0x02:
+            return kGrottoExitBase + 16;
+        case 0x03:
+            return kGrottoExitBase + 15;
+        case 0x04: {
+            const uint8_t data = gSaveContext.respawn[RESPAWN_MODE_UNK_3].data & 0x1F;
+            for (uint32_t i = 0; i < 13; ++i) {
+                if (kGrottoDataGeneric[i] == data) {
+                    return kGrottoExitBase + i;
+                }
+            }
+            return std::nullopt;
+        }
+        case 0x07:
+            return kGrottoExitBase + 19;
+        case 0x09:
+            return kGrottoExitBase + 20;
+        case 0x0A:
+            if (sCowGrottoVariant >= 0) {
+                return kGrottoExitBase + (sCowGrottoVariant == 0 ? 13 : 14);
+            }
+            if (gSaveContext.respawn[RESPAWN_MODE_UNK_3].data == -1) {
+                return kGrottoExitBase + 14;
+            }
+            if (gSaveContext.respawn[RESPAWN_MODE_UNK_3].data == 31) {
+                return kGrottoExitBase + 13;
+            }
+            return kGrottoExitBase +
+                   ((static_cast<uint16_t>(gSaveContext.respawn[RESPAWN_MODE_UNK_3].entrance) & 0xFE00) == 0x6800
+                        ? 14
+                        : 13);
+        case 0x0B:
+            return kGrottoExitBase + 22;
+        case 0x0D:
+            return kGrottoExitBase + 21;
+        case 0x0E:
+            return kGrottoExitBase + 23;
+        default:
+            return std::nullopt;
+    }
+}
+
+std::optional<uint32_t> ExtendedEntranceSource() {
+    if (gPlayState == nullptr) {
+        return std::nullopt;
+    }
+    if (gSaveContext.respawnFlag == 4 && gPlayState->sceneId == SCENE_KAKUSIANA) {
+        return CurrentGrottoExitId();
+    }
+
+    const uint16_t next = gPlayState->nextEntrance;
+    if (next == kGrottoTypeGeneric) {
+        const uint8_t data = gSaveContext.respawn[RESPAWN_MODE_UNK_3].data & 0x1F;
+        for (uint32_t i = 0; i < 13; ++i) {
+            if (kGrottoDataGeneric[i] == data) {
+                return kGrottoGenericBase + i;
+            }
+        }
+    } else if (next == kGrottoTypeCow) {
+        return gPlayState->sceneId == SCENE_30GYOSON ? kGrottoCowCoast : kGrottoCowField;
+    }
+    return std::nullopt;
+}
+
+std::optional<uint16_t> ResolveMmEntrance(uint32_t entrance) {
+    if (entrance >= kGrottoGenericBase && entrance < kGrottoGenericBase + 13) {
+        RespawnData* respawn = &gSaveContext.respawn[RESPAWN_MODE_UNK_3];
+        respawn->data = static_cast<int8_t>((respawn->data & ~0x1F) |
+                                            kGrottoDataGeneric[entrance - kGrottoGenericBase]);
+        sCowGrottoVariant = -1;
+        if (gSaveContext.respawnFlag == 4) {
+            gSaveContext.respawnFlag = 0;
+        }
+        return kGrottoTypeGeneric;
+    }
+    if (entrance == kGrottoCowField || entrance == kGrottoCowCoast) {
+        sCowGrottoVariant = entrance == kGrottoCowCoast ? 1 : 0;
+        gSaveContext.respawn[RESPAWN_MODE_UNK_3].data =
+            static_cast<int8_t>(entrance == kGrottoCowCoast ? -1 : 31);
+        if (gSaveContext.respawnFlag == 4) {
+            gSaveContext.respawnFlag = 0;
+        }
+        return kGrottoTypeCow;
+    }
+    if (entrance >= kGrottoExitBase && entrance < kGrottoExitBase + kGrottoExitCount) {
+        const uint32_t index = entrance - kGrottoExitBase;
+        const MmGrottoExit& exit =
+            index == 5 && !CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_SNOWHEAD_TEMPLE)
+                ? kMountainVillageWinterExit
+                : kGrottoExits[index];
+        ApplyGrottoExit(exit);
+        sCowGrottoVariant = -1;
+        return exit.Entrance;
+    }
+    if (entrance > UINT16_MAX) {
+        return std::nullopt;
+    }
+    if (gSaveContext.respawnFlag == 4) {
+        gSaveContext.respawnFlag = 0;
+    }
+    sCowGrottoVariant = -1;
+    return static_cast<uint16_t>(entrance);
+}
+
+bool IsResolvedReloadTarget(uint32_t entrance) {
+    for (int i = 0; i < RESPAWN_MODE_MAX; ++i) {
+        if (entrance == static_cast<uint16_t>(gSaveContext.respawn[i].entrance)) {
+            return true;
+        }
+    }
+    return entrance == static_cast<uint16_t>(gSaveContext.save.entrance);
+}
 
 int DamageMultiplier(const std::string& value) {
     if (value == "double") {
@@ -52,17 +236,23 @@ void ApplyEnhancements() {
                    sGameState.GetStringSetting("moonCrash", "reset") == "cycle" ? 1 : 0);
     CVarSetInteger("gEnhancements.Masks.FierceDeitysAnywhere",
                    sGameState.GetBoolSetting("fierceDeityAnywhere", false) ? 1 : 0);
+    CVarSetInteger("gEnhancements.Restorations.JPGrottos",
+                   sGameState.WorldFlagContains("jpLayouts", "DekuPalace") ? 1 : 0);
 
     CVarSetInteger("gCheats.EasyFrameAdvance", 1);
     CVarSetInteger("gEnhancements.Restorations.PauseBufferWindow", 1);
     CVarSetInteger("gEnhancements.Dpad.DpadEquips", 1);
     CVarSetInteger("gEnhancements.Saving.PauseSave", 1);
     CVarSetInteger("gEnhancements.Cutscenes.SkipIntroSequence", 1);
-    CVarSetInteger("gEnhancements.Cutscenes.SkipFirstCycle", 0);
+    CVarSetInteger("gEnhancements.Cutscenes.SkipFirstCycle", 1);
     CVarSetInteger("gEnhancements.Cutscenes.SkipStoryCutscenes", 1);
     CVarSetInteger("gEnhancements.Cutscenes.SkipMiscInteractions", 1);
     CVarSetInteger("gEnhancements.Cutscenes.SkipEntranceCutscenes", 1);
     CVarSetInteger("gEnhancements.Cutscenes.SkipOnePointCutscenes", 1);
+    CVarSetInteger("gEnhancements.Cutscenes.SkipEnemyCutscenes", 1);
+    CVarSetInteger("gEnhancements.Songs.FasterSongPlayback", 1);
+    CVarSetInteger("gEnhancements.Songs.SkipSoTCutscenes", 1);
+    CVarSetInteger("gEnhancements.Songs.SkipSoaringCutscene", 1);
 }
 
 void ApplySaveFlags() {
@@ -176,7 +366,107 @@ void PersistNewSave(uint8_t* saveBuffer) {
                               gFlashSpecialSaveNumPages[FLASH_SAVE_FILE_1_NEW_CYCLE_SAVE]);
 }
 
-void BootIntoGame() {
+void PersistTransitionSave() {
+    const bool wasOwlSave = gSaveContext.save.isOwlSave;
+    gSaveContext.save.isOwlSave = true;
+    SavingEnhancements_PersistSaveEntranceInfo();
+    SavingEnhancements_AdvancePlaytime();
+    Play_SaveCycleSceneFlags(gPlayState);
+    gSaveContext.save.saveInfo.playerData.savedSceneId = gPlayState->sceneId;
+    func_8014546C(&gPlayState->sramCtx);
+    Sram_SetFlashPagesOwlSave(&gPlayState->sramCtx,
+                              gFlashOwlSaveStartPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER],
+                              gFlashOwlSaveNumPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER]);
+    Sram_StartWriteToFlashOwlSave(&gPlayState->sramCtx);
+    gSaveContext.save.isOwlSave = wasOwlSave;
+    SavingEnhancements_ClearSaveEntranceInfo();
+}
+
+std::optional<uint16_t> InitialMmSpawn() {
+    const bool adult = sGameState.GetStringSetting("startingAge", "child") == "adult";
+    const auto* mapping =
+        sGameState.FindEntrance(Ship::OotmmGame::Oot, adult ? uint32_t{ 0x0F20 } : uint32_t{ 0x00BB });
+    if (mapping == nullptr || mapping->ToGame != Ship::OotmmGame::Mm || !mapping->ToNativeId.has_value()) {
+        return std::nullopt;
+    }
+    return ResolveMmEntrance(*mapping->ToNativeId);
+}
+
+void UpdateEntranceTransition() {
+    if (gPlayState == nullptr) {
+        return;
+    }
+    if (sCrossGamePending) {
+        gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
+        sCrossGameAccepted |= OotmmIpc_ConsumeTransitionAccepted();
+        if (!sCrossGameAccepted && ++sCrossGameWaitFrames > 120) {
+            SPDLOG_ERROR("[OoTMM] Launcher did not accept the cross-game transition");
+            sCrossGamePending = false;
+            sCrossGameWaitFrames = 0;
+        }
+        return;
+    }
+    if (gPlayState->transitionTrigger != TRANS_TRIGGER_START) {
+        sPlayerExitPending = false;
+        sLastResolvedEntrance.reset();
+        return;
+    }
+
+    const bool playerExit = sPlayerExitPending;
+    sPlayerExitPending = false;
+    const uint32_t nextEntrance = static_cast<uint16_t>(gPlayState->nextEntrance);
+    if (sLastResolvedEntrance.has_value() && nextEntrance == *sLastResolvedEntrance) {
+        return;
+    }
+    if (!playerExit && (gSaveContext.respawnFlag == 1 || gSaveContext.respawnFlag == 2 ||
+                        gSaveContext.respawnFlag == 8 || gSaveContext.respawnFlag < 0) &&
+        IsResolvedReloadTarget(nextEntrance)) {
+        sLastResolvedEntrance = nextEntrance;
+        return;
+    }
+
+    const auto extendedSource = ExtendedEntranceSource();
+    if (gSaveContext.respawnFlag == 4 && gPlayState->sceneId == SCENE_KAKUSIANA &&
+        !extendedSource.has_value()) {
+        return;
+    }
+    const uint32_t source = extendedSource.value_or(nextEntrance);
+    if (sLastResolvedEntrance.has_value() && source == *sLastResolvedEntrance) {
+        return;
+    }
+    const auto* mapping = sGameState.FindEntrance(Ship::OotmmGame::Mm, source);
+    if (mapping == nullptr || !mapping->ToNativeId.has_value()) {
+        return;
+    }
+    if (!mapping->IsCrossGame()) {
+        if (const auto target = ResolveMmEntrance(*mapping->ToNativeId); target.has_value()) {
+            gPlayState->nextEntrance = *target;
+            sLastResolvedEntrance = *target;
+            if (gSaveContext.respawnFlag == -2 &&
+                gSaveContext.respawn[RESPAWN_MODE_DOWN].entrance == static_cast<uint16_t>(nextEntrance)) {
+                gSaveContext.respawn[RESPAWN_MODE_DOWN].entrance = *target;
+            }
+        } else {
+            SPDLOG_ERROR("[OoTMM] Unsupported MM entrance target {}", *mapping->ToNativeId);
+        }
+        return;
+    }
+
+    PersistTransitionSave();
+    if (!OotmmIpc_SendCrossGameTransition(*mapping, sGameState.GetBootConfig().OotAge)) {
+        SPDLOG_ERROR("[OoTMM] Cross-game transition requires the launcher IPC connection");
+        gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
+        return;
+    }
+
+    sCrossGamePending = true;
+    sCrossGameAccepted = false;
+    sCrossGameWaitFrames = 0;
+    sLastResolvedEntrance = source;
+    gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
+}
+
+void BootIntoGame(GameState* gameState) {
     static uint8_t saveBuffer[SAVE_BUFFER_SIZE];
     bool loaded = false;
 
@@ -213,13 +503,24 @@ void BootIntoGame() {
         gSaveContext.cycleSceneFlags[i].collectible = gSaveContext.save.saveInfo.permanentSceneFlags[i].collectible;
     }
 
-    const auto entrance = sGameState.GetBootConfig().BootEntrance;
-    if (entrance.has_value()) {
-        SPDLOG_WARN("[OoTMM] Deferring boot entrance {} until the shared entrance resolver is active", *entrance);
+    uint32_t target = static_cast<uint16_t>(gSaveContext.save.entrance);
+    const auto bootEntrance = sGameState.GetBootConfig().BootEntrance;
+    if (!loaded && !bootEntrance.has_value()) {
+        if (const auto spawn = InitialMmSpawn(); spawn.has_value()) {
+            target = *spawn;
+            gSaveContext.save.entrance = *spawn;
+        }
+    } else if (bootEntrance.has_value()) {
+        const auto entrance = bootEntrance;
+        if (const auto resolved = ResolveMmEntrance(*entrance); resolved.has_value()) {
+            target = *resolved;
+            gSaveContext.save.entrance = *resolved;
+        } else {
+            SPDLOG_ERROR("[OoTMM] Unsupported MM boot entrance {}", *entrance);
+        }
     }
-    const uint32_t target = static_cast<uint32_t>(gSaveContext.save.entrance);
     gSaveContext.fileNum = 0xFE;
-    MapSelect_LoadGame(reinterpret_cast<MapSelectState*>(gGameState), target, 0);
+    MapSelect_LoadGame(reinterpret_cast<MapSelectState*>(gameState), target, 0);
     gSaveContext.fileNum = 0;
     if (!loaded) {
         GameInteractor_ExecuteOnSaveInit(0);
@@ -239,16 +540,9 @@ void OotmmSession_Init() {
             [](s16) { InitializeSave(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(
             [](s16) { ApplySaveFlags(); });
-        GameInteractor::Instance->RegisterGameHook<GameInteractor::OnConsoleLogoUpdate>([]() {
-            if (sBootedIntoGame) {
-                return;
-            }
-            sBootedIntoGame = true;
-            Rand_Seed(osGetTime());
-            gSaveContext.seqId = NA_BGM_DISABLED;
-            gSaveContext.ambienceId = AMBIENCE_ID_DISABLED;
-            BootIntoGame();
-        });
+        GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(UpdateEntranceTransition);
+        COND_VB_SHOULD(VB_TERMINA_FIELD_BE_EMPTY, true, { *should = false; });
+        COND_VB_SHOULD(VB_FASTER_FIRST_CYCLE, true, { *should = false; });
         GameInteractor::Instance->RegisterGameHookForID<GameInteractor::ShouldActorInit>(
             ACTOR_BG_F40_SWITCH, [](Actor* actor, bool* should) {
                 if (!sGameState.WorldFlagContains("openDungeonsMm", "ST")) {
@@ -268,4 +562,26 @@ void OotmmSession_Init() {
 
 const Ship::OotmmGameState& OotmmSession_GetState() {
     return sGameState;
+}
+
+extern "C" int32_t OotmmSession_IsActive(void) {
+    return sGameState.IsActive() && sGameState.HasSeed() ? 1 : 0;
+}
+
+extern "C" int32_t OotmmSession_TryBootDirectly(void* gameState) {
+    if (!OotmmSession_IsActive() || sBootedIntoGame || gameState == nullptr) {
+        return 0;
+    }
+    sBootedIntoGame = true;
+    Rand_Seed(osGetTime());
+    gSaveContext.seqId = NA_BGM_DISABLED;
+    gSaveContext.ambienceId = AMBIENCE_ID_DISABLED;
+    BootIntoGame(static_cast<GameState*>(gameState));
+    return 1;
+}
+
+extern "C" void OotmmSession_NotePlayerExitTransition(void) {
+    if (sGameState.IsActive() && sGameState.HasSeed()) {
+        sPlayerExitPending = true;
+    }
 }
