@@ -6,6 +6,7 @@
 
 #include "BenJsonConversions.hpp"
 #include "BenPort.h"
+#include "2s2h/OotmmSession.h"
 #include <ship/window/Window.h>
 
 extern "C" {
@@ -28,7 +29,21 @@ extern FileSelectState* gFileSelectState;
     ((GET_NEWF(save, 0) == 'Z') && (GET_NEWF(save, 1) == 'E') && (GET_NEWF(save, 2) == 'L') && \
      (GET_NEWF(save, 3) == 'D') && (GET_NEWF(save, 4) == 'A') && (GET_NEWF(save, 5) == '3'))
 
-const std::filesystem::path savesFolderPath(Ship::Context::GetPathRelativeToAppDirectory("saves", appShortName));
+namespace {
+
+std::filesystem::path SavesFolderPath() {
+    std::filesystem::path result(Ship::Context::GetPathRelativeToAppDirectory("saves", appShortName));
+    const auto& state = OotmmSession_GetState();
+    if (!state.IsActive() || !state.HasSeed()) {
+        return result;
+    }
+    if (!state.GetBootConfig().NativeSaveSubdir.empty()) {
+        result /= state.GetBootConfig().NativeSaveSubdir;
+    }
+    return result / ("ootmm-" + state.GetNativeSaveTag());
+}
+
+} // namespace
 
 // Migrations
 // The idea here is that we can read in any version of the save as generic JSON, then apply migrations
@@ -105,10 +120,11 @@ int SaveManager_MigrateSave(nlohmann::json& j) {
 }
 
 void SaveManager_WriteSaveFile(const std::filesystem::path& fileName, nlohmann::json j) {
-    const std::filesystem::path filePath = savesFolderPath / fileName;
+    const std::filesystem::path folder = SavesFolderPath();
+    const std::filesystem::path filePath = folder / fileName;
 
-    if (!std::filesystem::exists(savesFolderPath)) {
-        std::filesystem::create_directory(savesFolderPath);
+    if (!std::filesystem::exists(folder)) {
+        std::filesystem::create_directories(folder);
     }
 
     try {
@@ -119,7 +135,7 @@ void SaveManager_WriteSaveFile(const std::filesystem::path& fileName, nlohmann::
 }
 
 void SaveManager_DeleteSaveFile(const std::filesystem::path& fileName) {
-    const std::filesystem::path filePath = savesFolderPath / fileName;
+    const std::filesystem::path filePath = SavesFolderPath() / fileName;
 
     try {
         if (std::filesystem::exists(filePath)) {
@@ -129,7 +145,7 @@ void SaveManager_DeleteSaveFile(const std::filesystem::path& fileName) {
 }
 
 int SaveManager_ReadSaveFile(const std::filesystem::path& fileName, nlohmann::json& j) {
-    const std::filesystem::path filePath = savesFolderPath / fileName;
+    const std::filesystem::path filePath = SavesFolderPath() / fileName;
 
     if (!std::filesystem::exists(filePath)) {
         return -1;
@@ -147,9 +163,10 @@ int SaveManager_ReadSaveFile(const std::filesystem::path& fileName, nlohmann::js
 }
 
 void SaveManager_MoveInvalidSaveFile(const std::filesystem::path& fileName, const std::string& message) {
-    const std::filesystem::path filePath = savesFolderPath / fileName;
+    const std::filesystem::path folder = SavesFolderPath();
+    const std::filesystem::path filePath = folder / fileName;
     const std::filesystem::path backupFilePath =
-        savesFolderPath / (fileName.stem().string() + "_invalid_" + std::to_string(std::time(nullptr)) + ".json");
+        folder / (fileName.stem().string() + "_invalid_" + std::to_string(std::time(nullptr)) + ".json");
 
     try {
         if (std::filesystem::exists(filePath)) {
@@ -164,17 +181,18 @@ void SaveManager_MoveInvalidSaveFile(const std::filesystem::path& fileName, cons
 
 int SaveManager_GetOpenFileSlot() {
     std::string fileName = "file1.json";
-    if (!std::filesystem::exists(savesFolderPath / fileName)) {
+    const std::filesystem::path folder = SavesFolderPath();
+    if (!std::filesystem::exists(folder / fileName)) {
         return 1;
     }
 
     fileName = "file2.json";
-    if (!std::filesystem::exists(savesFolderPath / fileName)) {
+    if (!std::filesystem::exists(folder / fileName)) {
         return 2;
     }
 
     fileName = "file3.json";
-    if (!std::filesystem::exists(savesFolderPath / fileName)) {
+    if (!std::filesystem::exists(folder / fileName)) {
         return 3;
     }
 

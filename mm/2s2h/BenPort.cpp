@@ -63,6 +63,7 @@ CrowdControl* CrowdControl::Instance;
 #include "2s2h/ShipInit.hpp"
 #include "2s2h/PresetManager/PresetManager.h"
 #include "2s2h/OotmmIpc.h"
+#include "2s2h/OotmmSession.h"
 
 // Resource Types/Factories
 #include <ship/resource/type/Blob.h>
@@ -719,6 +720,7 @@ extern "C" void InitOTR() {
 
     OTRGlobals::Instance = new OTRGlobals();
     GameInteractor::Instance = new GameInteractor();
+    OotmmSession_Init();
     AudioCollection::Instance = new AudioCollection();
     LoadGuiTextures();
     BenGui::SetupGuiElements();
