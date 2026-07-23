@@ -62,6 +62,7 @@ CrowdControl* CrowdControl::Instance;
 #include "2s2h/ShipUtils.h"
 #include "2s2h/ShipInit.hpp"
 #include "2s2h/PresetManager/PresetManager.h"
+#include "2s2h/OotmmIpc.h"
 
 // Resource Types/Factories
 #include <ship/resource/type/Blob.h>
@@ -727,6 +728,7 @@ extern "C" void InitOTR() {
     GameInteractor::Instance->RegisterOwnHooks();
     CustomItem::RegisterHooks();
     CustomMessage::RegisterHooks();
+    OotmmIpc_Init();
 
     OTRMessage_Init();
     OTRAudio_Init();
@@ -766,6 +768,7 @@ extern "C" void SaveManager_ThreadPoolWait() {
 }
 
 extern "C" void DeinitOTR() {
+    OotmmIpc_Shutdown();
     SaveManager_ThreadPoolWait();
     OTRAudio_Exit();
 #ifdef ENABLE_CROWD_CONTROL
@@ -933,6 +936,7 @@ void RunCommands(Gfx* Commands, const std::vector<std::unordered_map<Mtx*, MtxF>
 
 // C->C++ Bridge
 extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
+    OotmmIpc_Pump();
     {
         std::unique_lock<std::mutex> Lock(audio.mutex);
         audio.processing = true;
@@ -943,24 +947,32 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
     int target_fps = OTRGlobals::Instance->GetInterpolationFPS();
     static int last_fps;
     static int last_update_rate;
+    static int last_speed_num;
     static int time;
     int fps = target_fps;
     int original_fps = 60 / R_UPDATE_RATE;
+    int speed_num = original_fps * 100;
+    if (gOotmmGameSpeedPercent != 100) {
+        const int percent = std::clamp(gOotmmGameSpeedPercent, 0, 1000);
+        speed_num = gOotmmGameSpeedSmooth ? original_fps * percent
+                                         : ((original_fps * percent) / 100) * 100;
+        speed_num = std::max(speed_num, 100);
+        original_fps = (speed_num + 99) / 100;
+    }
     auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetInstance()->GetWindow());
 
     if (target_fps == 20 || original_fps > target_fps) {
         fps = original_fps;
     }
 
-    if (last_fps != fps || last_update_rate != R_UPDATE_RATE) {
+    if (last_fps != fps || last_update_rate != R_UPDATE_RATE || last_speed_num != speed_num) {
         time = 0;
     }
 
-    // time_base = fps * original_fps (one second)
-    int next_original_frame = fps;
+    const int next_original_frame = fps * 100;
 
-    while (time + original_fps <= next_original_frame) {
-        time += original_fps;
+    while (time + speed_num <= next_original_frame) {
+        time += speed_num;
         if (time != next_original_frame) {
             mtx_replacements.push_back(FrameInterpolation_Interpolate((float)time / next_original_frame));
         } else {
@@ -968,7 +980,7 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
         }
     }
 
-    time -= fps;
+    time -= next_original_frame;
 
     if (wnd != nullptr) {
         wnd->SetTargetFps(fps);
@@ -984,6 +996,7 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
 
     last_fps = fps;
     last_update_rate = R_UPDATE_RATE;
+    last_speed_num = speed_num;
 
     {
         std::unique_lock<std::mutex> Lock(audio.mutex);
