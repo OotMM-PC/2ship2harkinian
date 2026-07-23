@@ -963,7 +963,7 @@ extern "C" void Graph_ProcessGfxCommands(Gfx* commands) {
     }
     auto wnd = std::dynamic_pointer_cast<Fast::Fast3dWindow>(Ship::Context::GetInstance()->GetWindow());
 
-    if (target_fps == 20 || original_fps > target_fps) {
+    if (!gOotmmGameSpeedSmooth && (target_fps == 20 || original_fps > target_fps)) {
         fps = original_fps;
     }
 
