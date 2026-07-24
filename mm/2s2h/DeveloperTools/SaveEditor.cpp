@@ -5,6 +5,12 @@
 #include "2s2h/CustomItem/CustomItem.h"
 #include "2s2h/BenGui/Notification.h"
 #include "2s2h/ShipUtils.h"
+#include "2s2h/OotmmIpc.h"
+#include "2s2h/OotmmSession.h"
+
+#include <algorithm>
+#include <cfloat>
+#include <map>
 
 #include "interface/icon_item_dungeon_static/icon_item_dungeon_static.h"
 #include "archives/icon_item_24_static/icon_item_24_static_yar.h"
@@ -2114,6 +2120,110 @@ void DrawFlagsTab() {
 }
 
 
+int OotmmItemGameOrder(const std::string& itemId) {
+    if (itemId.rfind("OOT_", 0) == 0) {
+        return 0;
+    }
+    if (itemId.rfind("MM_", 0) == 0) {
+        return 1;
+    }
+    return 2;
+}
+
+const char* OotmmItemGameLabel(const std::string& itemId) {
+    switch (OotmmItemGameOrder(itemId)) {
+        case 0:
+            return "OoT";
+        case 1:
+            return "MM";
+        default:
+            return "Shared";
+    }
+}
+
+void DrawOotmmItemsTab() {
+    static ImGuiTextFilter filter;
+    const auto& catalog = OotmmSession_GetState().GetCustomItemCatalog();
+    const auto& inventory = OotmmIpc_GetInventory();
+    const bool connected = OotmmIpc_IsConnected();
+
+    ImGui::Text("Launcher: %s", connected ? "Connected" : "Disconnected");
+    ImGui::SameLine();
+    ImGui::TextDisabled("Revision %llu", static_cast<unsigned long long>(inventory.GetRevision()));
+    filter.Draw("Filter", ImGui::GetFontSize() * 18.0f);
+
+    std::map<std::string, std::vector<const Ship::OotmmItemDefinition*>> categories;
+    for (const auto& item : catalog.GetItems()) {
+        if (filter.PassFilter(item.Name.c_str()) || filter.PassFilter(item.Id.c_str())) {
+            categories[item.Category].push_back(&item);
+        }
+    }
+    for (auto& [_, items] : categories) {
+        std::sort(items.begin(), items.end(), [](const auto* left, const auto* right) {
+            const int leftGame = OotmmItemGameOrder(left->Id);
+            const int rightGame = OotmmItemGameOrder(right->Id);
+            if (leftGame != rightGame) {
+                return leftGame < rightGame;
+            }
+            return left->Name < right->Name;
+        });
+    }
+
+    if (categories.empty()) {
+        ImGui::TextDisabled("No matching custom items are present in this seed.");
+        return;
+    }
+
+    ImGui::BeginDisabled(!connected);
+    for (const auto& [category, items] : categories) {
+        if (!ImGui::CollapsingHeader(category.c_str(), ImGuiTreeNodeFlags_DefaultOpen)) {
+            continue;
+        }
+
+        const std::string tableId = "##OotmmItems" + category;
+        if (!ImGui::BeginTable(tableId.c_str(), 3,
+                               ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_RowBg |
+                                   ImGuiTableFlags_SizingStretchProp)) {
+            continue;
+        }
+
+        ImGui::TableSetupColumn("Game", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 5.0f);
+        ImGui::TableSetupColumn("Item");
+        ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, ImGui::GetFontSize() * 10.0f);
+        for (const auto* item : items) {
+            ImGui::PushID(item->Id.c_str());
+            ImGui::TableNextRow();
+            ImGui::TableSetColumnIndex(0);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(OotmmItemGameLabel(item->Id));
+
+            ImGui::TableSetColumnIndex(1);
+            ImGui::AlignTextToFramePadding();
+            ImGui::TextUnformatted(item->Name.c_str());
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", item->Id.c_str());
+            }
+
+            ImGui::TableSetColumnIndex(2);
+            uint32_t value = inventory.Count(item->Id);
+            if (item->Kind == Ship::OotmmItemValueKind::Toggle) {
+                bool enabled = value != 0;
+                if (ImGui::Checkbox("##Value", &enabled)) {
+                    OotmmIpc_SetDebugItemValue(item->Id, enabled ? 1 : 0);
+                }
+            } else {
+                ImGui::SetNextItemWidth(-FLT_MIN);
+                if (ImGui::InputScalar("##Value", ImGuiDataType_U32, &value)) {
+                    OotmmIpc_SetDebugItemValue(item->Id, std::min(value, item->MaxValue));
+                }
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    ImGui::EndDisabled();
+}
+
 void SaveEditorWindow::DrawElement() {
     UIWidgets::PushStyleTabs(UIWidgets::Colors(CVarGetInteger("gSettings.Menu.Theme", 5)));
     if (ImGui::BeginTabBar("SaveContextTabBar", ImGuiTabBarFlags_NoCloseWithMiddleMouseButton)) {
@@ -2134,6 +2244,11 @@ void SaveEditorWindow::DrawElement() {
 
         if (ImGui::BeginTabItem("Dungeon Items")) {
             DrawDungeonItemTab();
+            ImGui::EndTabItem();
+        }
+
+        if (OotmmSession_IsActive() && ImGui::BeginTabItem("OoTMM Custom Items")) {
+            DrawOotmmItemsTab();
             ImGui::EndTabItem();
         }
 

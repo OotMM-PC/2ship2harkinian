@@ -7,6 +7,7 @@
 #include "z_kaleido_scope.h"
 #include "interface/parameter_static/parameter_static.h"
 #include "archives/icon_item_static/icon_item_static_yar.h"
+#include "2s2h/OotmmOcarinaButtons.h"
 
 s32 KaleidoScope_UpdateQuestStatusPoint(PauseContext* pauseCtx, s16 point);
 
@@ -384,7 +385,10 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
 
                     gDPPipeSync(POLY_OPA_DISP++);
 
-                    if (sQuestSongPlayedOcarinaButtons[i] == OCARINA_BTN_A) {
+                    if (!Ootmm_IsOcarinaButtonAvailable(sQuestSongPlayedOcarinaButtons[i])) {
+                        gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 191, 191, 191,
+                                        sQuestSongPlayedOcarinaButtonsAlpha[i]);
+                    } else if (sQuestSongPlayedOcarinaButtons[i] == OCARINA_BTN_A) {
                         gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 80, 150, 255, sQuestSongPlayedOcarinaButtonsAlpha[i]);
                     } else {
                         gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 50, sQuestSongPlayedOcarinaButtonsAlpha[i]);
@@ -414,8 +418,10 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
                 gDPPipeSync(POLY_OPA_DISP++);
 
                 if (pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE_CURSOR_ON_SONG) {
-                    // Draw ocarina buttons colored
-                    if (gOcarinaSongButtons[sp1C8].buttonIndex[k] == OCARINA_BTN_A) {
+                    // Draw the song preview with button ownership colors.
+                    if (!Ootmm_IsOcarinaButtonAvailable(gOcarinaSongButtons[sp1C8].buttonIndex[k])) {
+                        gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 191, 191, 191, 200);
+                    } else if (gOcarinaSongButtons[sp1C8].buttonIndex[k] == OCARINA_BTN_A) {
                         gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 80, 150, 255, 200);
                     } else {
                         gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 50, 200);
@@ -469,7 +475,10 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
 
                     gDPPipeSync(POLY_OPA_DISP++);
 
-                    if (sQuestSongPlayedOcarinaButtons[k] == OCARINA_BTN_A) {
+                    if (!Ootmm_IsOcarinaButtonAvailable(sQuestSongPlayedOcarinaButtons[k])) {
+                        gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 191, 191, 191,
+                                        sQuestSongPlayedOcarinaButtonsAlpha[k]);
+                    } else if (sQuestSongPlayedOcarinaButtons[k] == OCARINA_BTN_A) {
                         gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 80, 150, 255, sQuestSongPlayedOcarinaButtonsAlpha[k]);
                     } else {
                         gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 50, sQuestSongPlayedOcarinaButtonsAlpha[k]);

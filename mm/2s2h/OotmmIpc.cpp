@@ -8,6 +8,7 @@ namespace {
 
 Ship::GameIpcSession sSession;
 Ship::GameIpcSettings sSettings;
+Ship::OotmmInventory sInventory;
 
 } // namespace
 
@@ -15,20 +16,21 @@ extern "C" int gOotmmGameSpeedPercent = 100;
 extern "C" int gOotmmGameSpeedSmooth = 0;
 
 void OotmmIpc_Init() {
+    sInventory.Reset();
     sSession.Start("mm", gBuildVersion);
 }
 
 void OotmmIpc_Pump() {
-    if (sSession.Pump(sSettings)) {
+    if (sSession.Pump(sSettings, &sInventory)) {
         gOotmmGameSpeedPercent = sSettings.SpeedPercent;
         gOotmmGameSpeedSmooth = sSettings.SpeedSmooth ? 1 : 0;
         sSession.AcknowledgeSettings(sSettings.Revision);
     }
-
 }
 
 void OotmmIpc_Shutdown() {
     sSession.Stop();
+    sInventory.Reset();
 }
 
 bool OotmmIpc_SendCrossGameTransition(const Ship::OotmmEntranceMapping& mapping,
@@ -39,4 +41,16 @@ bool OotmmIpc_SendCrossGameTransition(const Ship::OotmmEntranceMapping& mapping,
 
 bool OotmmIpc_ConsumeTransitionAccepted() {
     return sSession.ConsumeTransitionAccepted();
+}
+
+const Ship::OotmmInventory& OotmmIpc_GetInventory() {
+    return sInventory;
+}
+
+bool OotmmIpc_SetDebugItemValue(const std::string& itemId, uint32_t value) {
+    return sSession.SetDebugInventoryValue(itemId, value);
+}
+
+bool OotmmIpc_IsConnected() {
+    return sSession.IsConnected();
 }
