@@ -452,6 +452,8 @@ void UpdateEntranceTransition() {
         return;
     }
 
+    SPDLOG_INFO("[OoTMM] Cross-game entrance 0x{:X} -> {} (0x{:X})", source, mapping->To,
+                *mapping->ToNativeId);
     PersistTransitionSave();
     if (!OotmmIpc_SendCrossGameTransition(*mapping, sGameState.GetBootConfig().OotAge)) {
         SPDLOG_ERROR("[OoTMM] Cross-game transition requires the launcher IPC connection");
@@ -486,7 +488,7 @@ void BootIntoGame(GameState* gameState) {
     } else {
         Sram_InitNewSave();
         StampFileMagic();
-        InitializeSave();
+        GameInteractor_ExecuteOnSaveInit(0);
         std::memset(gSaveContext.eventInf, 0, sizeof(gSaveContext.eventInf));
     }
 
@@ -519,12 +521,10 @@ void BootIntoGame(GameState* gameState) {
             SPDLOG_ERROR("[OoTMM] Unsupported MM boot entrance {}", *entrance);
         }
     }
+    SPDLOG_INFO("[OoTMM] Booting MM at entrance 0x{:X}", target);
     gSaveContext.fileNum = 0xFE;
     MapSelect_LoadGame(reinterpret_cast<MapSelectState*>(gameState), target, 0);
     gSaveContext.fileNum = 0;
-    if (!loaded) {
-        GameInteractor_ExecuteOnSaveInit(0);
-    }
     GameInteractor_ExecuteOnSaveLoad(0);
     if (!loaded) {
         PersistNewSave(saveBuffer);
