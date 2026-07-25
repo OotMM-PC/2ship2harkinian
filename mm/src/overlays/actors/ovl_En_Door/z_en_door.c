@@ -23,6 +23,7 @@
 #include "objects/gameplay_field_keep/gameplay_field_keep.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmRustyKeys.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -713,7 +714,7 @@ void EnDoor_Idle(EnDoor* this, PlayState* play) {
 
         this->actionFunc = EnDoor_OpenScheduleActor;
         Actor_PlaySfx(&this->knobDoor.dyna.actor, NA_SE_EV_DOOR_OPEN);
-    } else if (!Player_InCsMode(play)) {
+    } else if (!Player_InCsMode(play) && !OotmmRustyDoorLocked(play, &this->knobDoor.dyna.actor)) {
         Vec3f playerPosRelToDoor;
 
         // Check if player is near this door and looking at it
@@ -931,7 +932,11 @@ void EnDoor_Draw(Actor* thisx, PlayState* play) {
                 gSPDisplayList(POLY_OPA_DISP++, gDoorLeftDL);
             }
         }
-        if (this->lockTimer) {
+        if (OotmmRustyDoorLocked(play, &this->knobDoor.dyna.actor)) {
+            gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 140, 64, 255);
+            gDPSetEnvColor(POLY_OPA_DISP++, 140, 55, 15, 255);
+            Actor_DrawDoorLock(play, 10, DOORLOCK_NORMAL);
+        } else if (this->lockTimer) {
             Actor_DrawDoorLock(play, this->lockTimer, DOORLOCK_NORMAL);
         }
 

@@ -138,6 +138,7 @@ struct GIEventGiveItem {
     // These are run in the context of an item00 actor. This isn't super important but can be useful in some cases
     ActorFunc giveItem;
     ActorFunc drawItem;
+    bool waitForSafePlayerState = false;
 };
 
 struct GIEventSpawnActor {

@@ -8,4 +8,6 @@ static const ALIGN_ASSET(2) char gGiSkulltulaTokenDL[] = dgGiSkulltulaTokenDL;
 
 #define dgGiSkulltulaTokenFlameDL "__OTR__objects/object_gi_sutaru/gGiSkulltulaTokenFlameDL"
 static const ALIGN_ASSET(2) char gGiSkulltulaTokenFlameDL[] = dgGiSkulltulaTokenFlameDL;
+#define dgGiSkulltulaTokenSkullDL "__OTR__objects/object_gi_sutaru/gGiSkulltulaTokenSkullDL"
+static const ALIGN_ASSET(2) char gGiSkulltulaTokenSkullDL[] = dgGiSkulltulaTokenSkullDL;
 #endif // OBJECTS_OBJECT_GI_SUTARU_H

@@ -3,6 +3,7 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
 #include "OotmmIpc.h"
+#include "OotmmItemProbe.h"
 
 #include <cstddef>
 #include <cstring>
@@ -536,6 +537,7 @@ void BootIntoGame(GameState* gameState) {
 void OotmmSession_Init() {
     if (sGameState.LoadFromEnvironment()) {
         ApplyEnhancements();
+        OotmmItemProbe_Init();
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveInit>(
             [](s16) { InitializeSave(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(

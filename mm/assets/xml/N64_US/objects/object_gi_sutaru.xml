@@ -8,5 +8,6 @@
         <!-- Skull Token Display Lists -->
         <DList Name="gGiSkulltulaTokenDL" Offset="0x330" />
         <DList Name="gGiSkulltulaTokenFlameDL" Offset="0x438" />
+        <DList Name="gGiSkulltulaTokenSkullDL" Offset="0x508" />
     </File>
 </Root>

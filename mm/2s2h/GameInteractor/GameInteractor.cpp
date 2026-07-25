@@ -461,6 +461,15 @@ void ProcessEvents(Actor* actor) {
         return;
     }
 
+    if (const auto* giveItem =
+            std::get_if<GIEventGiveItem>(&GameInteractor::Instance->events.front());
+        giveItem != nullptr && giveItem->waitForSafePlayerState &&
+        (!(player->actor.bgCheckFlags & BGCHECKFLAG_GROUND) ||
+         (player->stateFlags1 & PLAYER_STATE1_8000000) ||
+         (player->stateFlags3 & PLAYER_STATE3_FLYING_WITH_HOOKSHOT))) {
+        return;
+    }
+
     GameInteractor::Instance->currentEvent = GameInteractor::Instance->events.front();
     const auto& nextEvent = GameInteractor::Instance->currentEvent;
 

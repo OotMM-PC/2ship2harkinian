@@ -1,5 +1,6 @@
 #include "OotmmIpc.h"
 
+#include "OotmmItemPresentation.h"
 #include "build.h"
 
 #include <libultraship/bridge/GameIpcSession.h>
@@ -26,6 +27,10 @@ void OotmmIpc_Pump() {
         gOotmmGameSpeedSmooth = sSettings.SpeedSmooth ? 1 : 0;
         sSession.AcknowledgeSettings(sSettings.Revision);
     }
+    Ship::GameIpcItemPresentation presentation;
+    while (sSession.TryPopItemPresentation(presentation)) {
+        OotmmItemPresentation_Queue(std::move(presentation));
+    }
 }
 
 void OotmmIpc_Shutdown() {
@@ -49,6 +54,14 @@ const Ship::OotmmInventory& OotmmIpc_GetInventory() {
 
 bool OotmmIpc_SetDebugItemValue(const std::string& itemId, uint32_t value) {
     return sSession.SetDebugInventoryValue(itemId, value);
+}
+
+bool OotmmIpc_RequestDebugItemPresentation(const std::string& itemId, uint32_t recipientPlayer) {
+    return sSession.RequestDebugItemPresentation(itemId, recipientPlayer);
+}
+
+bool OotmmIpc_TryPopItemPresentation(Ship::GameIpcItemPresentation& presentation) {
+    return sSession.TryPopItemPresentation(presentation);
 }
 
 bool OotmmIpc_IsConnected() {

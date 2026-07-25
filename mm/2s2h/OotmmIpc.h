@@ -1,6 +1,7 @@
 #pragma once
 
 #include <libultraship/bridge/OotmmGameState.h>
+#include <libultraship/bridge/GameIpcSession.h>
 #include <libultraship/bridge/OotmmInventory.h>
 
 #include <optional>
@@ -14,6 +15,8 @@ bool OotmmIpc_SendCrossGameTransition(const Ship::OotmmEntranceMapping& mapping,
 bool OotmmIpc_ConsumeTransitionAccepted();
 const Ship::OotmmInventory& OotmmIpc_GetInventory();
 bool OotmmIpc_SetDebugItemValue(const std::string& itemId, uint32_t value);
+bool OotmmIpc_RequestDebugItemPresentation(const std::string& itemId, uint32_t recipientPlayer);
+bool OotmmIpc_TryPopItemPresentation(Ship::GameIpcItemPresentation& presentation);
 bool OotmmIpc_IsConnected();
 
 extern "C" int gOotmmGameSpeedPercent;
