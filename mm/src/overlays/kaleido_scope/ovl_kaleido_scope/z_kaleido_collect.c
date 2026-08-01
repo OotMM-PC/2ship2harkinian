@@ -418,7 +418,6 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
                 gDPPipeSync(POLY_OPA_DISP++);
 
                 if (pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE_CURSOR_ON_SONG) {
-                    // Draw the song preview with button ownership colors.
                     if (!Ootmm_IsOcarinaButtonAvailable(gOcarinaSongButtons[sp1C8].buttonIndex[k])) {
                         gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 191, 191, 191, 200);
                     } else if (gOcarinaSongButtons[sp1C8].buttonIndex[k] == OCARINA_BTN_A) {

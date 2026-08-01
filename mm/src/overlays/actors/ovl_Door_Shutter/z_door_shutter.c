@@ -21,6 +21,8 @@
 #include "objects/object_last_obj/object_last_obj.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmDungeons.h"
+#include "2s2h/OotmmSmallKeyDoors.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -243,7 +245,10 @@ void DoorShutter_Init(Actor* thisx, PlayState* play2) {
     this->unk_163 = sp24;
 
     if ((this->doorType == DOORSHUTTER_TYPE_4) || (this->doorType == DOORSHUTTER_TYPE_BOSS_DOOR)) {
-        if (!Flags_GetSwitch(play, DOORSHUTTER_GET_SWITCH_FLAG(&this->slidingDoor.dyna.actor))) {
+        if (!Flags_GetSwitch(play, DOORSHUTTER_GET_SWITCH_FLAG(&this->slidingDoor.dyna.actor)) &&
+            !(this->doorType == DOORSHUTTER_TYPE_4 &&
+              OotmmSmallKeyDoorIsOpen(play, &this->slidingDoor.dyna.actor)) &&
+            !(this->doorType == DOORSHUTTER_TYPE_BOSS_DOOR && OotmmDungeons_BossDoorIsOpen())) {
             this->unk_166 = 10;
         }
     }

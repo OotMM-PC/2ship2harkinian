@@ -349,6 +349,15 @@ size_t AudioCollection::SequenceMapSize() {
     return mSequenceMap.size();
 }
 
+int32_t AudioCollection::GetSequenceNumByName(const char* name) {
+    for (const auto& [seqId, info] : mSequenceMap) {
+        if (info.label == name) {
+            return seqId;
+        }
+    }
+    return -1;
+}
+
 extern "C" const char* AudioCollection_GetSequenceName(uint16_t seqId) {
     return AudioCollection::Instance->GetSequenceName(seqId);
 }

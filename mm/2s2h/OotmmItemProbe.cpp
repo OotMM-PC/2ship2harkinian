@@ -143,7 +143,6 @@ void Tick() {
     const size_t end = std::min(sCursor + kItemsPerFrame, sItems.size());
     for (; sCursor < end; sCursor++) {
         const ProbeItem& item = sItems[sCursor];
-        // Run the real draw path, then rewind the display lists so nothing renders.
         Gfx* opa = gfxCtx->polyOpa.p;
         Gfx* xlu = gfxCtx->polyXlu.p;
         const bool drawn = OotmmItemModel_DrawById(gPlayState, item.Id, item.Name);

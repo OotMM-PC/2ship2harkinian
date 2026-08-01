@@ -34,6 +34,7 @@
 #include "overlays/actors/ovl_En_Elforg/z_en_elforg.h"
 #include "overlays/actors/ovl_Demo_Effect/z_demo_effect.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmFairies.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -226,6 +227,12 @@ void EnElfgrp_Destroy(Actor* thisx, PlayState* play) {
 
 // Number of Stray Fairies currently held by Player
 s32 EnElfgrp_GetHeldFairiesCount(PlayState* play, s32 type) {
+    s32 ootmmHeld = OotmmFairies_HeldCount(type);
+
+    if (ootmmHeld >= 0) {
+        return ootmmHeld;
+    }
+
     if ((type <= ENELFGRP_TYPE_MAGIC) || (type > ENELFGRP_TYPE_KINDNESS)) {
         return 0;
     }

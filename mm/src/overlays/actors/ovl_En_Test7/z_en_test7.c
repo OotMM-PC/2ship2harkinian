@@ -7,6 +7,7 @@
 #include "prevent_bss_reordering.h"
 #include "z_en_test7.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
+#include "2s2h/OotmmSongsPlayer.h"
 
 #define FLAGS                                                                                              \
     (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED | ACTOR_FLAG_FREEZE_EXCEPTION | \
@@ -655,7 +656,9 @@ void EnTest7_WarpCsWarp(EnTest7* this, PlayState* play) {
 
     this->windCapsule.yaw -= 0x2EE0;
 
-    if (play->sceneId == SCENE_SECOM) {
+    if (OotmmSongs_OverrideSoaringDestination(play)) {
+        // An OoT warp song owns this soaring; the destination (or cross-game handoff) is set.
+    } else if (play->sceneId == SCENE_SECOM) {
         play->nextEntrance = ENTRANCE(IKANA_CANYON, 6);
     } else if (OWL_WARP_CS_GET_OCARINA_MODE(&this->actor) == OCARINA_MODE_WARP_TO_ENTRANCE) {
         func_80169F78(play);

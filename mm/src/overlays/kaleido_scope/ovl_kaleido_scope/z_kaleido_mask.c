@@ -9,6 +9,7 @@
 
 #include "2s2h/BenGui/HudEditor.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmCustomItems.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 s16 sMaskEquipState = EQUIP_STATE_MAGIC_ARROW_GROW_ORB;
@@ -210,7 +211,8 @@ void KaleidoScope_DrawMaskSelect(PlayState* play) {
     gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 255, pauseCtx->alpha);
     for (i = 0, j = MASK_NUM_SLOTS * 4; i < 3; i++, j += 4) {
         if (GET_CUR_FORM_BTN_ITEM(i + 1) != ITEM_NONE) {
-            if (GET_CUR_FORM_BTN_SLOT(i + 1) >= ITEM_NUM_SLOTS) {
+            if ((GET_CUR_FORM_BTN_SLOT(i + 1) >= ITEM_NUM_SLOTS) &&
+                !OotmmCustomItems_IsCustomSlot(GET_CUR_FORM_BTN_SLOT(i + 1))) {
                 ItemId item = GET_CUR_FORM_BTN_ITEM(i + 1);
                 if (GameInteractor_Should(VB_DRAW_ITEM_EQUIPPED_OUTLINE, true, &item)) {
                     gSPVertex(POLY_OPA_DISP++, &pauseCtx->maskVtx[j], 4, 0);
@@ -223,7 +225,8 @@ void KaleidoScope_DrawMaskSelect(PlayState* play) {
     if (CVarGetInteger("gEnhancements.Dpad.DpadEquips", 0)) {
         for (i = EQUIP_SLOT_D_RIGHT; i <= EQUIP_SLOT_D_UP; i++, j += 4) {
             if (DPAD_GET_CUR_FORM_BTN_ITEM(i) != ITEM_NONE) {
-                if (DPAD_GET_CUR_FORM_BTN_SLOT(i) >= ITEM_NUM_SLOTS) {
+                if ((DPAD_GET_CUR_FORM_BTN_SLOT(i) >= ITEM_NUM_SLOTS) &&
+                    !OotmmCustomItems_IsCustomSlot(DPAD_GET_CUR_FORM_BTN_SLOT(i))) {
                     ItemId item = DPAD_GET_CUR_FORM_BTN_ITEM(i);
                     if (GameInteractor_Should(VB_DRAW_ITEM_EQUIPPED_OUTLINE, true, &item)) {
                         gSPVertex(POLY_OPA_DISP++, &pauseCtx->maskVtx[j], 4, 0);

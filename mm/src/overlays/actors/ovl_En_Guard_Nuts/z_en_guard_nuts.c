@@ -7,8 +7,18 @@
 #include "z_en_guard_nuts.h"
 #include "overlays/effects/ovl_Effect_Ss_Hahen/z_eff_ss_hahen.h"
 
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmCustomItems.h"
+
 #define FLAGS \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_FREEZE_EXCEPTION | ACTOR_FLAG_MINIMAP_ICON_ENABLED)
+
+static s32 EnGuardNuts_OotmmWearingSkullMask(PlayState* play) {
+    Player* player = GET_PLAYER(play);
+
+    return OotmmSession_IsActive() && (player->transformation == PLAYER_FORM_HUMAN) &&
+           (OotmmCustomItems_EquippedMask() == OOTMM_MASK_SKULL);
+}
 
 void EnGuardNuts_Init(Actor* thisx, PlayState* play);
 void EnGuardNuts_Destroy(Actor* thisx, PlayState* play);
@@ -163,7 +173,7 @@ void EnGuardNuts_Wait(EnGuardNuts* this, PlayState* play) {
     if (yawDiff > 0x6000) {
         D_80ABBE20 = 2;
     }
-    if (player->transformation == PLAYER_FORM_DEKU) {
+    if ((player->transformation == PLAYER_FORM_DEKU) || EnGuardNuts_OotmmWearingSkullMask(play)) {
         // this is the palace of...
         this->guardTextIndex = 0;
         if (CHECK_WEEKEVENTREG(WEEKEVENTREG_17_04) && (!this->hasCompletedConversation)) {

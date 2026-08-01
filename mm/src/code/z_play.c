@@ -45,6 +45,8 @@ u8 sMotionBlurStatus;
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/Enhancements/Graphics/Graphics.h"
 #include "2s2h/DeveloperTools/CollisionViewer.h"
+#include "2s2h/OotmmClocks.h"
+#include "2s2h/OotmmSession.h"
 #include "2s2h/framebuffer_effects.h"
 #include <string.h>
 
@@ -2253,6 +2255,8 @@ void Play_Init(GameState* thisx) {
     gPlayState = this;
     // #endregion
 
+    OotmmClocks_FixupSpawnTime();
+
     if ((gSaveContext.nextCutsceneIndex == 0xFFEF) || (gSaveContext.nextCutsceneIndex == 0xFFF0)) {
         scene = ((void)0, gSaveContext.save.entrance) >> 9;
 
@@ -2358,6 +2362,8 @@ void Play_Init(GameState* thisx) {
     }
 
     func_800EDDB0(this);
+
+    OotmmSession_RedirectMoonCrashRespawn();
 
     if (((gSaveContext.gameMode != GAMEMODE_NORMAL) && (gSaveContext.gameMode != GAMEMODE_TITLE_SCREEN)) ||
         (gSaveContext.save.cutsceneIndex >= 0xFFF0)) {

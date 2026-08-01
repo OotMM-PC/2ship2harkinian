@@ -23,6 +23,8 @@
 #include "2s2h/BenGui/CosmeticEditor.h"
 #include "2s2h_assets.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmCustomItems.h"
+#include "2s2h/OotmmSession.h"
 #include <libultraship/bridge/gfxbridge.h>
 #include <libultraship/bridge/consolevariablebridge.h>
 
@@ -3154,11 +3156,14 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
         }
 
         for (i = EQUIP_SLOT_C_LEFT; i <= EQUIP_SLOT_C_RIGHT; i++) {
-            if (GameInteractor_Should(VB_DISABLE_ITEM_UNDERWATER, GET_CUR_FORM_BTN_ITEM(i) != ITEM_MASK_ZORA,
+            if (GameInteractor_Should(VB_DISABLE_ITEM_UNDERWATER,
+                                      (GET_CUR_FORM_BTN_ITEM(i) != ITEM_MASK_ZORA) &&
+                                          !OotmmCustomItems_UsableWhileSwimming(GET_CUR_FORM_BTN_ITEM(i)),
                                       (s32)GET_CUR_FORM_BTN_ITEM(i))) {
                 if (Player_GetEnvironmentalHazard(play) == PLAYER_ENV_HAZARD_UNDERWATER_FLOOR) {
                     if (!((GET_CUR_FORM_BTN_ITEM(i) >= ITEM_BOTTLE) &&
-                          (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_OBABA_DRINK))) {
+                          (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_OBABA_DRINK)) &&
+                        !(OotmmSession_IsActive() && (GET_CUR_FORM_BTN_ITEM(i) == ITEM_HOOKSHOT))) {
                         if (gSaveContext.buttonStatus[i] == BTN_ENABLED) {
                             restoreHudVisibility = true;
                         }
@@ -3182,11 +3187,14 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
         }
         // #region 2S2H [Dpad]
         for (s16 j = EQUIP_SLOT_D_RIGHT; j <= EQUIP_SLOT_D_UP; j++) {
-            if (GameInteractor_Should(VB_DISABLE_ITEM_UNDERWATER, DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_MASK_ZORA,
+            if (GameInteractor_Should(VB_DISABLE_ITEM_UNDERWATER,
+                                      (DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_MASK_ZORA) &&
+                                          !OotmmCustomItems_UsableWhileSwimming(DPAD_GET_CUR_FORM_BTN_ITEM(j)),
                                       (s32)DPAD_GET_CUR_FORM_BTN_ITEM(j))) {
                 if (Player_GetEnvironmentalHazard(play) == PLAYER_ENV_HAZARD_UNDERWATER_FLOOR) {
                     if (!((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
-                          (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK))) {
+                          (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK)) &&
+                        !(OotmmSession_IsActive() && (DPAD_GET_CUR_FORM_BTN_ITEM(j) == ITEM_HOOKSHOT))) {
                         if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_ENABLED) {
                             restoreHudVisibility = true;
                         }
@@ -3362,8 +3370,12 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                 //! the status of empty C-buttons - for most forms, the C-buttons are enabled when empty, however for
                 //! Deku Link only, empty C-buttons are disabled.
                 ItemId itemId = GET_CUR_FORM_BTN_ITEM(i);
-                if (GameInteractor_Should(VB_ITEM_BE_RESTRICTED, !gPlayerFormItemRestrictions[GET_PLAYER_FORM][itemId],
-                                          &itemId)) {
+                // 2S2H [OoTMM] Custom item ids sit past the end of gPlayerFormItemRestrictions.
+                u8 restricted = OotmmCustomItems_IsCustomItem(itemId)
+                                    ? !OotmmCustomItems_UsableNow(itemId)
+                                    : !gPlayerFormItemRestrictions[GET_PLAYER_FORM][itemId];
+
+                if (GameInteractor_Should(VB_ITEM_BE_RESTRICTED, restricted, &itemId)) {
                     // Item not usable in current playerForm
                     if (gSaveContext.buttonStatus[i] != BTN_DISABLED) {
                         gSaveContext.buttonStatus[i] = BTN_DISABLED;
@@ -3509,8 +3521,12 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
             for (s16 j = EQUIP_SLOT_D_RIGHT; j <= EQUIP_SLOT_D_UP; j++) {
                 // Individual D button
                 ItemId itemId = DPAD_GET_CUR_FORM_BTN_ITEM(j);
-                if (GameInteractor_Should(VB_ITEM_BE_RESTRICTED, !gPlayerFormItemRestrictions[GET_PLAYER_FORM][itemId],
-                                          &itemId)) {
+                // 2S2H [OoTMM] Custom item ids sit past the end of gPlayerFormItemRestrictions.
+                u8 restricted = OotmmCustomItems_IsCustomItem(itemId)
+                                    ? !OotmmCustomItems_UsableNow(itemId)
+                                    : !gPlayerFormItemRestrictions[GET_PLAYER_FORM][itemId];
+
+                if (GameInteractor_Should(VB_ITEM_BE_RESTRICTED, restricted, &itemId)) {
                     // Item not usable in current playerForm
                     if (gSaveContext.shipSaveContext.dpad.status[j] != BTN_DISABLED) {
                         gSaveContext.shipSaveContext.dpad.status[j] = BTN_DISABLED;
@@ -4028,7 +4044,12 @@ void Interface_InitMinigame(PlayState* play) {
 void Interface_Dpad_LoadItemIconImpl(PlayState* play, u8 btn) {
     InterfaceContext* interfaceCtx = &play->interfaceCtx;
 
-    if (DPAD_GET_CUR_FORM_BTN_ITEM(btn) < ARRAY_COUNT(gItemIcons)) {
+    // 2S2H [OoTMM] Custom item ids sit past the end of gItemIcons.
+    const char* ootmmIcon = OotmmCustomItems_IconPath(DPAD_GET_CUR_FORM_BTN_ITEM(btn));
+
+    if (ootmmIcon != NULL) {
+        interfaceCtx->iconItemSegment[DPAD_BUTTON(btn) + EQUIP_SLOT_MAX] = (TexturePtr)ootmmIcon;
+    } else if (DPAD_GET_CUR_FORM_BTN_ITEM(btn) < ARRAY_COUNT(gItemIcons)) {
         interfaceCtx->iconItemSegment[DPAD_BUTTON(btn) + EQUIP_SLOT_MAX] = gItemIcons[DPAD_GET_CUR_FORM_BTN_ITEM(btn)];
     } else {
         interfaceCtx->iconItemSegment[btn] = gEmptyTexture;
@@ -4068,7 +4089,12 @@ void Interface_LoadItemIconImpl(PlayState* play, u8 btn) {
     // #region 2S2H [Port]
     // CmpDma_LoadFile(SEGMENT_ROM_START(icon_item_static_yar), GET_CUR_FORM_BTN_ITEM(btn),
     //             &interfaceCtx->iconItemSegment[(u32)btn * ICON_ITEM_TEX_SIZE], ICON_ITEM_TEX_SIZE);
-    if (GET_CUR_FORM_BTN_ITEM(btn) < ARRAY_COUNT(gItemIcons)) {
+    // 2S2H [OoTMM] Custom item ids sit past the end of gItemIcons.
+    const char* ootmmIcon = OotmmCustomItems_IconPath(GET_CUR_FORM_BTN_ITEM(btn));
+
+    if (ootmmIcon != NULL) {
+        interfaceCtx->iconItemSegment[btn] = (TexturePtr)ootmmIcon;
+    } else if (GET_CUR_FORM_BTN_ITEM(btn) < ARRAY_COUNT(gItemIcons)) {
         interfaceCtx->iconItemSegment[btn] = gItemIcons[GET_CUR_FORM_BTN_ITEM(btn)];
     } else {
         interfaceCtx->iconItemSegment[btn] = gEmptyTexture;
@@ -6156,13 +6182,17 @@ void Interface_Dpad_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
 
     if ((i == ITEM_DEKU_STICK) || (i == ITEM_DEKU_NUT) || (i == ITEM_BOMB) || (i == ITEM_BOW) ||
         ((i >= ITEM_BOW_FIRE) && (i <= ITEM_BOW_LIGHT)) || (i == ITEM_BOMBCHU) || (i == ITEM_POWDER_KEG) ||
-        (i == ITEM_MAGIC_BEANS) || (i == ITEM_PICTOGRAPH_BOX)) {
+        (i == ITEM_MAGIC_BEANS) || (i == ITEM_PICTOGRAPH_BOX) || (i == ITEM_OOTMM_SLINGSHOT)) {
 
         if ((i >= ITEM_BOW_FIRE) && (i <= ITEM_BOW_LIGHT)) {
             i = ITEM_BOW;
         }
 
-        ammo = AMMO(i);
+        if (i == ITEM_OOTMM_SLINGSHOT) {
+            ammo = OotmmCustomItems_SlingshotAmmo();
+        } else {
+            ammo = AMMO(i);
+        }
 
         if (i == ITEM_PICTOGRAPH_BOX) {
             if (!CHECK_QUEST_ITEM(QUEST_PICTOGRAPH)) {
@@ -6267,13 +6297,17 @@ void Interface_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
 
     if ((i == ITEM_DEKU_STICK) || (i == ITEM_DEKU_NUT) || (i == ITEM_BOMB) || (i == ITEM_BOW) ||
         ((i >= ITEM_BOW_FIRE) && (i <= ITEM_BOW_LIGHT)) || (i == ITEM_BOMBCHU) || (i == ITEM_POWDER_KEG) ||
-        (i == ITEM_MAGIC_BEANS) || (i == ITEM_PICTOGRAPH_BOX)) {
+        (i == ITEM_MAGIC_BEANS) || (i == ITEM_PICTOGRAPH_BOX) || (i == ITEM_OOTMM_SLINGSHOT)) {
 
         if ((i >= ITEM_BOW_FIRE) && (i <= ITEM_BOW_LIGHT)) {
             i = ITEM_BOW;
         }
 
-        ammo = AMMO(i);
+        if (i == ITEM_OOTMM_SLINGSHOT) {
+            ammo = OotmmCustomItems_SlingshotAmmo();
+        } else {
+            ammo = AMMO(i);
+        }
 
         if (i == ITEM_PICTOGRAPH_BOX) {
             if (!CHECK_QUEST_ITEM(QUEST_PICTOGRAPH)) {
@@ -6684,11 +6718,13 @@ void Interface_DrawPauseMenuEquippingIcons(PlayState* play) {
         pauseCtx->cursorVtx[18].v.ob[1] = pauseCtx->cursorVtx[19].v.ob[1] =
             pauseCtx->cursorVtx[16].v.ob[1] - (pauseCtx->equipAnimScale / 10);
 
-        if (pauseCtx->equipTargetItem < 0xB5) {
+        // 2S2H [OoTMM] Only the magic arrow ids 0xB5..0xB7 use the glowing orb effect.
+        if ((pauseCtx->equipTargetItem < 0xB5) || (pauseCtx->equipTargetItem >= 0xB8)) {
             // Normal Equip (icon goes from the inventory slot to the C button when equipping it)
             gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, pauseCtx->equipAnimAlpha);
             gSPVertex(OVERLAY_DISP++, &pauseCtx->cursorVtx[16], 4, 0);
-            gDPLoadTextureBlock(OVERLAY_DISP++, gItemIcons[pauseCtx->equipTargetItem], G_IM_FMT_RGBA, G_IM_SIZ_32b,
+            gDPLoadTextureBlock(OVERLAY_DISP++, OotmmCustomItems_ButtonIcon(pauseCtx->equipTargetItem), G_IM_FMT_RGBA,
+                                G_IM_SIZ_32b,
                                 ICON_ITEM_TEX_WIDTH, ICON_ITEM_TEX_HEIGHT, 0, G_TX_NOMIRROR | G_TX_WRAP,
                                 G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
         } else {
@@ -9644,14 +9680,17 @@ void Interface_Update(PlayState* play) {
     LifeMeter_UpdateSizeAndBeep(play);
 
     // Update environmental hazard (remnant of OoT)
+    // 2S2H [OoTMM]
     sEnvHazard = Player_GetEnvironmentalHazard(play);
     if (sEnvHazard == PLAYER_ENV_HAZARD_HOTROOM) {
-        if (GET_CUR_EQUIP_VALUE(EQUIP_TYPE_TUNIC) == EQUIP_VALUE_TUNIC_GORON) {
+        if ((GET_CUR_EQUIP_VALUE(EQUIP_TYPE_TUNIC) == EQUIP_VALUE_TUNIC_GORON) ||
+            (OotmmCustomItems_EquippedTunic() == OOTMM_TUNIC_GORON)) {
             sEnvHazard = PLAYER_ENV_HAZARD_NONE;
         }
     } else if ((Player_GetEnvironmentalHazard(play) >= PLAYER_ENV_HAZARD_UNDERWATER_FLOOR) &&
                (Player_GetEnvironmentalHazard(play) <= PLAYER_ENV_HAZARD_UNDERWATER_FREE)) {
-        if (GET_CUR_EQUIP_VALUE(EQUIP_TYPE_TUNIC) == EQUIP_VALUE_TUNIC_ZORA) {
+        if ((GET_CUR_EQUIP_VALUE(EQUIP_TYPE_TUNIC) == EQUIP_VALUE_TUNIC_ZORA) ||
+            (OotmmCustomItems_EquippedTunic() == OOTMM_TUNIC_ZORA)) {
             sEnvHazard = PLAYER_ENV_HAZARD_NONE;
         }
     }
@@ -9858,8 +9897,10 @@ void Interface_Update(PlayState* play) {
     }
 
     // Update environmental hazard timer
+    // 2S2H [OoTMM]
     if (gSaveContext.timerStates[TIMER_ID_ENV_HAZARD] == TIMER_STATE_OFF) {
-        if ((sEnvHazard == PLAYER_ENV_HAZARD_HOTROOM) || (sEnvHazard == PLAYER_ENV_HAZARD_UNDERWATER_FREE)) {
+        if ((sEnvHazard == PLAYER_ENV_HAZARD_HOTROOM) || (sEnvHazard == PLAYER_ENV_HAZARD_UNDERWATER_FREE) ||
+            ((sEnvHazard == PLAYER_ENV_HAZARD_UNDERWATER_FLOOR) && (CUR_FORM != PLAYER_FORM_ZORA))) {
             if (CUR_FORM != PLAYER_FORM_ZORA) {
                 if (play->gameOverCtx.state == GAMEOVER_INACTIVE) {
                     if ((gSaveContext.save.saveInfo.playerData.health >> 1) != 0) {

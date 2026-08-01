@@ -11,6 +11,7 @@
 
 #include "2s2h/BenGui/CosmeticEditor.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSpinUpgrade.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -145,7 +146,9 @@ void EnMThunder_Init(Actor* thisx, PlayState* play) {
         player->stateFlags2 &= ~PLAYER_STATE2_20000;
         this->isCharging = false;
 
-        if (CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_GREAT_SPIN_ATTACK)) {
+        s32 ootmmSpinLevel = OotmmSpinUpgrade_SpinLevel();
+        if (ootmmSpinLevel < 0 ? CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_GREAT_SPIN_ATTACK)
+                               : (ootmmSpinLevel > 0)) {
             player->unk_B08 = 1.0f;
             this->collider.elem.atDmgInfo.damage = sDamages[this->type + ENMTHUNDER_TYPE_MAX];
             this->subtype = ENMTHUNDER_SUBTYPE_SPIN_GREAT;

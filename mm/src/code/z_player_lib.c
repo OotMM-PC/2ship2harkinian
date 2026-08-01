@@ -48,6 +48,10 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include <libultraship/bridge/consolevariablebridge.h>
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmCustomItems.h"
+#include "2s2h/OotmmCustomItemsPlayer.h"
+#include "2s2h/OotmmCustomEquipment.h"
 
 typedef struct {
     /* 0x00 */ Vec3f unk_00;
@@ -593,6 +597,79 @@ s16 D_801BFE14[PLAYER_BOOTS_MAX][18] = {
     },
 };
 
+// Rows: iron, hover, iron underwater.
+static s16 sOotmmBootData[3][18] = {
+    { 200, 1000, 300, 700, 550, 270, 1000, 0, 120, 800, 300, -160, 600, 590, 750, 125, 200, 130 },
+    { 200, 1000, 300, 700, 550, 270, 600, 600, 120, 800, 550, -100, 600, 540, 270, 25, 0, 130 },
+    { 80, 800, 150, 700, 480, 270, 600, 50, 120, 800, 550, -40, 400, 540, 270, 25, 0, 80 },
+};
+
+static void Player_OotmmApplyCustomBoots(PlayState* play, Player* player) {
+    s32 customBoots;
+    s32 row;
+    s16* bootRegs;
+
+    if (!OotmmSession_IsActive() || (player->actor.id != ACTOR_PLAYER)) {
+        return;
+    }
+
+    if (player->transformation != PLAYER_FORM_HUMAN) {
+        OotmmCustomItems_SetEquippedBoots(OOTMM_BOOTS_NONE);
+        OotmmCustomItems_SetEquippedTunic(OOTMM_TUNIC_NONE);
+        return;
+    }
+
+    player->actor.flags &= ~ACTOR_FLAG_CAN_PRESS_HEAVY_SWITCHES;
+    player->actor.flags |= ACTOR_FLAG_CAN_PRESS_SWITCHES;
+
+    customBoots = OotmmCustomItems_EquippedBoots();
+    if (customBoots == OOTMM_BOOTS_NONE) {
+        return;
+    }
+
+    REG(27) = 2000;
+    REG(48) = 370;
+
+    if (customBoots == OOTMM_BOOTS_IRON) {
+        row = 0;
+        player->currentBoots = PLAYER_BOOTS_GORON;
+        player->actor.flags |= ACTOR_FLAG_CAN_PRESS_HEAVY_SWITCHES;
+        if (player->stateFlags1 & PLAYER_STATE1_8000000) {
+            row = 2;
+        }
+        REG(27) = 500;
+        REG(48) = 100;
+    } else {
+        row = 1;
+        player->currentBoots = PLAYER_BOOTS_FIERCE_DEITY;
+        player->actor.flags &= ~ACTOR_FLAG_CAN_PRESS_SWITCHES;
+    }
+
+    bootRegs = sOotmmBootData[row];
+    REG(19) = bootRegs[0];
+    REG(30) = bootRegs[1];
+    REG(32) = bootRegs[2];
+    REG(34) = bootRegs[3];
+    REG(35) = bootRegs[4];
+    REG(36) = bootRegs[5];
+    REG(37) = bootRegs[6];
+    REG(38) = bootRegs[7];
+    REG(39) = bootRegs[8];
+    R_DECELERATE_RATE = bootRegs[9];
+    R_RUN_SPEED_LIMIT = bootRegs[10];
+    REG(68) = bootRegs[11];
+    REG(69) = bootRegs[12];
+    IREG(66) = bootRegs[13];
+    IREG(67) = bootRegs[14];
+    IREG(68) = bootRegs[15];
+    IREG(69) = bootRegs[16];
+    MREG(95) = bootRegs[17];
+
+    if (play->roomCtx.curRoom.type == ROOM_TYPE_INDOORS) {
+        R_RUN_SPEED_LIMIT = 500;
+    }
+}
+
 // OoT's Player_SetBootData
 void func_80123140(PlayState* play, Player* player) {
     s16* bootRegs;
@@ -642,6 +719,8 @@ void func_80123140(PlayState* play, Player* player) {
     if (play->roomCtx.curRoom.type == ROOM_TYPE_INDOORS) {
         R_RUN_SPEED_LIMIT = 500;
     }
+
+    Player_OotmmApplyCustomBoots(play, player);
 
     if ((player->actor.id == ACTOR_PLAYER) && (player->transformation == PLAYER_FORM_FIERCE_DEITY)) {
         scale = 0.015f;
@@ -976,7 +1055,18 @@ u8 sActionModelGroups[PLAYER_IA_MAX] = {
 };
 
 PlayerModelGroup Player_ActionToModelGroup(Player* player, PlayerItemAction itemAction) {
-    PlayerModelGroup modelGroup = sActionModelGroups[itemAction];
+    PlayerModelGroup modelGroup;
+
+    // 2S2H [OoTMM] Cross-game item actions sit past the end of sActionModelGroups.
+    // The hammer borrows the deku stick group; the stick only draws for PLAYER_IA_DEKU_STICK.
+    if (itemAction == PLAYER_IA_OOTMM_HAMMER) {
+        return PLAYER_MODELGROUP_DEKU_STICK;
+    }
+    if ((itemAction < PLAYER_IA_NONE) || (itemAction >= PLAYER_IA_MAX)) {
+        return PLAYER_MODELGROUP_DEFAULT;
+    }
+
+    modelGroup = sActionModelGroups[itemAction];
 
     if ((modelGroup == PLAYER_MODELGROUP_ONE_HAND_SWORD) && Player_IsGoronOrDeku(player)) {
         return PLAYER_MODELGROUP_1;
@@ -1708,6 +1798,11 @@ PlayerMeleeWeapon Player_MeleeWeaponFromIA(PlayerItemAction itemAction) {
         return weapon;
     }
 
+    // 2S2H [OoTMM] The hammer is a melee weapon past the vanilla PlayerMeleeWeapon range.
+    if (itemAction == PLAYER_IA_OOTMM_HAMMER) {
+        return weapon;
+    }
+
     return PLAYER_MELEEWEAPON_NONE;
 }
 
@@ -1718,6 +1813,10 @@ PlayerMeleeWeapon Player_GetMeleeWeaponHeld(Player* player) {
 s32 Player_IsHoldingTwoHandedWeapon(Player* player) {
     // Relies on the itemActions for two-handed weapons being contiguous.
     if ((player->heldItemAction >= PLAYER_IA_SWORD_TWO_HANDED) && (player->heldItemAction <= PLAYER_IA_DEKU_STICK)) {
+        return true;
+    }
+
+    if (player->heldItemAction == PLAYER_IA_OOTMM_HAMMER) {
         return true;
     }
 
@@ -1776,7 +1875,12 @@ s32 Player_GetEnvironmentalHazard(PlayState* play) {
     if (play->roomCtx.curRoom.environmentType == ROOM_ENV_HOT) {
         envHazard = PLAYER_ENV_HAZARD_HOTROOM - 1;
     } else if ((player->transformation != PLAYER_FORM_ZORA) && (player->underwaterTimer > 80)) {
-        envHazard = PLAYER_ENV_HAZARD_UNDERWATER_FREE - 1;
+        if ((OotmmCustomItems_EquippedBoots() == OOTMM_BOOTS_IRON) &&
+            (player->actor.bgCheckFlags & BGCHECKFLAG_GROUND)) {
+            envHazard = PLAYER_ENV_HAZARD_UNDERWATER_FLOOR - 1;
+        } else {
+            envHazard = PLAYER_ENV_HAZARD_UNDERWATER_FREE - 1;
+        }
     } else if (player->stateFlags1 & PLAYER_STATE1_8000000) {
         if ((player->transformation == PLAYER_FORM_ZORA) && (player->currentBoots >= PLAYER_BOOTS_ZORA_UNDERWATER) &&
             (player->actor.bgCheckFlags & BGCHECKFLAG_GROUND)) {
@@ -2079,9 +2183,22 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
 
     POLY_OPA_DISP = &gfx[2];
 
+    if (actor->id == ACTOR_PLAYER) {
+        OotmmEquipment_UpdateTunicTint();
+    }
+
     D_801F59E0 = playerForm * 2;
     sPlayerLod = lod;
     SkelAnime_DrawFlexLod(play, skeleton, jointTable, dListCount, overrideLimbDraw, postLimbDraw, actor, lod);
+
+    if (OotmmSession_IsActive() && (actor->id == ACTOR_PLAYER) && (playerForm == PLAYER_FORM_HUMAN) &&
+        (overrideLimbDraw != Player_OverrideLimbDrawGameplayFirstPerson) &&
+        (gSaveContext.gameMode != GAMEMODE_END_CREDITS)) {
+        Player* player = (Player*)actor;
+
+        OotmmEquipment_DrawBoots(play, player);
+        OotmmEquipment_DrawHoverCircle(play, player);
+    }
 
     CLOSE_DISPS(play->state.gfxCtx);
 }
@@ -2611,6 +2728,28 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
 
             *dList = leftHandDLists[sPlayerLod];
 
+            if (OotmmSession_IsActive() && (player->transformation == PLAYER_FORM_HUMAN)) {
+                Gfx* ootmmDList = NULL;
+
+                if (player->heldItemAction == PLAYER_IA_OOTMM_HAMMER) {
+                    ootmmDList = OotmmEquipment_LeftHandHammerDList();
+                } else if (player->itemAction == PLAYER_IA_OOTMM_BOOMERANG) {
+                    if (player->stateFlags1 & PLAYER_STATE1_ZORA_BOOMERANG_THROWN) {
+                        *dList = gPlayerLeftHandOpenDLs[D_801F59E0 + sPlayerLod];
+                    } else {
+                        ootmmDList = OotmmEquipment_LeftHandBoomerangDList();
+                    }
+                } else if ((player->itemAction == PLAYER_IA_OOTMM_SLINGSHOT) &&
+                           ((player->focusActor != NULL) || (player->stateFlags1 & PLAYER_STATE1_PARALLEL) ||
+                            Player_CheckHostileLockOn(player))) {
+                    *dList = gPlayerLeftHandClosedDLs[D_801F59E0 + sPlayerLod];
+                }
+
+                if (ootmmDList != NULL) {
+                    *dList = ootmmDList;
+                }
+            }
+
             if (player->transformation == PLAYER_FORM_GORON) {
                 if (BEN_ANIM_EQUAL(player->skelAnime.animation, gPlayerAnim_pg_punchA)) {
                     func_80125CE0(player, D_801C0750, pos, rot);
@@ -2667,6 +2806,17 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
                 }
 
                 *dList = rightHandDLists[sPlayerLod];
+
+                if (OotmmSession_IsActive() && (player->transformation == PLAYER_FORM_HUMAN) &&
+                    (sPlayerRightHandType != PLAYER_MODELTYPE_RH_SHIELD) &&
+                    (player->itemAction == PLAYER_IA_OOTMM_SLINGSHOT)) {
+                    Gfx* ootmmDList = OotmmEquipment_RightHandSlingshotDList();
+
+                    if (ootmmDList != NULL) {
+                        *dList = ootmmDList;
+                    }
+                }
+
                 if (BEN_ANIM_EQUAL(player->skelAnime.animation, gPlayerAnim_pg_punchB)) {
                     func_80125CE0(player, D_801C0784, pos, rot);
                 }
@@ -2716,6 +2866,11 @@ s32 Player_OverrideLimbDrawGameplayFirstPerson(PlayState* play, s32 limbIndex, G
         } else if (limbIndex == PLAYER_LIMB_RIGHT_HAND) {
             if (Player_IsHoldingHookshot(player)) {
                 *dList = sPlayerFirstPersonRightHandHookshotDLs[player->transformation];
+            } else if (OotmmSession_IsActive() && (player->transformation == PLAYER_FORM_HUMAN) &&
+                       ((player->itemAction == PLAYER_IA_OOTMM_SLINGSHOT) ||
+                        (player->heldItemAction == PLAYER_IA_OOTMM_SLINGSHOT)) &&
+                       (OotmmEquipment_FirstPersonSlingshotDList() != NULL)) {
+                *dList = OotmmEquipment_FirstPersonSlingshotDList();
             } else {
                 *dList = sPlayerFirstPersonRightHandDLs[player->transformation];
             }
@@ -3822,7 +3977,10 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList1, G
                       ((player->meleeWeaponState != PLAYER_MELEE_WEAPON_STATE_0) &&
                        (player->meleeWeaponAnimation != PLAYER_MWA_GORON_PUNCH_RIGHT) &&
                        (player->meleeWeaponAnimation != PLAYER_MWA_GORON_PUNCH_BUTT))))) {
-                    if (player->itemAction == PLAYER_IA_DEKU_STICK) {
+                    if ((player->itemAction == PLAYER_IA_OOTMM_HAMMER) ||
+                        (player->heldItemAction == PLAYER_IA_OOTMM_HAMMER)) {
+                        D_801C0994->x = 2500.0f;
+                    } else if (player->itemAction == PLAYER_IA_DEKU_STICK) {
                         D_801C0994->x = player->unk_B0C * 5000.0f;
                     } else {
                         D_801C0994->x = sMeleeWeaponLengths[Player_GetMeleeWeaponHeld(player)];
@@ -3875,6 +4033,9 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList1, G
                 Matrix_Pop();
 
                 CLOSE_DISPS(play->state.gfxCtx);
+            } else if (OotmmSession_IsActive() && (player->transformation == PLAYER_FORM_HUMAN) &&
+                       (player->itemAction == PLAYER_IA_OOTMM_SLINGSHOT)) {
+                OotmmEquipment_DrawSlingshotString(play, player);
             } else if (BEN_ANIM_EQUAL(player->skelAnime.animation, gPlayerAnim_pg_punchB)) {
                 func_80127488(play, player, D_801C07AC[(s32)player->skelAnime.curFrame]);
             } else {
@@ -3997,6 +4158,10 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList1, G
             }
         }
     } else if (limbIndex == PLAYER_LIMB_HEAD) {
+        if ((*dList1 != NULL) && OotmmSession_IsActive() && (player->actor.id == ACTOR_PLAYER) &&
+            (player->transformation == PLAYER_FORM_HUMAN)) {
+            OotmmEquipment_DrawWornMask(play, player);
+        }
         if (((*dList1 != NULL) && ((u32)player->currentMask != PLAYER_MASK_NONE)) &&
             (((player->transformation == PLAYER_FORM_HUMAN) &&
               ((!BEN_ANIM_EQUAL(player->skelAnime.animation, gPlayerAnim_cl_setmask)) ||
@@ -4044,7 +4209,9 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList1, G
                     }
                 }
 
-                gSPDisplayList(POLY_OPA_DISP++, D_801C0B20[maskMinusOne]);
+                if (!OotmmCustomItems_SuppressVanillaMaskDraw(player)) {
+                    gSPDisplayList(POLY_OPA_DISP++, D_801C0B20[maskMinusOne]);
+                }
 
                 CLOSE_DISPS(play->state.gfxCtx);
             }

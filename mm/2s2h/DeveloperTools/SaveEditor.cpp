@@ -6,6 +6,7 @@
 #include "2s2h/BenGui/Notification.h"
 #include "2s2h/ShipUtils.h"
 #include "2s2h/OotmmIpc.h"
+#include "2s2h/OotmmItemApply.h"
 #include "2s2h/OotmmItemProbe.h"
 #include "2s2h/OotmmSession.h"
 #include "libultraship/bridge/OotmmItemRender.h"
@@ -492,12 +493,42 @@ void DrawGeneralTab() {
         Inventory_ChangeUpgrade(UPG_WALLET, 0);
     }
     UIWidgets::PushStyleSlider(UIWidgets::Colors::Green);
-    u8 currentWalletLevel = CUR_UPG_VALUE(UPG_WALLET);
-    if (ImGui::SliderScalar("##walletLevelSlider", ImGuiDataType_U8, &currentWalletLevel, &U8_ZERO, &WALLET_LEVEL_MAX,
-                            WALLET_LEVEL_NAMES[currentWalletLevel])) {
-        Inventory_ChangeUpgrade(UPG_WALLET, currentWalletLevel);
-        gSaveContext.save.saveInfo.playerData.rupees =
-            MIN(gSaveContext.save.saveInfo.playerData.rupees, CUR_CAPACITY(UPG_WALLET));
+    if (OotmmSession_IsActive()) {
+        const auto& state = OotmmSession_GetState();
+        const bool childWallets = state.GetBoolSetting("childWallets", false);
+        std::vector<const char*> walletTierNames;
+        if (childWallets) {
+            walletTierNames.push_back("No Wallet");
+        }
+        walletTierNames.push_back("Child Wallet");
+        walletTierNames.push_back("Adult Wallet");
+        walletTierNames.push_back("Giant Wallet");
+        if (state.GetBoolSetting("colossalWallets", false)) {
+            walletTierNames.push_back("Colossal Wallet");
+            if (state.GetBoolSetting("bottomlessWallets", false)) {
+                walletTierNames.push_back("Bottomless Wallet");
+            }
+        }
+        const auto& ootmmInventory = OotmmIpc_GetInventory();
+        const uint32_t nativeWallet = CUR_UPG_VALUE(UPG_WALLET);
+        u8 walletTier = static_cast<u8>(std::min<uint32_t>(
+            std::max(std::max(ootmmInventory.Count("MM_WALLET"), ootmmInventory.Count("SHARED_WALLET")),
+                     childWallets && nativeWallet > 0 ? nativeWallet + 1 : nativeWallet),
+            static_cast<uint32_t>(walletTierNames.size() - 1)));
+        const u8 walletTierMax = static_cast<u8>(walletTierNames.size() - 1);
+        if (ImGui::SliderScalar("##walletLevelSlider", ImGuiDataType_U8, &walletTier, &U8_ZERO, &walletTierMax,
+                                walletTierNames[walletTier])) {
+            OotmmIpc_SetDebugItemValue(state.GetBoolSetting("sharedWallets", false) ? "SHARED_WALLET" : "MM_WALLET",
+                                       walletTier);
+        }
+    } else {
+        u8 currentWalletLevel = CUR_UPG_VALUE(UPG_WALLET);
+        if (ImGui::SliderScalar("##walletLevelSlider", ImGuiDataType_U8, &currentWalletLevel, &U8_ZERO,
+                                &WALLET_LEVEL_MAX, WALLET_LEVEL_NAMES[currentWalletLevel])) {
+            Inventory_ChangeUpgrade(UPG_WALLET, currentWalletLevel);
+            gSaveContext.save.saveInfo.playerData.rupees =
+                MIN(gSaveContext.save.saveInfo.playerData.rupees, CUR_CAPACITY(UPG_WALLET));
+        }
     }
     s16 walletCapacity = CUR_CAPACITY(UPG_WALLET);
     ImGui::SliderScalar("##rupeesSlider", ImGuiDataType_S16, &gSaveContext.save.saveInfo.playerData.rupees, &S16_ZERO,
@@ -827,6 +858,43 @@ void DrawSlot(InventorySlot slot) {
             // TODO: Add names for items
             // UIWidgets::SetLastItemHoverText(SohUtils::GetItemName(id));
         }
+
+        if (OotmmSession_IsActive()) {
+            uint8_t candidates[8];
+            const int32_t candidateCount = OotmmItemApply_TradeSlotCandidates(
+                static_cast<uint8_t>(selectedInventorySlot), candidates, ARRAY_COUNT(candidates));
+            uint8_t ownedItems[8];
+            const int32_t ownedCount = OotmmItemApply_OwnedTradeItems(
+                static_cast<uint8_t>(selectedInventorySlot), ownedItems, ARRAY_COUNT(ownedItems));
+            if (candidateCount > 0) {
+                static const std::map<uint8_t, const char*> tradeItemNames = {
+                    { ITEM_MOONS_TEAR, "Moon's Tear" },
+                    { ITEM_DEED_LAND, "Land Title Deed" },
+                    { ITEM_DEED_SWAMP, "Swamp Title Deed" },
+                    { ITEM_DEED_MOUNTAIN, "Mountain Title Deed" },
+                    { ITEM_DEED_OCEAN, "Ocean Title Deed" },
+                    { ITEM_ROOM_KEY, "Room Key" },
+                    { ITEM_LETTER_MAMA, "Letter to Mama" },
+                    { ITEM_LETTER_TO_KAFEI, "Letter to Kafei" },
+                    { ITEM_PENDANT_OF_MEMORIES, "Pendant of Memories" },
+                };
+                ImGui::Separator();
+                ImGui::Text("Owned in this slot");
+                for (int32_t i = 0; i < candidateCount; i++) {
+                    bool owned = std::find(ownedItems, ownedItems + ownedCount, candidates[i]) !=
+                                 ownedItems + ownedCount;
+                    const auto name = tradeItemNames.find(candidates[i]);
+                    ImGui::PushID(candidates[i]);
+                    if (ImGui::Checkbox(name != tradeItemNames.end() ? name->second : "Unknown",
+                                        &owned)) {
+                        OotmmItemApply_SetTradeItemOwned(static_cast<uint8_t>(selectedInventorySlot),
+                                                         candidates[i], owned);
+                    }
+                    ImGui::PopID();
+                }
+            }
+        }
+
         ImGui::PopStyleColor(3);
         ImGui::EndPopup();
     }

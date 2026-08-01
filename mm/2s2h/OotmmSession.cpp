@@ -3,6 +3,7 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
 #include "OotmmIpc.h"
+#include "OotmmItemApply.h"
 #include "OotmmItemProbe.h"
 
 #include <cstddef>
@@ -538,11 +539,18 @@ void OotmmSession_Init() {
     if (sGameState.LoadFromEnvironment()) {
         ApplyEnhancements();
         OotmmItemProbe_Init();
+        OotmmItemApply_Init();
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveInit>(
             [](s16) { InitializeSave(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(
             [](s16) { ApplySaveFlags(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(UpdateEntranceTransition);
+        // The seed owns the Blast Mask cooldown; vanilla hardcodes it to 310 frames.
+        COND_VB_SHOULD(VB_SET_BLAST_MASK_COOLDOWN_TIMER, true, {
+            *should = false;
+            GET_PLAYER(gPlayState)->blastMaskTimer =
+                static_cast<s16>(sGameState.GetBlastMaskCooldownFrames());
+        });
         COND_VB_SHOULD(VB_TERMINA_FIELD_BE_EMPTY, true, { *should = false; });
         COND_VB_SHOULD(VB_FASTER_FIRST_CYCLE, true, { *should = false; });
         GameInteractor::Instance->RegisterGameHookForID<GameInteractor::ShouldActorInit>(
@@ -585,5 +593,57 @@ extern "C" int32_t OotmmSession_TryBootDirectly(void* gameState) {
 extern "C" void OotmmSession_NotePlayerExitTransition(void) {
     if (sGameState.IsActive() && sGameState.HasSeed()) {
         sPlayerExitPending = true;
+    }
+}
+
+extern "C" int32_t OotmmSession_ApplyResolvedMmEntrance(uint32_t entrance) {
+    if (!OotmmSession_IsActive()) {
+        return -1;
+    }
+    const auto resolved = ResolveMmEntrance(entrance);
+    if (!resolved.has_value()) {
+        return -1;
+    }
+    sLastResolvedEntrance = *resolved;
+    return *resolved;
+}
+
+bool OotmmSession_BeginCrossGameTransition(const Ship::OotmmEntranceMapping& mapping) {
+    if (!OotmmSession_IsActive() || gPlayState == nullptr || sCrossGamePending) {
+        return false;
+    }
+    SPDLOG_INFO("[OoTMM] Cross-game warp {} -> {} (0x{:X})", mapping.From, mapping.To,
+                mapping.ToNativeId.value_or(0));
+    PersistTransitionSave();
+    if (!OotmmIpc_SendCrossGameTransition(mapping, sGameState.GetBootConfig().OotAge)) {
+        SPDLOG_ERROR("[OoTMM] Cross-game warp requires the launcher IPC connection");
+        return false;
+    }
+    sCrossGamePending = true;
+    sCrossGameAccepted = false;
+    sCrossGameWaitFrames = 0;
+    gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
+    return true;
+}
+
+extern "C" void OotmmSession_RedirectMoonCrashRespawn(void) {
+    if (!OotmmSession_IsActive()) {
+        return;
+    }
+    // Upstream play.c sends the Clock Tower moon-crash respawn to the seed's initial entrance,
+    // which for a cross-game session is the MM entry spawn.
+    if (static_cast<uint16_t>(gSaveContext.save.entrance) != ENTRANCE(CLOCK_TOWER_INTERIOR, 3)) {
+        return;
+    }
+    std::optional<uint16_t> spawn;
+    if (const auto bootEntrance = sGameState.GetBootConfig().BootEntrance; bootEntrance.has_value()) {
+        spawn = ResolveMmEntrance(*bootEntrance);
+    }
+    if (!spawn.has_value()) {
+        spawn = InitialMmSpawn();
+    }
+    if (spawn.has_value()) {
+        SPDLOG_INFO("[OoTMM] Moon crash respawn redirected to entrance 0x{:X}", *spawn);
+        gSaveContext.save.entrance = *spawn;
     }
 }

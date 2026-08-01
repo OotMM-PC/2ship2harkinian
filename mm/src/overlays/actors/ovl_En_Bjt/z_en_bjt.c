@@ -6,8 +6,16 @@
 
 #include "z_en_bjt.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmCustomItems.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
+
+// 2S2H [OoTMM] The launcher owns the OoTMM inventory, so the letter cannot be consumed or handed back.
+static s32 EnBjt_OotmmIsRutoLetter(PlayerItemAction itemAction) {
+    return OotmmSession_IsActive() && (itemAction == PLAYER_IA_OOTMM_BOTTLE_RUTO_LETTER) &&
+           OotmmCustomItems_Owned(ITEM_OOTMM_RUTO_LETTER);
+}
 
 void EnBjt_Init(Actor* thisx, PlayState* play);
 void EnBjt_Destroy(Actor* thisx, PlayState* play);
@@ -298,7 +306,8 @@ s32 EnBjt_ChooseBehaviour(Actor* thisx, PlayState* play) {
 
                     if ((itemAction == PLAYER_IA_DEED_LAND) || (itemAction == PLAYER_IA_LETTER_TO_KAFEI) ||
                         (itemAction == PLAYER_IA_DEED_SWAMP) || (itemAction == PLAYER_IA_DEED_MOUNTAIN) ||
-                        (itemAction == PLAYER_IA_DEED_OCEAN) || (itemAction == PLAYER_IA_LETTER_MAMA)) {
+                        (itemAction == PLAYER_IA_DEED_OCEAN) || (itemAction == PLAYER_IA_LETTER_MAMA) ||
+                        EnBjt_OotmmIsRutoLetter(itemAction)) {
                         EnBjt_ChangeAnim(this, TOILET_HAND_ANIM_WAITING_MORPH);
                         this->playedSfx = false;
                         this->behaviour++;

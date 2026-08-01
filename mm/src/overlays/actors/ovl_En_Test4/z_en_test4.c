@@ -11,6 +11,7 @@
 #include "overlays/gamestates/ovl_daytelop/z_daytelop.h"
 #include "overlays/actors/ovl_En_Horse/z_en_horse.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmClocks.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED | ACTOR_FLAG_FREEZE_EXCEPTION)
 
@@ -657,9 +658,103 @@ void EnTest4_SetSkyboxNumStars(EnTest4* this, PlayState* play) {
     }
 }
 
+static s32 EnTest4_OotmmTimeSkip(PlayState* play, u8* day, u16* time) {
+    u32 halfDays = OotmmClocks_HalfDayMask();
+    s32 currentHalfDay;
+    s32 nextHalfDay;
+    s32 i;
+
+    if (play->envCtx.sceneTimeSpeed == 0) {
+        return false;
+    }
+    if (Play_InCsMode(play)) {
+        return false;
+    }
+    if (*day >= 4) {
+        return false;
+    }
+
+    if (*day < 1) {
+        currentHalfDay = 0;
+    } else {
+        currentHalfDay = (*day - 1) * 2;
+        if (*time < CLOCK_TIME(6, 0) || *time >= CLOCK_TIME(18, 0)) {
+            currentHalfDay++;
+        }
+    }
+
+    if (halfDays & (1 << currentHalfDay)) {
+        return false;
+    }
+
+    nextHalfDay = 6;
+    for (i = currentHalfDay + 1; i < 6; i++) {
+        if (halfDays & (1 << i)) {
+            nextHalfDay = i;
+            break;
+        }
+    }
+
+    *day = (nextHalfDay / 2) + 1;
+    if (nextHalfDay & 1) {
+        *time = CLOCK_TIME(18, 0);
+    } else {
+        *time = CLOCK_TIME(6, 0);
+    }
+    return true;
+}
+
+static s32 EnTest4_OotmmIsNight(u16 time) {
+    return (time < CLOCK_TIME(6, 0)) || (time >= CLOCK_TIME(18, 0));
+}
+
+static void EnTest4_OotmmCheckTimeSkip(EnTest4* this, PlayState* play) {
+    u8 day = gSaveContext.save.day;
+    u16 time = gSaveContext.save.time + CLOCK_TIME_MINUTE;
+
+    if (EnTest4_OotmmIsNight(this->prevTime) && !EnTest4_OotmmIsNight(time)) {
+        day++;
+    }
+
+    if (day < 4 && EnTest4_OotmmTimeSkip(play, &day, &time)) {
+        gSaveContext.save.day = day;
+        gSaveContext.save.time = time;
+
+        // Honey & Darling's layout is picked at scene load from the current day.
+        if (play->sceneId == SCENE_BOWLING) {
+            Player* player = GET_PLAYER(play);
+
+            Play_SetRespawnData(play, RESPAWN_MODE_RETURN, gSaveContext.save.entrance,
+                                play->roomCtx.curRoom.num, PLAYER_PARAMS(0xFF, PLAYER_START_MODE_D),
+                                &player->actor.world.pos, player->actor.shape.rot.y);
+            gSaveContext.respawnFlag = 2;
+            gSaveContext.nextCutsceneIndex = 0;
+            play->nextEntrance = gSaveContext.save.entrance;
+            play->transitionTrigger = TRANS_TRIGGER_START;
+            play->transitionType = TRANS_TYPE_FADE_BLACK;
+            return;
+        }
+
+        if (time == CLOCK_TIME(6, 0)) {
+            this->daytimeIndex = THREEDAY_DAYTIME_NIGHT;
+            gSaveContext.save.day--;
+        } else {
+            this->daytimeIndex = THREEDAY_DAYTIME_DAY;
+            // Night alone never reloads the day counter/skybox, but the skip may have crossed a day.
+            Interface_NewDay(play, CURRENT_DAY);
+            Environment_NewDay(&play->envCtx);
+        }
+        this->prevTime = time - CLOCK_TIME_MINUTE;
+    }
+}
+
 void EnTest4_Update(Actor* thisx, PlayState* play) {
     EnTest4* this = (EnTest4*)thisx;
     Player* player = GET_PLAYER(play);
+
+    if (OotmmClocks_Enabled() && !CHECK_EVENTINF(EVENTINF_17)) {
+        EnTest4_OotmmCheckTimeSkip(this, play);
+    }
 
     if (player->stateFlags1 & PLAYER_STATE1_2) {
         return;

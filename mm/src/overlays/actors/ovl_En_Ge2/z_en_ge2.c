@@ -6,7 +6,17 @@
 
 #include "z_en_ge2.h"
 
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmCustomItems.h"
+
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_MINIMAP_ICON_ENABLED)
+
+static s32 EnGe2_OotmmWearingGerudoMask(PlayState* play) {
+    Player* player = GET_PLAYER(play);
+
+    return OotmmSession_IsActive() && (player->transformation == PLAYER_FORM_HUMAN) &&
+           (OotmmCustomItems_EquippedMask() == OOTMM_MASK_GERUDO);
+}
 
 void EnGe2_Init(Actor* thisx, PlayState* play);
 void EnGe2_Destroy(Actor* thisx, PlayState* play);
@@ -141,7 +151,8 @@ void EnGe2_Destroy(Actor* thisx, PlayState* play) {
 GerudoPurpleDetection EnGe2_DetectPlayer(PlayState* play, EnGe2* this) {
     if (this->picto.actor.xzDistToPlayer > 250.0f) {
         return GERUDO_PURPLE_DETECTION_UNDETECTED;
-    } else if ((Player_GetMask(play) != PLAYER_MASK_STONE) && (this->picto.actor.xzDistToPlayer < 50.0f)) {
+    } else if ((Player_GetMask(play) != PLAYER_MASK_STONE) && !EnGe2_OotmmWearingGerudoMask(play) &&
+               (this->picto.actor.xzDistToPlayer < 50.0f)) {
         return GERUDO_PURPLE_DETECTION_PROXIMITY;
     } else if (func_800B715C(play)) {
         return GERUDO_PURPLE_DETECTION_HEARD;
@@ -168,7 +179,7 @@ s32 EnGe2_LookForPlayer(PlayState* play, Actor* actor, Vec3f* pos, s16 yaw, s16 
     CollisionPoly* outPoly;
     Player* player = GET_PLAYER(play);
 
-    if (Player_GetMask(play) == PLAYER_MASK_STONE) {
+    if ((Player_GetMask(play) == PLAYER_MASK_STONE) || EnGe2_OotmmWearingGerudoMask(play)) {
         return false;
     }
     if (actor->xzDistToPlayer > xzRange) {

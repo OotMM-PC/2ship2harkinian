@@ -703,3 +703,8 @@
 /* 0x2AF */ DEFINE_ACTOR(         En_Invisible_Ruppe,  ACTOR_EN_INVISIBLE_RUPPE,  ALLOCTYPE_NORMAL,    "En_Invisible_Ruppe",  "Invisible Ruppe")
 /* 0x2B0 */ DEFINE_ACTOR(         Obj_Ending,          ACTOR_OBJ_ENDING,          ALLOCTYPE_NORMAL,    "Obj_Ending",          "Stump/Lighting (credits end)")
 /* 0x2B1 */ DEFINE_ACTOR(         En_Rsn,              ACTOR_EN_RSN,              ALLOCTYPE_NORMAL,    "En_Rsn",              "Bomb Shop Man (credits)")
+/* 0x2B2 */ DEFINE_ACTOR_INTERNAL(Ootmm_Magic_Wind,    ACTOR_OOTMM_MAGIC_WIND,    ALLOCTYPE_NORMAL,    "Ootmm_Magic_Wind",    "Farore's Wind (OoTMM)")
+/* 0x2B3 */ DEFINE_ACTOR_INTERNAL(Ootmm_Magic_Dark,    ACTOR_OOTMM_MAGIC_DARK,    ALLOCTYPE_NORMAL,    "Ootmm_Magic_Dark",    "Nayru's Love (OoTMM)")
+/* 0x2B4 */ DEFINE_ACTOR_INTERNAL(Ootmm_Magic_Fire,    ACTOR_OOTMM_MAGIC_FIRE,    ALLOCTYPE_NORMAL,    "Ootmm_Magic_Fire",    "Din's Fire (OoTMM)")
+/* 0x2B5 */ DEFINE_ACTOR_INTERNAL(Ootmm_Boomerang,      ACTOR_OOTMM_BOOMERANG,     ALLOCTYPE_NORMAL,    "Ootmm_Boomerang",     "Boomerang (OoTMM)")
+/* 0x2B6 */ DEFINE_ACTOR_INTERNAL(Ootmm_Slingshot_Seed, ACTOR_OOTMM_SLINGSHOT_SEED, ALLOCTYPE_NORMAL,   "Ootmm_Slingshot_Seed", "Slingshot Seed (OoTMM)")

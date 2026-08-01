@@ -9,6 +9,9 @@
 #include "z64save.h"
 #include "BenPort.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmOwls.h"
+#include "2s2h/OotmmSongs.h"
+#include "2s2h/OotmmSongsPlayer.h"
 #include "assets/archives/schedule_dma_static/schedule_dma_static_yar.h"
 #include "assets/archives/icon_item_static/icon_item_static_yar.h"
 #include "assets/archives/icon_item_24_static/icon_item_24_static_yar.h"
@@ -3696,6 +3699,7 @@ void Message_DisplayOcarinaStaffImpl(PlayState* play, u16 ocarinaAction) {
     u32 i;
 
     msgCtx->ocarinaAvailableSongs = 0;
+    OotmmSongs_ClearPlayed();
 
     for (i = msgCtx->ocarinaAvailableSongs; i <= (QUEST_SONG_SUN - QUEST_SONG_SONATA); i++) {
         if (CHECK_QUEST_ITEM(QUEST_SONG_SONATA + i)) {
@@ -4055,6 +4059,13 @@ void Message_SpawnSongEffect(PlayState* play) {
 
     //! FAKE:
     if (1) {}
+    if (OotmmSongs_Played() != OOTMM_SONG_NONE) {
+        msgCtx->ocarinaSongEffectActive = true;
+        Actor_Spawn(&play->actorCtx, play, (s16)OotmmSongs_EffectActorId(), player->actor.world.pos.x,
+                    player->actor.world.pos.y, player->actor.world.pos.z, 0, 0, 0,
+                    OotmmSongs_EffectActorParams());
+        return;
+    }
     if ((msgCtx->songPlayed <= OCARINA_SONG_SCARECROW_SPAWN) &&
         (msgCtx->songPlayed != OCARINA_SONG_GORON_LULLABY_INTRO) &&
         !((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) &&
@@ -4611,6 +4622,20 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
 
                 msgCtx->songPlayed = msgCtx->ocarinaStaff->state;
 
+                if ((msgCtx->ocarinaStaff->state > OOTMM_SONG_STAFF_BASE) &&
+                    (msgCtx->ocarinaStaff->state < OOTMM_SONG_STAFF_BASE + OOTMM_SONG_MAX)) {
+                    OotmmSongs_NotePlayed(msgCtx->ocarinaStaff->state - OOTMM_SONG_STAFF_BASE);
+                    sLastPlayedSong = 0xFF;
+                    msgCtx->lastPlayedSong = msgCtx->ocarinaStaff->state;
+                    Message_ContinueTextbox(play, 0x1B5B);
+                    msgCtx->msgMode = MSGMODE_SONG_PLAYED;
+                    msgCtx->textBoxType = TEXTBOX_TYPE_3;
+                    msgCtx->stateTimer = 10;
+                    Audio_PlaySfx(NA_SE_SY_TRE_BOX_APPEAR);
+                    Interface_SetHudVisibility(HUD_VISIBILITY_NONE);
+                    break;
+                }
+
                 bool vanillaOwnedSongCheck = (msgCtx->ocarinaStaff->state == OCARINA_SONG_SCARECROW_SPAWN) ||
                                              (msgCtx->ocarinaStaff->state == OCARINA_SONG_INVERTED_TIME) ||
                                              (msgCtx->ocarinaStaff->state == OCARINA_SONG_DOUBLE_TIME) ||
@@ -4807,6 +4832,15 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                     (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_WIND_FISH_DEKU)) {
                     AudioOcarina_SetInstrument(sPlayerFormOcarinaInstruments[CUR_FORM]);
                     AudioOcarina_SetPlaybackSong(msgCtx->ocarinaAction - OCARINA_ACTION_SCARECROW_LONG_RECORDING, 1);
+                } else if (OotmmSongs_Played() != OOTMM_SONG_NONE) {
+                    s32 ootmmFanfare = OotmmSongs_FanfareSeqId(OotmmSongs_Played());
+
+                    AudioOcarina_SetInstrument(sPlayerFormOcarinaInstruments[CUR_FORM]);
+                    Ootmm_OcarinaSetSongPlayback(OotmmSongs_Played());
+                    if (ootmmFanfare >= 0) {
+                        Audio_PlayFanfare((u16)ootmmFanfare);
+                        AudioSfx_MuteBanks(0x20);
+                    }
                 } else {
                     AudioOcarina_SetInstrument(sPlayerFormOcarinaInstruments[CUR_FORM]);
                     AudioOcarina_SetPlaybackSong((u8)msgCtx->songPlayed + 1, 1);
@@ -4828,7 +4862,9 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                 break;
 
             case MSGMODE_DISPLAY_SONG_PLAYED_TEXT_BEGIN:
-                if (msgCtx->songPlayed == OCARINA_SONG_SCARECROW_SPAWN) {
+                if (OotmmSongs_ShouldOverridePlayedText(play)) {
+                    OotmmSongs_ShowPlayedText(play);
+                } else if (msgCtx->songPlayed == OCARINA_SONG_SCARECROW_SPAWN) {
                     Message_ContinueTextbox(play, 0x1B6B);
                 } else {
                     Message_ContinueTextbox(play, 0x1B72 + msgCtx->songPlayed);
@@ -4863,7 +4899,15 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                         gHorsePlayedEponasSong = true;
                     }
 
-                    if (msgCtx->ocarinaAction == OCARINA_ACTION_FREE_PLAY_DONE) {
+                    if (OotmmSongs_Played() != OOTMM_SONG_NONE) {
+                        // 2S2H [OoTMM] The out-of-range song id must not reach the ocarina-mode derivation.
+                        if (msgCtx->ocarinaAction == OCARINA_ACTION_FREE_PLAY_DONE) {
+                            play->msgCtx.ocarinaMode = OCARINA_MODE_EVENT;
+                        } else {
+                            OotmmSongs_ClearPlayed();
+                            play->msgCtx.ocarinaMode = OCARINA_MODE_END;
+                        }
+                    } else if (msgCtx->ocarinaAction == OCARINA_ACTION_FREE_PLAY_DONE) {
                         if (sLastPlayedSong == OCARINA_SONG_ELEGY) {
                             if (GameInteractor_Should(
                                     VB_ELEGY_CHECK_SCENE,
@@ -5952,7 +5996,8 @@ void Message_Update(PlayState* play) {
                         play->msgCtx.ocarinaMode = OCARINA_MODE_1B;
                         sLastPlayedSong = 0xFF;
                     } else if (!msgCtx->ocarinaSongEffectActive) {
-                        if (gSaveContext.save.saveInfo.playerData.owlActivationFlags != 0) {
+                        if ((gSaveContext.save.saveInfo.playerData.owlActivationFlags |
+                             OotmmOwls_ActivatedMask()) != 0) {
                             pauseCtx->unk_2C8 = pauseCtx->pageIndex;
                             pauseCtx->unk_2CA = pauseCtx->cursorPoint[4];
                             pauseCtx->pageIndex = PAUSE_ITEM;

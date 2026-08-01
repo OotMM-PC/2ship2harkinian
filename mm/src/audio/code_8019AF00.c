@@ -4,6 +4,8 @@
 #include "GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/Audio/AudioEditor.h"
 #include "2s2h/OotmmOcarinaButtons.h"
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmSongs.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 typedef struct {
@@ -1612,6 +1614,38 @@ u8 sRecordOcarinaVibrato = 0;
 s8 sRecordOcarinaBendIndex = 0;
 u8 sRecordOcarinaButtonIndex = 0;
 u8 sPlayedOcarinaSongIndexPlusOne = 0;
+
+// Ported from OoTMM packages/generator/src/mm/ocarina.c, indexed by OotmmMmSongId - 1.
+static const OcarinaSongButtons sOotmmSongButtons[OOTMM_SONG_COUNT] = {
+    // Minuet of Forest
+    { 6, { OCARINA_BTN_A, OCARINA_BTN_C_UP, OCARINA_BTN_C_LEFT, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_LEFT,
+           OCARINA_BTN_C_RIGHT } },
+    // Bolero of Fire
+    { 8, { OCARINA_BTN_C_DOWN, OCARINA_BTN_A, OCARINA_BTN_C_DOWN, OCARINA_BTN_A, OCARINA_BTN_C_RIGHT,
+           OCARINA_BTN_C_DOWN, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_DOWN } },
+    // Serenade of Water
+    { 5, { OCARINA_BTN_A, OCARINA_BTN_C_DOWN, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_LEFT } },
+    // Requiem of Spirit
+    { 6, { OCARINA_BTN_A, OCARINA_BTN_C_DOWN, OCARINA_BTN_A, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_DOWN,
+           OCARINA_BTN_A } },
+    // Nocturne of Shadow
+    { 7, { OCARINA_BTN_C_LEFT, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_RIGHT, OCARINA_BTN_A, OCARINA_BTN_C_LEFT,
+           OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_DOWN } },
+    // Prelude of Light
+    { 6, { OCARINA_BTN_C_UP, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_UP, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_LEFT,
+           OCARINA_BTN_C_UP } },
+    // Zelda's Lullaby
+    { 6, { OCARINA_BTN_C_LEFT, OCARINA_BTN_C_UP, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_LEFT, OCARINA_BTN_C_UP,
+           OCARINA_BTN_C_RIGHT } },
+    // Saria's Song
+    { 6, { OCARINA_BTN_C_DOWN, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_LEFT, OCARINA_BTN_C_DOWN, OCARINA_BTN_C_RIGHT,
+           OCARINA_BTN_C_LEFT } },
+};
+
+// sOoTOcarinaSongNotes row for each OotmmMmSongId - 1.
+static const u8 sOotmmPlaybackRows[OOTMM_SONG_COUNT] = { 0, 1, 2, 3, 4, 5, 7, 6 };
+
+static u16 sOotmmAvailSongs = 0;
 u8 sMusicStaffNumNotesPerTest = 0;
 u8 D_801D8530 = false;
 u32 D_801D8534 = 0;
@@ -2228,6 +2262,7 @@ void AudioOcarina_Start(u32 ocarinaFlags) {
         sMusicStaffNumNotesPerTest = 8; // Ocarina Check
         sOcarinaHasStartedSong = false;
         sPlayedOcarinaSongIndexPlusOne = 0;
+        sOotmmAvailSongs = OotmmSongs_AvailableMask();
         sOcarinaStaffPlayingPos = 0;
         sPlayingStaff.state = AudioOcarina_GetPlayingState();
         sIsOcarinaInputEnabled = true;
@@ -2267,6 +2302,7 @@ void AudioOcarina_Start(u32 ocarinaFlags) {
     } else {
         sOcarinaFlags = 0;
         sIsOcarinaInputEnabled = false;
+        sOotmmAvailSongs = 0;
     }
 }
 
@@ -2588,6 +2624,31 @@ void AudioOcarina_CheckSongsWithoutMusicStaff(void) {
                 }
             }
         }
+
+        for (songIndex = 0; songIndex < OOTMM_SONG_COUNT; songIndex++) {
+            if (sOotmmAvailSongs & (u16)(1 << (songIndex + 1))) {
+                for (j = 0, k = 0; (j < sOotmmSongButtons[songIndex].numButtons) && (k == 0) &&
+                                   (sOcarinaWithoutMusicStaffPos >= sOotmmSongButtons[songIndex].numButtons);) {
+
+                    pitch = sCurOcarinaSongWithoutMusicStaff[(sOcarinaWithoutMusicStaffPos -
+                                                             sOotmmSongButtons[songIndex].numButtons) +
+                                                            j];
+
+                    if (pitch == sButtonToPitchMap[sOotmmSongButtons[songIndex].buttonIndex[j]]) {
+                        j++;
+                    } else {
+                        k++;
+                    }
+                }
+
+                // A vanilla match set sPlayedOcarinaSongIndexPlusOne this frame, so it wins ties.
+                if ((j == sOotmmSongButtons[songIndex].numButtons) && (sPlayedOcarinaSongIndexPlusOne == 0)) {
+                    sPlayedOcarinaSongIndexPlusOne = OOTMM_SONG_STAFF_BASE + songIndex + 2;
+                    sIsOcarinaInputEnabled = false;
+                    sOcarinaFlags = 0;
+                }
+            }
+        }
     }
 }
 
@@ -2841,6 +2902,21 @@ void AudioOcarina_SetPlaybackSong(s8 songIndexPlusOne, u8 playbackState) {
     }
 }
 
+void Ootmm_OcarinaSetSongPlayback(s32 song) {
+    if (song <= OOTMM_SONG_NONE || song >= OOTMM_SONG_MAX) {
+        return;
+    }
+
+    sPlaybackSong = sOoTOcarinaSongNotes[sOotmmPlaybackRows[song - 1]];
+    sPlaybackState = 1;
+    sPlaybackStaffStopPos = 0xFF;
+    sPlaybackStaffStartPos = 0xFF;
+    sPlaybackNotePos = 0;
+    sPlaybackNoteTimer = 0;
+    sPlaybackPitch = OCARINA_PITCH_NONE;
+    sPlaybackStaffPos = 0;
+}
+
 /**
  * Play a song with the ocarina to the user that is
  * based on OcarinaNote data and not user input
@@ -2945,6 +3021,36 @@ void AudioOcarina_PlaybackSong(void) {
     }
 }
 
+static s32 AudioOcarina_OotmmSongConflicts(u8 songIndex) {
+    u16 blockMask = OotmmSongs_ScarecrowBlockMask();
+    u8 song;
+    u8 j;
+    u8 k;
+
+    if (blockMask == 0) {
+        return false;
+    }
+
+    for (song = 0; song < OOTMM_SONG_COUNT; song++) {
+        if (!(blockMask & (u16)(1 << (song + 1)))) {
+            continue;
+        }
+        for (j = 0; j < (9 - sOotmmSongButtons[song].numButtons); j++) {
+            for (k = 0; (k < sOotmmSongButtons[song].numButtons) && ((k + j) < 8) &&
+                        (sOotmmSongButtons[song].buttonIndex[k] == gOcarinaSongButtons[songIndex].buttonIndex[(k + j)]);
+                 k++) {
+                continue;
+            }
+
+            if (k == sOotmmSongButtons[song].numButtons) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 void AudioOcarina_SetRecordingSong(u8 isRecordingComplete) {
     u16 i;
     u16 i2;
@@ -3042,6 +3148,12 @@ void AudioOcarina_SetRecordingSong(u8 isRecordingComplete) {
                         }
                     }
                 }
+            }
+
+            if (AudioOcarina_OotmmSongConflicts(OCARINA_SONG_SCARECROW_SPAWN)) {
+                sRecordingState = OCARINA_RECORD_REJECTED;
+                sOcarinaSongNotes[OCARINA_SONG_SCARECROW_SPAWN][1].volume = 0xFF;
+                return;
             }
 
             // Counts how many times a note is repeated
@@ -3235,6 +3347,10 @@ s32 AudioOcarina_TerminaWallValidateNotes(u8 songIndex, u8 maxSongIndex) {
         }
     }
 
+    if (AudioOcarina_OotmmSongConflicts(songIndex)) {
+        return -1;
+    }
+
     // success: notes are accepted and used
     return 0;
 }
@@ -3252,9 +3368,12 @@ void AudioOcarina_TerminaWallGenerateNotes(void) {
     u8 i;
     u8 j;
 
+    // The wall may otherwise display an OoT song the player can learn and actually play.
+    s32 forceRandomNotes = OotmmSession_IsActive();
+
     do {
         i = 0;
-        if (sOcarinaWallCounter++ % 2) {
+        if (forceRandomNotes || (sOcarinaWallCounter++ % 2)) {
             j = 0;
 
             for (; i < 8; i++) {

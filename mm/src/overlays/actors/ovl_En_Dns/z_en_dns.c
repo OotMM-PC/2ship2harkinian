@@ -6,7 +6,17 @@
 
 #include "z_en_dns.h"
 
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmCustomItems.h"
+
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
+
+static s32 EnDns_OotmmWearingSkullMask(PlayState* play) {
+    Player* player = GET_PLAYER(play);
+
+    return OotmmSession_IsActive() && (player->transformation == PLAYER_FORM_HUMAN) &&
+           (OotmmCustomItems_EquippedMask() == OOTMM_MASK_SKULL);
+}
 
 void EnDns_Init(Actor* thisx, PlayState* play);
 void EnDns_Destroy(Actor* thisx, PlayState* play);
@@ -234,7 +244,9 @@ MsgScript* EnDns_GetMsgScript(EnDns* this, PlayState* play) {
 
     if (!CHECK_WEEKEVENTREG(WEEKEVENTREG_23_20)) {
         if (player->transformation != PLAYER_FORM_DEKU) {
-            return D_8092DCF0;
+            if (!EnDns_OotmmWearingSkullMask(play)) {
+                return D_8092DCF0;
+            }
         } else if (this->unk_2FC != 0) {
             return D_8092DD00;
         }
@@ -325,8 +337,8 @@ s32 func_8092CC68(PlayState* play) {
     s32 ret = false;
     s16 bgId;
 
-    if (!Play_InCsMode(play) && (player->actor.bgCheckFlags & BGCHECKFLAG_GROUND) &&
-        (player->transformation != PLAYER_FORM_DEKU)) {
+    if (!EnDns_OotmmWearingSkullMask(play) && !Play_InCsMode(play) &&
+        (player->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && (player->transformation != PLAYER_FORM_DEKU)) {
         bgId = player->actor.floorBgId;
         if (SurfaceType_GetSceneExitIndex(&play->colCtx, player->actor.floorPoly, bgId) != 4) {
             ret = true;

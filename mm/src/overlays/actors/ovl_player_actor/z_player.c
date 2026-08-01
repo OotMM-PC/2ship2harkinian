@@ -49,6 +49,15 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmSpinUpgrade.h"
+#include "2s2h/OotmmCustomItems.h"
+#include "2s2h/OotmmCustomItemsPlayer.h"
+#include "2s2h/OotmmCustomEquipment.h"
+#include "2s2h/OotmmSongsPlayer.h"
+#include "overlays/actors/ovl_Ootmm_Boomerang/z_ootmm_boomerang.h"
+#include "overlays/actors/ovl_Bg_Hakugin_Post/z_bg_hakugin_post.h"
+#include "overlays/actors/ovl_Bg_Hakugin_Switch/z_bg_hakugin_switch.h"
+#include "overlays/actors/ovl_Door_Ana/z_door_ana.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 void Player_Init(Actor* thisx, PlayState* play);
@@ -73,6 +82,16 @@ s32 func_8083A658(PlayState* play, Player* this);
 void Player_InitItemAction(PlayState* play, Player* this, PlayerItemAction itemAction);
 
 void Player_UseItem(PlayState* play, Player* this, ItemId item);
+s32 Player_OotmmTryUseSpell(PlayState* play, Player* this, PlayerItemAction itemAction);
+s32 Player_OotmmTryUseItem(PlayState* play, Player* this, PlayerItemAction itemAction);
+s32 Player_OotmmUsableWhileSwimming(Player* this, PlayerItemAction itemAction);
+s32 Player_OotmmIronBootsActive(Player* this);
+s32 Player_OotmmHoverBootsActive(Player* this);
+s32 Player_OotmmGoronTunicActive(Player* this);
+s32 Player_UpperAction_OotmmBoomerang(Player* this, PlayState* play);
+s32 Player_UpperAction_OotmmSlingshot(Player* this, PlayState* play);
+void Player_OotmmInitBoomerangIA(PlayState* play, Player* this);
+void Player_OotmmInitSlingshotIA(PlayState* play, Player* this);
 
 void func_80836988(Player* this, PlayState* play);
 
@@ -1793,6 +1812,15 @@ void Player_AnimSfx_PlayFloor(Player* this, u16 sfxId) {
 }
 
 u16 Player_GetFloorSfxByAge(Player* this, u16 sfxId) {
+    if (Player_OotmmIronBootsActive(this)) {
+        switch (sfxId) {
+            case NA_SE_PL_WALK_GROUND:
+            case NA_SE_PL_JUMP_GROUND:
+            case NA_SE_PL_LAND_GROUND:
+                return NA_SE_EV_IRON_DOOR_CLOSE;
+        }
+    }
+
     return sfxId + this->floorSfxOffset + this->ageProperties->surfaceSfxIdOffset;
 }
 
@@ -3106,6 +3134,11 @@ s8 sItemItemActions[] = {
 };
 
 PlayerItemAction Player_ItemToItemAction(Player* this, ItemId item) {
+    // 2S2H [OoTMM] Cross-game item ids sit past the end of sItemItemActions.
+    if (OotmmCustomItems_IsCustomItem(item)) {
+        return OotmmCustomItems_ItemAction(item);
+    }
+
     if (item >= ITEM_FD) {
         return PLAYER_IA_NONE;
     } else if (item == ITEM_FC) {
@@ -3481,6 +3514,37 @@ void Player_InitZoraBoomerangIA(PlayState* play, Player* this) {
     this->stateFlags1 |= PLAYER_STATE1_USING_ZORA_BOOMERANG;
 }
 
+// #region 2S2H [OoTMM] Init and upper-action routing for cross-game held items
+void Player_OotmmInitBoomerangIA(PlayState* play, Player* this) {
+    this->stateFlags1 |= PLAYER_STATE1_USING_ZORA_BOOMERANG;
+}
+
+void Player_OotmmInitSlingshotIA(PlayState* play, Player* this) {
+    this->stateFlags1 |= PLAYER_STATE1_8;
+    this->unk_B28 = -2;
+    this->unk_ACC = 0;
+}
+
+static void Player_OotmmRunItemActionInitFunc(PlayState* play, Player* this, PlayerItemAction itemAction) {
+    switch (itemAction) {
+        case PLAYER_IA_OOTMM_HAMMER:
+            sItemActionInitFuncs[PLAYER_IA_SWORD_TWO_HANDED](play, this);
+            break;
+        case PLAYER_IA_OOTMM_BOOMERANG:
+            Player_OotmmInitBoomerangIA(play, this);
+            break;
+        case PLAYER_IA_OOTMM_SLINGSHOT:
+            Player_OotmmInitSlingshotIA(play, this);
+            break;
+        default:
+            if ((itemAction >= PLAYER_IA_NONE) && (itemAction < PLAYER_IA_MAX)) {
+                sItemActionInitFuncs[itemAction](play, this);
+            }
+            break;
+    }
+}
+// #endregion
+
 void Player_InitItemAction(PlayState* play, Player* this, PlayerItemAction itemAction) {
     this->itemAction = this->heldItemAction = itemAction;
     this->modelGroup = this->nextModelGroup;
@@ -3491,7 +3555,8 @@ void Player_InitItemAction(PlayState* play, Player* this, PlayerItemAction itemA
     this->unk_B0C = 0.0f;
     this->unk_B28 = 0;
 
-    sItemActionInitFuncs[itemAction](play, this);
+    // 2S2H [OoTMM] Cross-game item actions sit past the end of sItemActionInitFuncs.
+    Player_OotmmRunItemActionInitFunc(play, this, itemAction);
     Player_SetModelGroup(this, this->modelGroup);
 }
 
@@ -3618,6 +3683,35 @@ PlayerAnimationHeader* D_8085CF78[] = {
     &gPlayerAnim_link_fighter_Lpower_kiru_side_walk,
 };
 
+// #region 2S2H [OoTMM] Megaton Hammer swing animations, imported from OoT's asset pack
+static const ALIGN_ASSET(2) char gOotmmAnimHammerHit[] = "__OTR__objects/ot_gameplay_keep/gPlayerAnim_link_hammer_hit";
+static const ALIGN_ASSET(2) char gOotmmAnimHammerHitEnd[] =
+    "__OTR__objects/ot_gameplay_keep/gPlayerAnim_link_hammer_hit_end";
+static const ALIGN_ASSET(2) char gOotmmAnimHammerHitEndR[] =
+    "__OTR__objects/ot_gameplay_keep/gPlayerAnim_link_hammer_hit_endR";
+static const ALIGN_ASSET(2) char gOotmmAnimHammerSideHit[] =
+    "__OTR__objects/ot_gameplay_keep/gPlayerAnim_link_hammer_side_hit";
+static const ALIGN_ASSET(2) char gOotmmAnimHammerSideHitEnd[] =
+    "__OTR__objects/ot_gameplay_keep/gPlayerAnim_link_hammer_side_hit_end";
+static const ALIGN_ASSET(2) char gOotmmAnimHammerSideHitEndR[] =
+    "__OTR__objects/ot_gameplay_keep/gPlayerAnim_link_hammer_side_hit_endR";
+
+static AttackAnimInfo sOotmmHammerAttackAnimInfo[2] = {
+    { (PlayerAnimationHeader*)gOotmmAnimHammerHit, (PlayerAnimationHeader*)gOotmmAnimHammerHitEnd,
+      (PlayerAnimationHeader*)gOotmmAnimHammerHitEndR, 3, 10 },
+    { (PlayerAnimationHeader*)gOotmmAnimHammerSideHit, (PlayerAnimationHeader*)gOotmmAnimHammerSideHitEnd,
+      (PlayerAnimationHeader*)gOotmmAnimHammerSideHitEndR, 2, 11 },
+};
+
+static AttackAnimInfo* Player_OotmmMeleeAttackAnimInfo(Player* this, PlayerMeleeWeaponAnimation meleeWeaponAnim) {
+    if ((this->heldItemAction == PLAYER_IA_OOTMM_HAMMER) && (meleeWeaponAnim < PLAYER_MWA_FLIPSLASH_START)) {
+        return (meleeWeaponAnim == PLAYER_MWA_RIGHT_SLASH_2H) ? &sOotmmHammerAttackAnimInfo[1]
+                                                              : &sOotmmHammerAttackAnimInfo[0];
+    }
+    return &sMeleeAttackAnimInfo[meleeWeaponAnim];
+}
+// #endregion
+
 u8 D_8085CF80[] = {
     PLAYER_MWA_SPIN_ATTACK_1H,
     PLAYER_MWA_SPIN_ATTACK_2H,
@@ -3656,6 +3750,23 @@ void Player_OverrideBlureColors(PlayState* play, Player* this, s32 colorType, s3
     blure1->elemDuration = elemDuration;
 }
 
+// #region 2S2H [OoTMM] Cross-game equipment state helpers
+s32 Player_OotmmIronBootsActive(Player* this) {
+    return (this->actor.id == ACTOR_PLAYER) && (this->transformation == PLAYER_FORM_HUMAN) &&
+           (OotmmCustomItems_EquippedBoots() == OOTMM_BOOTS_IRON);
+}
+
+s32 Player_OotmmHoverBootsActive(Player* this) {
+    return (this->actor.id == ACTOR_PLAYER) && (this->transformation == PLAYER_FORM_HUMAN) &&
+           (OotmmCustomItems_EquippedBoots() == OOTMM_BOOTS_HOVER);
+}
+
+s32 Player_OotmmGoronTunicActive(Player* this) {
+    return (this->actor.id == ACTOR_PLAYER) && (this->transformation == PLAYER_FORM_HUMAN) &&
+           (OotmmCustomItems_EquippedTunic() == OOTMM_TUNIC_GORON);
+}
+// #endregion
+
 void func_8082FA5C(PlayState* play, Player* this, PlayerMeleeWeaponState meleeWeaponState) {
     u16 voiceSfxId;
     u16 itemSfxId;
@@ -3675,8 +3786,10 @@ void func_8082FA5C(PlayState* play, Player* this, PlayerMeleeWeaponState meleeWe
                 if (this->unk_ADD >= 3) {
                     voiceSfxId = NA_SE_VO_LI_SWORD_L;
                 } else {
-                    itemSfxId = (this->heldItemAction == PLAYER_IA_SWORD_TWO_HANDED) ? NA_SE_IT_HAMMER_SWING
-                                                                                     : NA_SE_IT_SWORD_SWING;
+                    itemSfxId = ((this->heldItemAction == PLAYER_IA_SWORD_TWO_HANDED) ||
+                                 (this->heldItemAction == PLAYER_IA_OOTMM_HAMMER))
+                                    ? NA_SE_IT_HAMMER_SWING
+                                    : NA_SE_IT_SWORD_SWING;
                 }
             }
         }
@@ -4188,12 +4301,29 @@ void Player_FinishItemChange(PlayState* play, Player* this) {
     }
 }
 
+// 2S2H [OoTMM] sItemActionUpdateFuncs is PLAYER_IA_MAX wide; cross-game actions route here.
+static PlayerUpperActionFunc Player_OotmmItemActionUpdateFunc(Player* this) {
+    switch (this->heldItemAction) {
+        case PLAYER_IA_OOTMM_HAMMER:
+            return sItemActionUpdateFuncs[PLAYER_IA_SWORD_TWO_HANDED];
+        case PLAYER_IA_OOTMM_BOOMERANG:
+            return Player_UpperAction_OotmmBoomerang;
+        case PLAYER_IA_OOTMM_SLINGSHOT:
+            return Player_UpperAction_OotmmSlingshot;
+        default:
+            if ((this->heldItemAction >= PLAYER_IA_NONE) && (this->heldItemAction < PLAYER_IA_MAX)) {
+                return sItemActionUpdateFuncs[this->heldItemAction];
+            }
+            return sItemActionUpdateFuncs[PLAYER_IA_NONE];
+    }
+}
+
 void func_808309CC(PlayState* play, Player* this) {
     if (Player_UpperAction_ChangeHeldItem == this->upperActionFunc) {
         Player_FinishItemChange(play, this);
     }
 
-    Player_SetUpperAction(play, this, sItemActionUpdateFuncs[this->heldItemAction]);
+    Player_SetUpperAction(play, this, Player_OotmmItemActionUpdateFunc(this));
     this->unk_ACC = 0;
     this->idleType = PLAYER_IDLE_DEFAULT;
     Player_DetachHeldActor(play, this);
@@ -4632,7 +4762,10 @@ void Player_UseItem(PlayState* play, Player* this, ItemId item) {
          ((this->itemAction <= PLAYER_IA_MINUS1) &&
           ((Player_MeleeWeaponFromIA(itemAction) != PLAYER_MELEEWEAPON_NONE) || (itemAction == PLAYER_IA_NONE)))) &&
         ((itemAction == PLAYER_IA_NONE) || !(this->stateFlags1 & PLAYER_STATE1_8000000) ||
-         (GameInteractor_Should(VB_USE_ITEM_CONSIDER_ITEM_ACTION, itemAction == PLAYER_IA_MASK_ZORA, &itemAction)) ||
+         (GameInteractor_Should(VB_USE_ITEM_CONSIDER_ITEM_ACTION,
+                                (itemAction == PLAYER_IA_MASK_ZORA) ||
+                                    Player_OotmmUsableWhileSwimming(this, itemAction),
+                                &itemAction)) ||
          ((this->currentBoots >= PLAYER_BOOTS_ZORA_UNDERWATER) && (this->actor.bgCheckFlags & BGCHECKFLAG_GROUND)))) {
         s32 var_v1 = ((itemAction >= PLAYER_IA_MASK_MIN) && (itemAction <= PLAYER_IA_MASK_MAX) &&
                       (!GameInteractor_Should(VB_USE_ITEM_CONSIDER_LINK_HUMAN,
@@ -4642,6 +4775,13 @@ void Player_UseItem(PlayState* play, Player* this, ItemId item) {
         s32 sp58;
         f32 sp54;
         PlayerExplosive explosiveType;
+
+        if ((itemAction >= PLAYER_IA_MASK_MIN) && (itemAction <= PLAYER_IA_MASK_MAX)) {
+            OotmmCustomItems_OnNativeMaskUse(this, itemAction);
+        }
+        if (Player_OotmmTryUseItem(play, this, itemAction)) {
+            return;
+        }
 
         if (var_v1 || (CHECK_FLAG_ALL(this->actor.flags, ACTOR_FLAG_TALK) && (itemAction != PLAYER_IA_NONE)) ||
             (itemAction == PLAYER_IA_OCARINA) ||
@@ -5624,7 +5764,7 @@ s32 Player_CanSpinAttack(Player* this) {
     s8 temp2;
     s32 i;
 
-    if (this->heldItemAction == PLAYER_IA_DEKU_STICK) {
+    if ((this->heldItemAction == PLAYER_IA_DEKU_STICK) || (this->heldItemAction == PLAYER_IA_OOTMM_HAMMER)) {
         return false;
     }
 
@@ -5727,6 +5867,20 @@ PlayerMeleeWeaponAnimation func_808335F4(Player* this) {
             }
         }
 
+        if (this->heldItemAction == PLAYER_IA_OOTMM_HAMMER) {
+            static s8 sOotmmHammerAttackAnims[4] = {
+                PLAYER_MWA_FORWARD_SLASH_1H,
+                PLAYER_MWA_RIGHT_SLASH_1H,
+                PLAYER_MWA_FORWARD_SLASH_1H,
+                PLAYER_MWA_RIGHT_SLASH_1H,
+            };
+
+            meleeWeaponAnim =
+                sOotmmHammerAttackAnims[(controlStickDirection < 0) ? 0 : (controlStickDirection & 3)];
+            this->unk_ADD = 0;
+            this->stateFlags2 &= ~PLAYER_STATE2_40000000;
+        }
+
         if (Player_IsHoldingTwoHandedWeapon(this)) {
             meleeWeaponAnim++;
         }
@@ -5764,6 +5918,10 @@ void func_8083375C(Player* this, PlayerMeleeWeaponAnimation meleeWeaponAnim) {
         // Was Kafei originally intended to be able to punch?
         meleeWeaponAnim = PLAYER_MWA_GORON_PUNCH_LEFT;
         this->meleeWeaponAnimation = -1;
+    } else if (this->heldItemAction == PLAYER_IA_OOTMM_HAMMER) {
+        static MeleeWeaponDamageInfo sOotmmHammerDmgInfo = { DMG_GORON_PUNCH, 2, 4, 2, 4 };
+
+        dmgInfo = &sOotmmHammerDmgInfo;
     } else {
         //! @bug Quick Put Away Damage: Since 0 is also the "no weapon" value, producing a weapon quad without a weapon
         //! in hand, such as during Quick Put Away, produced a quad with the Goron punch properties, which does 0 damage
@@ -5803,7 +5961,7 @@ void func_80833864(PlayState* play, Player* this, PlayerMeleeWeaponAnimation mel
     }
 
     this->meleeWeaponAnimation = meleeWeaponAnim;
-    Player_Anim_PlayOnceAdjusted(play, this, sMeleeAttackAnimInfo[meleeWeaponAnim].unk_0);
+    Player_Anim_PlayOnceAdjusted(play, this, Player_OotmmMeleeAttackAnimInfo(this, meleeWeaponAnim)->unk_0);
     this->unk_ADC = this->skelAnime.animLength + 4.0f;
 
     if ((meleeWeaponAnim < PLAYER_MWA_FLIPSLASH_START) || (meleeWeaponAnim > PLAYER_MWA_ZORA_JUMPKICK_START)) {
@@ -6074,7 +6232,7 @@ s32 Player_UpdateBodyBurn(PlayState* play, Player* this) {
             func_80834140(play, this, &gPlayerAnim_link_derth_rebirth);
         }
     } else {
-        if (this->transformation == PLAYER_FORM_GORON) {
+        if ((this->transformation == PLAYER_FORM_GORON) || Player_OotmmGoronTunicActive(this)) {
             var_v1 = 20;
         } else {
             var_v1 = (s32)(this->speedXZ * 0.4f) + 1;
@@ -6285,6 +6443,16 @@ s32 func_80834600(Player* this, PlayState* play) {
              (this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && (this->actor.depthInWater < -30.0f))) {
             func_80834534(play, this);
         } else {
+            // 2S2H [OoTMM] The floor-type timer accumulates in func_808430E0 while on one floor type.
+            static u8 sOotmmFloorDamageDelay[2] = { 120, 60 };
+
+            if (Player_OotmmGoronTunicActive(this) && !var_a1 && !isSurfaceWallDamage && (sp58 >= 0) &&
+                (sp58 <= 1) && !(this->actor.depthInWater > 0.0f) &&
+                (this->floorTypeTimer < sOotmmFloorDamageDelay[sp58])) {
+                goto label;
+            }
+
+            this->floorTypeTimer = 0;
             this->actor.colChkInfo.damage = 4;
             func_80833B18(play, this, (var_v1_2 == BGCHECK_SCENE) ? 0 : 1, 4.0f, 5.0f,
                           var_a1 ? this->actor.wallYaw : this->actor.shape.rot.y, 20);
@@ -7650,6 +7818,12 @@ void func_8083827C(Player* this, PlayState* play) {
             return;
         }
 
+        if (Player_OotmmHoverBootsActive(this) && (this->hoverBootsTimer != 0)) {
+            this->actor.velocity.y = 1.0f;
+            sPrevFloorProperty = FLOOR_PROPERTY_9;
+            return;
+        }
+
         temp_t0 = BINANG_SUB(this->yaw, this->actor.shape.rot.y);
         Player_SetAction(play, this, Player_Action_25, 1);
         func_8082DD2C(play, this);
@@ -7918,6 +8092,620 @@ PlayerAnimationHeader* D_8085D1F8[] = {
     &gPlayerAnim_link_normal_take_out, // Hold up cutscene item; "this item doesn't work here"
 };
 
+// #region 2S2H [OoTMM] Ocarina of Time's three magic spells
+
+static AnimSfxEntry sOotmmSpellStartAnimSfx[] = {
+    ANIMSFX(ANIMSFX_TYPE_GENERAL, 20, NA_SE_PL_SKIP, CONTINUE),
+    ANIMSFX(ANIMSFX_TYPE_VOICE, 20, NA_SE_VO_LI_SWORD_N, CONTINUE),
+    ANIMSFX(ANIMSFX_TYPE_6, 26, NA_SE_NONE, STOP),
+};
+
+static AnimSfxEntry sOotmmSpellAnimSfx[OOTMM_MAGIC_SPELL_MAX][2] = {
+    {
+        ANIMSFX(ANIMSFX_TYPE_8, 20, NA_SE_NONE, CONTINUE),
+        ANIMSFX(ANIMSFX_TYPE_VOICE, 30, NA_SE_VO_LI_MAGIC_FROL, STOP),
+    },
+    {
+        ANIMSFX(ANIMSFX_TYPE_8, 20, NA_SE_NONE, CONTINUE),
+        ANIMSFX(ANIMSFX_TYPE_VOICE, 44, NA_SE_VO_LI_MAGIC_NALE, STOP),
+    },
+    {
+        ANIMSFX(ANIMSFX_TYPE_VOICE, 20, NA_SE_VO_LI_MAGIC_ATTACK, CONTINUE),
+        ANIMSFX(ANIMSFX_TYPE_GENERAL, 20, NA_SE_IT_SWORD_SWING_HARD, STOP),
+    },
+};
+
+// Vanilla OoT pairs the honoo animations with Nayru's Love and tamashii with Din's Fire.
+static PlayerAnimationHeader* sOotmmSpellFirstAnim[OOTMM_MAGIC_SPELL_MAX] = {
+    &gPlayerAnim_link_magic_kaze1,
+    &gPlayerAnim_link_magic_honoo1,
+    &gPlayerAnim_link_magic_tamashii1,
+};
+
+static PlayerAnimationHeader* sOotmmSpellSecondAnim[OOTMM_MAGIC_SPELL_MAX] = {
+    &gPlayerAnim_link_magic_kaze2,
+    &gPlayerAnim_link_magic_honoo2,
+    &gPlayerAnim_link_magic_tamashii2,
+};
+
+static PlayerAnimationHeader* sOotmmSpellThirdAnim[OOTMM_MAGIC_SPELL_MAX] = {
+    &gPlayerAnim_link_magic_kaze3,
+    &gPlayerAnim_link_magic_honoo3,
+    &gPlayerAnim_link_magic_tamashii3,
+};
+
+static u8 sOotmmSpellLoopTimer[OOTMM_MAGIC_SPELL_MAX] = { 70, 10, 10 };
+
+void Player_Action_OotmmCastSpell(Player* this, PlayState* play) {
+    if (PlayerAnimation_Update(play, &this->skelAnime)) {
+        if (this->av1.actionVar1 < 0) {
+            if ((this->itemAction == PLAYER_IA_OOTMM_SPELL_LOVE) ||
+                (gSaveContext.magicState == MAGIC_STATE_IDLE)) {
+                func_808369F4(this, play);
+                Player_StopCutscene(this);
+            }
+        } else {
+            if (this->av2.actionVar2 == 0) {
+                PlayerAnimation_PlayOnceSetSpeed(play, &this->skelAnime, sOotmmSpellFirstAnim[this->av1.actionVar1],
+                                                 0.83f);
+
+                if (OotmmCustomItems_SpawnMagicSpellActor(play, this, this->av1.actionVar1) != NULL) {
+                    this->stateFlags1 |= (PLAYER_STATE1_20000000 | PLAYER_STATE1_10000000);
+                    if ((this->av1.actionVar1 != OOTMM_MAGIC_SPELL_WIND) || !OotmmCustomItems_FaroresWindPlaced()) {
+                        gSaveContext.magicState = MAGIC_STATE_CONSUME_SETUP;
+                    }
+                } else {
+                    Magic_Reset(play);
+                }
+            } else {
+                PlayerAnimation_PlayLoopSetSpeed(play, &this->skelAnime, sOotmmSpellSecondAnim[this->av1.actionVar1],
+                                                 0.83f);
+                if (this->av1.actionVar1 == OOTMM_MAGIC_SPELL_WIND) {
+                    this->av2.actionVar2 = -10;
+                }
+            }
+
+            this->av2.actionVar2++;
+        }
+    } else if (this->av2.actionVar2 < 0) {
+        this->av2.actionVar2++;
+        if (this->av2.actionVar2 == 0) {
+            OotmmCustomItems_PlaceFaroresWind(play);
+            this->av2.actionVar2 = 2;
+        }
+    } else if (this->av1.actionVar1 >= 0) {
+        if (this->av2.actionVar2 == 0) {
+            Player_PlayAnimSfx(this, sOotmmSpellStartAnimSfx);
+        } else if (this->av2.actionVar2 == 1) {
+            Player_PlayAnimSfx(this, sOotmmSpellAnimSfx[this->av1.actionVar1]);
+            if ((this->av1.actionVar1 == OOTMM_MAGIC_SPELL_FIRE) &&
+                PlayerAnimation_OnFrame(&this->skelAnime, 30.0f)) {
+                this->stateFlags1 &= ~(PLAYER_STATE1_20000000 | PLAYER_STATE1_10000000);
+            }
+        } else if (sOotmmSpellLoopTimer[this->av1.actionVar1] < this->av2.actionVar2++) {
+            PlayerAnimation_PlayOnceSetSpeed(play, &this->skelAnime, sOotmmSpellThirdAnim[this->av1.actionVar1],
+                                             0.83f);
+            this->yaw = this->actor.shape.rot.y;
+            this->av1.actionVar1 = -1;
+        }
+    }
+
+    Player_DecelerateToZero(this);
+    func_8083249C(this);
+}
+
+void Player_OotmmCastSpell(PlayState* play, Player* this, s32 magicSpell) {
+    if (!Magic_Consume(play, OotmmCustomItems_MagicSpellCost(magicSpell), MAGIC_CONSUME_WAIT_PREVIEW)) {
+        return;
+    }
+
+    Player_SetAction_PreserveItemAction(play, this, Player_Action_OotmmCastSpell, 0);
+    this->av1.actionVar1 = magicSpell;
+    PlayerAnimation_PlayOnceSetSpeed(play, &this->skelAnime, &gPlayerAnim_link_magic_tame, 0.83f);
+    this->csId = CS_ID_GLOBAL_TALK;
+    func_8083249C(this);
+    this->stateFlags3 |= PLAYER_STATE3_FLYING_WITH_HOOKSHOT;
+}
+
+void Player_Action_OotmmFaroresWindText(Player* this, PlayState* play) {
+    this->stateFlags3 |= PLAYER_STATE3_FLYING_WITH_HOOKSHOT;
+
+    PlayerAnimation_Update(play, &this->skelAnime);
+    Player_UpdateUpperBody(this, play);
+
+    if (this->av2.actionVar2 == 0) {
+        OotmmCustomItems_StartFaroresWindPrompt();
+        this->av2.actionVar2 = 1;
+        return;
+    }
+
+    if ((play->msgCtx.msgMode == MSGMODE_TEXT_DONE) && Message_ShouldAdvance(play)) {
+        Audio_PlaySfx(NA_SE_SY_DECIDE);
+        Message_CloseTextbox(play);
+
+        if (play->msgCtx.choiceIndex == 0) {
+            OotmmCustomItems_WarpToFaroresWind(play);
+            return;
+        }
+
+        if (play->msgCtx.choiceIndex == 1) {
+            OotmmCustomItems_DispelFaroresWind();
+        }
+
+        func_8085B384(this, play);
+        Player_StopCutscene(this);
+    }
+}
+
+void Player_Action_OotmmFaroresWindSpawning(Player* this, PlayState* play) {
+    if ((this->av2.actionVar2 > 20) || (this->csAction != PLAYER_CSACTION_NONE)) {
+        this->actor.draw = Player_Draw;
+        this->actor.world.pos.y += 60.0f;
+        func_80833AA0(this, play);
+        return;
+    }
+
+    if (this->av2.actionVar2++ == 20) {
+        gSaveContext.respawn[RESPAWN_MODE_HUMAN].data++;
+        Audio_PlaySfx_AtPos(&gSaveContext.respawn[RESPAWN_MODE_HUMAN].pos, NA_SE_PL_MAGIC_WIND_WARP);
+    }
+}
+
+s32 Player_OotmmTryUseSpell(PlayState* play, Player* this, PlayerItemAction itemAction) {
+    s32 magicSpell = OotmmCustomItems_ActionToMagicSpell(itemAction);
+
+    if (!OotmmSession_IsActive() || (magicSpell == OOTMM_MAGIC_SPELL_NONE)) {
+        return false;
+    }
+
+    if (((magicSpell == OOTMM_MAGIC_SPELL_WIND) && OotmmCustomItems_FaroresWindPlaced()) ||
+        ((gSaveContext.save.saveInfo.playerData.magicLevel != 0) && (gSaveContext.magicState == MAGIC_STATE_IDLE) &&
+         (gSaveContext.save.saveInfo.playerData.magic >= OotmmCustomItems_MagicSpellCost(magicSpell)))) {
+        this->itemAction = itemAction;
+        this->unk_AA5 = PLAYER_UNKAA5_5;
+    } else {
+        Audio_PlaySfx(NA_SE_SY_ERROR);
+    }
+    return true;
+}
+
+s32 Player_OotmmUsableWhileSwimming(Player* this, PlayerItemAction itemAction) {
+    if (!OotmmSession_IsActive() || (this->transformation != PLAYER_FORM_HUMAN)) {
+        return false;
+    }
+    return (OotmmCustomItems_ActionToBoots(itemAction) != OOTMM_BOOTS_NONE) ||
+           (OotmmCustomItems_ActionToTunic(itemAction) != OOTMM_TUNIC_NONE);
+}
+
+s32 Player_OotmmTryUseItem(PlayState* play, Player* this, PlayerItemAction itemAction) {
+    s32 value;
+
+    if (!OotmmSession_IsActive()) {
+        return false;
+    }
+
+    if (Player_OotmmTryUseSpell(play, this, itemAction)) {
+        return true;
+    }
+
+    value = OotmmCustomItems_ActionToBoots(itemAction);
+    if (value != OOTMM_BOOTS_NONE) {
+        if (this->transformation == PLAYER_FORM_HUMAN) {
+            if (OotmmCustomItems_EquippedBoots() == value) {
+                value = OOTMM_BOOTS_NONE;
+            }
+            OotmmCustomItems_SetEquippedBoots(value);
+            if (value == OOTMM_BOOTS_NONE) {
+                this->currentBoots = PLAYER_BOOTS_HYLIAN;
+            }
+            func_80123140(play, this);
+            Player_PlaySfx(this, NA_SE_PL_CHANGE_ARMS);
+        }
+        return true;
+    }
+
+    value = OotmmCustomItems_ActionToTunic(itemAction);
+    if (value != OOTMM_TUNIC_NONE) {
+        if (this->transformation == PLAYER_FORM_HUMAN) {
+            if (OotmmCustomItems_EquippedTunic() == value) {
+                value = OOTMM_TUNIC_NONE;
+            }
+            OotmmCustomItems_SetEquippedTunic(value);
+            Player_PlaySfx(this, NA_SE_PL_CHANGE_ARMS);
+        }
+        return true;
+    }
+
+    value = OotmmCustomItems_ActionToMask(itemAction);
+    if (value != OOTMM_MASK_NONE) {
+        if (this->transformation == PLAYER_FORM_HUMAN) {
+            if (OotmmCustomItems_EquippedMask() == value) {
+                value = OOTMM_MASK_NONE;
+            }
+            OotmmCustomItems_SetEquippedMask(value);
+            gSaveContext.save.equippedMask = PLAYER_MASK_NONE;
+            if (value == OOTMM_MASK_NONE) {
+                if (this->currentMask == PLAYER_MASK_GIBDO) {
+                    this->currentMask = PLAYER_MASK_NONE;
+                }
+            } else {
+                this->currentMask = PLAYER_MASK_NONE;
+            }
+            Player_PlaySfx(this, NA_SE_PL_CHANGE_ARMS);
+        } else {
+            Audio_PlaySfx(NA_SE_SY_ERROR);
+        }
+        return true;
+    }
+
+    if ((itemAction == PLAYER_IA_OOTMM_BOOMERANG) || (itemAction == PLAYER_IA_OOTMM_SLINGSHOT)) {
+        if (this->transformation == PLAYER_FORM_HUMAN) {
+            return false;
+        }
+        Audio_PlaySfx(NA_SE_SY_ERROR);
+        return true;
+    }
+
+    return false;
+}
+
+// #region 2S2H [OoTMM] Human boomerang, from upstream's boomerang.c
+static const ALIGN_ASSET(2) char gOotmmAnimBoomCatch[] = "__OTR__objects/ot_gameplay_keep/gPlayerAnim_link_boom_catch";
+static const ALIGN_ASSET(2) char gOotmmAnimBoomThrowR[] =
+    "__OTR__objects/ot_gameplay_keep/gPlayerAnim_link_boom_throwR";
+static const ALIGN_ASSET(2) char gOotmmAnimBoomThrowL[] =
+    "__OTR__objects/ot_gameplay_keep/gPlayerAnim_link_boom_throwL";
+static const ALIGN_ASSET(2) char gOotmmAnimBoomWait2WaitR[] =
+    "__OTR__objects/ot_gameplay_keep/gPlayerAnim_link_boom_throw_wait2waitR";
+
+static s32 Player_OotmmBoomerang_WaitForReturn(Player* this, PlayState* play);
+static s32 Player_OotmmBoomerang_StartReadyAnimation(Player* this, PlayState* play);
+static s32 Player_OotmmBoomerang_HoldReadyUntilRelease(Player* this, PlayState* play);
+static s32 Player_OotmmBoomerang_ThrowOnRelease(Player* this, PlayState* play);
+
+static s32 Player_OotmmBoomerang_SetupReady(Player* this, PlayState* play) {
+    Player_SetUpperAction(play, this, Player_OotmmBoomerang_StartReadyAnimation);
+
+    this->stateFlags1 |= PLAYER_STATE1_USING_ZORA_BOOMERANG;
+    this->unk_ACC = 10;
+
+    PlayerAnimation_PlayOnce(play, &this->skelAnimeUpper, (PlayerAnimationHeader*)gOotmmAnimBoomWait2WaitR);
+
+    if (this->stateFlags1 & PLAYER_STATE1_800000) {
+        Player_Anim_PlayLoop(play, this, &gPlayerAnim_link_uma_anim_walk);
+    } else if ((this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && !Player_UpdateHostileLockOn(this)) {
+        Player_Anim_PlayLoop(play, this, D_8085BE84[PLAYER_ANIMGROUP_wait][this->modelAnimType]);
+    }
+
+    return true;
+}
+
+static s32 Player_OotmmBoomerang_TryStart(Player* this, PlayState* play) {
+    if ((this->doorType == PLAYER_DOORTYPE_NONE) && !(this->stateFlags1 & PLAYER_STATE1_ZORA_BOOMERANG_THROWN)) {
+        if (sPlayerUseHeldItem || func_80830F9C(play)) {
+            if (Player_OotmmBoomerang_SetupReady(this, play)) {
+                return func_80831010(this, play);
+            }
+        }
+    }
+
+    return false;
+}
+
+s32 Player_UpperAction_OotmmBoomerang(Player* this, PlayState* play) {
+    if (func_80830B88(play, this)) {
+        return true;
+    }
+
+    if (this->stateFlags1 & PLAYER_STATE1_ZORA_BOOMERANG_THROWN) {
+        Player_SetUpperAction(play, this, Player_OotmmBoomerang_WaitForReturn);
+        return true;
+    }
+
+    if (Player_OotmmBoomerang_TryStart(this, play)) {
+        return true;
+    }
+
+    return false;
+}
+
+static s32 Player_OotmmBoomerang_PlayCatchAnimation(Player* this, PlayState* play) {
+    if (!Player_UpperAction_OotmmBoomerang(this, play) && PlayerAnimation_Update(play, &this->skelAnimeUpper)) {
+        Player_SetUpperAction(play, this, Player_UpperAction_OotmmBoomerang);
+    }
+
+    return true;
+}
+
+static s32 Player_OotmmBoomerang_WaitForReturn(Player* this, PlayState* play) {
+    if (func_80830B88(play, this)) {
+        return true;
+    }
+
+    if (!(this->stateFlags1 & PLAYER_STATE1_ZORA_BOOMERANG_THROWN)) {
+        Player_SetUpperAction(play, this, Player_OotmmBoomerang_PlayCatchAnimation);
+        PlayerAnimation_PlayOnce(play, &this->skelAnimeUpper, (PlayerAnimationHeader*)gOotmmAnimBoomCatch);
+        Player_PlaySfx(this, NA_SE_PL_CATCH_BOOMERANG);
+        Player_AnimSfx_PlayVoice(this, NA_SE_VO_LI_SWORD_N);
+        return true;
+    }
+
+    return false;
+}
+
+static s32 Player_OotmmBoomerang_ThrowOnRelease(Player* this, PlayState* play) {
+    if (PlayerAnimation_Update(play, &this->skelAnimeUpper)) {
+        Player_SetUpperAction(play, this, Player_OotmmBoomerang_WaitForReturn);
+        this->unk_ACC = 0;
+        this->stateFlags1 &= ~PLAYER_STATE1_USING_ZORA_BOOMERANG;
+    } else if (PlayerAnimation_OnFrame(&this->skelAnimeUpper, 6.0f)) {
+        OotmmBoomerang* boomerang;
+        f32 posX = (Math_SinS(this->actor.shape.rot.y) * 10.0f) + this->actor.world.pos.x;
+        f32 posZ = (Math_CosS(this->actor.shape.rot.y) * 10.0f) + this->actor.world.pos.z;
+        s32 yaw = (this->focusActor != NULL) ? this->actor.shape.rot.y + 14000 : this->actor.shape.rot.y;
+
+        this->stateFlags1 |= PLAYER_STATE1_ZORA_BOOMERANG_THROWN;
+
+        boomerang = (OotmmBoomerang*)Actor_Spawn(&play->actorCtx, play, ACTOR_OOTMM_BOOMERANG, posX,
+                                                 this->actor.world.pos.y + 30.0f, posZ, this->actor.focus.rot.x,
+                                                 yaw, 0, 0);
+
+        if (boomerang != NULL) {
+            boomerang->moveTo = this->focusActor;
+            boomerang->returnTimer = 20;
+
+            this->zoraBoomerangActor = &boomerang->actor;
+
+            if (!Player_CheckHostileLockOn(this)) {
+                Player_SetParallel(this);
+            }
+
+            this->unk_D57 = 4;
+
+            Player_PlaySfx(this, NA_SE_IT_BOOMERANG_THROW);
+            Player_AnimSfx_PlayVoice(this, NA_SE_VO_LI_SWORD_N);
+        } else {
+            this->stateFlags1 &= ~PLAYER_STATE1_ZORA_BOOMERANG_THROWN;
+        }
+    }
+
+    return true;
+}
+
+static s32 Player_OotmmBoomerang_HoldReadyUntilRelease(Player* this, PlayState* play) {
+    PlayerAnimation_Update(play, &this->skelAnimeUpper);
+    func_80831010(this, play);
+
+    if (!sPlayerHeldItemButtonIsHeldDown) {
+        Player_SetUpperAction(play, this, Player_OotmmBoomerang_ThrowOnRelease);
+        PlayerAnimation_PlayOnce(play, &this->skelAnimeUpper,
+                                 (this->unk_B08 < 0.5f) ? (PlayerAnimationHeader*)gOotmmAnimBoomThrowR
+                                                        : (PlayerAnimationHeader*)gOotmmAnimBoomThrowL);
+    }
+
+    return true;
+}
+
+static s32 Player_OotmmBoomerang_StartReadyAnimation(Player* this, PlayState* play) {
+    if (PlayerAnimation_Update(play, &this->skelAnimeUpper)) {
+        Player_SetUpperAction(play, this, Player_OotmmBoomerang_HoldReadyUntilRelease);
+        PlayerAnimation_PlayLoop(play, &this->skelAnimeUpper, &gPlayerAnim_link_boom_throw_waitR);
+    }
+
+    func_80831010(this, play);
+
+    return true;
+}
+// #endregion
+
+// #region 2S2H [OoTMM] Human slingshot, from upstream's slingshot.c
+static s32 Player_OotmmSlingshot_UpdateDraw(Player* this, PlayState* play);
+static s32 Player_OotmmSlingshot_AimReady(Player* this, PlayState* play);
+static s32 Player_OotmmSlingshot_EndShot(Player* this, PlayState* play);
+
+static s32 Player_OotmmSlingshot_IsCurrentHeldItem(Player* this) {
+    return (this->heldItemAction == PLAYER_IA_OOTMM_SLINGSHOT) && (this->itemAction == PLAYER_IA_OOTMM_SLINGSHOT);
+}
+
+static s32 Player_OotmmSlingshot_StartShot(Player* this, PlayState* play) {
+    Player_SetUpperAction(play, this, Player_OotmmSlingshot_UpdateDraw);
+
+    this->stateFlags3 |= PLAYER_STATE3_40;
+    this->unk_ACC = 14;
+
+    if (this->unk_B28 >= 0) {
+        Player_PlaySfx(this, NA_SE_IT_SLING_DRAW);
+
+        if (OotmmCustomItems_SlingshotAmmo() > 0) {
+            this->heldActor =
+                Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_OOTMM_SLINGSHOT_SEED,
+                                   this->actor.world.pos.x, this->actor.world.pos.y, this->actor.world.pos.z, 0,
+                                   this->actor.shape.rot.y, 0, 0);
+        }
+    }
+
+    return true;
+}
+
+static s32 Player_OotmmSlingshot_StartReady(Player* this, PlayState* play) {
+    if (!Player_OotmmSlingshot_StartShot(this, play)) {
+        return false;
+    }
+
+    PlayerAnimation_PlayOnce(play, &this->skelAnimeUpper, &gPlayerAnim_link_bow_bow_ready);
+
+    if (this->stateFlags1 & PLAYER_STATE1_800000) {
+        Player_Anim_PlayLoop(play, this, &gPlayerAnim_link_uma_anim_walk);
+    } else if ((this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && !Player_UpdateHostileLockOn(this)) {
+        Player_Anim_PlayLoop(play, this, D_8085BE84[PLAYER_ANIMGROUP_wait][this->modelAnimType]);
+    }
+
+    return true;
+}
+
+static s32 Player_OotmmSlingshot_CheckReadyOrIdle(Player* this, PlayState* play) {
+    if ((this->doorType == PLAYER_DOORTYPE_NONE) && !(this->stateFlags1 & PLAYER_STATE1_ZORA_BOOMERANG_THROWN)) {
+        if (sPlayerUseHeldItem && Player_OotmmSlingshot_IsCurrentHeldItem(this)) {
+            if (Player_OotmmSlingshot_StartReady(this, play)) {
+                return func_80831010(this, play);
+            }
+        }
+    }
+
+    return false;
+}
+
+static s32 Player_OotmmSlingshot_FireHeldSeed(PlayState* play, Player* this) {
+    if (this->heldActor != NULL) {
+        if (OotmmCustomItems_SlingshotAmmo() > 0) {
+            OotmmCustomItems_SetSlingshotAmmo(OotmmCustomItems_SlingshotAmmo() - 1);
+        }
+
+        Player_RequestRumble(play, this, 150, 10, 150, SQ(0));
+
+        this->unk_D57 = 4;
+
+        this->heldActor->parent = NULL;
+        this->actor.child = NULL;
+        this->heldActor = NULL;
+
+        return true;
+    }
+
+    return false;
+}
+
+static s32 Player_OotmmSlingshot_UpdateDraw(Player* this, PlayState* play) {
+    Math_ScaledStepToS(&this->upperLimbRot.z, 0x4B0, 0x190);
+    this->unk_AA6_rotFlags |= UNKAA6_ROT_FOCUS_Z;
+
+    if ((this->unk_ACE == 0) && (Player_CheckForIdleAnim(this) == IDLE_ANIM_NONE) &&
+        (BEN_ANIM_EQUAL(this->skelAnime.animation, gPlayerAnim_link_bow_side_walk))) {
+        PlayerAnimation_PlayOnce(play, &this->skelAnimeUpper, &gPlayerAnim_link_bow_walk2ready);
+        this->unk_ACE = -1;
+    } else if (PlayerAnimation_Update(play, &this->skelAnimeUpper)) {
+        PlayerAnimation_PlayLoop(play, &this->skelAnimeUpper, &gPlayerAnim_link_bow_bow_wait);
+        this->unk_ACE = 1;
+    } else if (this->unk_ACE == 1) {
+        this->unk_ACE = 2;
+    }
+
+    if (this->unk_ACC >= 0xB) {
+        this->unk_ACC--;
+    }
+
+    func_80831010(this, play);
+
+    if ((this->unk_ACE > 0) &&
+        ((this->unk_B28 < 0) ||
+         !(sPlayerHeldItemButtonIsHeldDown && Player_OotmmSlingshot_IsCurrentHeldItem(this)))) {
+        Player_SetUpperAction(play, this, Player_OotmmSlingshot_AimReady);
+
+        if (this->unk_B28 >= 0) {
+            if (!Player_OotmmSlingshot_FireHeldSeed(play, this)) {
+                Player_PlaySfx(this, NA_SE_IT_SLING_FLICK);
+            }
+        }
+
+        this->unk_ACC = 0xA;
+        Player_DecelerateToZero(this);
+    } else {
+        this->stateFlags3 |= PLAYER_STATE3_40;
+    }
+
+    return true;
+}
+
+static s32 Player_OotmmSlingshot_AimReady(Player* this, PlayState* play) {
+    s32 animFinished = PlayerAnimation_Update(play, &this->skelAnimeUpper);
+
+    if (!func_80830B88(play, this) &&
+        (((this->unk_B28 < 0) && sPlayerHeldItemButtonIsHeldDown && Player_OotmmSlingshot_IsCurrentHeldItem(this)) ||
+         ((animFinished || (this->transformation != PLAYER_FORM_DEKU)) && sPlayerUseHeldItem &&
+          Player_OotmmSlingshot_IsCurrentHeldItem(this)))) {
+        this->unk_B28 = ABS_ALT(this->unk_B28);
+
+        if (Player_OotmmSlingshot_StartShot(this, play)) {
+            PlayerAnimation_PlayOnce(play, &this->skelAnimeUpper, &gPlayerAnim_link_bow_bow_shoot_next);
+        }
+    } else {
+        if (this->unk_ACC != 0) {
+            this->unk_ACC--;
+        }
+
+        if (Player_IsZTargeting(this) || (this->unk_AA5 != PLAYER_UNKAA5_0) ||
+            (this->stateFlags1 & PLAYER_STATE1_20)) {
+            if (this->unk_ACC == 0) {
+                this->unk_ACC++;
+            }
+
+            return true;
+        }
+
+        Player_SetUpperAction(play, this, Player_OotmmSlingshot_EndShot);
+        PlayerAnimation_PlayOnce(play, &this->skelAnimeUpper, &gPlayerAnim_link_bow_bow_shoot_end);
+        this->unk_ACC = 0;
+    }
+
+    return true;
+}
+
+static s32 Player_OotmmSlingshot_EndShot(Player* this, PlayState* play) {
+    if (!(this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) || PlayerAnimation_Update(play, &this->skelAnimeUpper)) {
+        Player_SetUpperAction(play, this, Player_UpperAction_OotmmSlingshot);
+    }
+
+    return true;
+}
+
+s32 Player_UpperAction_OotmmSlingshot(Player* this, PlayState* play) {
+    if (this->unk_B28 >= 0) {
+        this->unk_B28 = -this->unk_B28;
+    }
+
+    if (!func_80830B88(play, this) && !Player_OotmmSlingshot_CheckReadyOrIdle(this, play)) {
+        return false;
+    }
+
+    return true;
+}
+// #endregion
+
+s32 Player_OotmmStartSpell(PlayState* play, Player* this) {
+    s32 magicSpell = OotmmCustomItems_ActionToMagicSpell(this->itemAction);
+
+    if (magicSpell == OOTMM_MAGIC_SPELL_NONE) {
+        return false;
+    }
+
+    if ((magicSpell != OOTMM_MAGIC_SPELL_WIND) || !OotmmCustomItems_FaroresWindPlaced()) {
+        Player_OotmmCastSpell(play, this, magicSpell);
+    } else {
+        Player_SetAction(play, this, Player_Action_OotmmFaroresWindText, 1);
+        this->stateFlags1 |= (PLAYER_STATE1_20000000 | PLAYER_STATE1_10000000);
+        Player_Anim_PlayOnce(play, this, Player_GetIdleAnim(this));
+        this->csId = CS_ID_GLOBAL_TALK;
+        func_8083249C(this);
+    }
+
+    func_8082DAD4(this);
+    return true;
+}
+
+void Player_OotmmInitFaroresWindRespawn(PlayState* play, Player* this) {
+    gSaveContext.respawnFlag = 0;
+    this->actor.draw = NULL;
+    Player_SetAction(play, this, Player_Action_OotmmFaroresWindSpawning, 0);
+    this->stateFlags1 |= PLAYER_STATE1_20000000;
+}
+
+// #endregion
+
+static s32 Player_OotmmIsRutoLetterExchange(Player* this) {
+    return OotmmSession_IsActive() && (this->exchangeItemAction == PLAYER_IA_OOTMM_BOTTLE_RUTO_LETTER) &&
+           OotmmCustomItems_Owned(ITEM_OOTMM_RUTO_LETTER);
+}
+
 s32 Player_ActionHandler_13(Player* this, PlayState* play) {
     PlayerBottle bottleAction;
 
@@ -7931,6 +8719,9 @@ s32 Player_ActionHandler_13(Player* this, PlayState* play) {
         }
         if (!Player_StartCsAction(play, this)) {
             if (this->unk_AA5 == PLAYER_UNKAA5_5) {
+                if (Player_OotmmStartSpell(play, this)) {
+                    return true;
+                }
                 if ((this->itemAction >= PLAYER_IA_MASK_MIN) && (this->itemAction <= PLAYER_IA_MASK_MAX)) {
                     PlayerMask maskId = GET_MASK_FROM_IA(this->itemAction);
 
@@ -8017,7 +8808,12 @@ s32 Player_ActionHandler_13(Player* this, PlayState* play) {
                     this->actor.flags |= ACTOR_FLAG_TALK;
                     this->exchangeItemAction = this->itemAction;
                     if (this->av1.actionVar1 >= 0) {
-                        Player_Anim_PlayOnce(play, this, D_8085D1F8[this->av1.actionVar1]);
+                        if (Player_OotmmIsRutoLetterExchange(this)) {
+                            this->csId = play->playerCsIds[PLAYER_CS_ID_ITEM_BOTTLE];
+                            Player_Anim_PlayOnce(play, this, &gPlayerAnim_link_bottle_read);
+                        } else {
+                            Player_Anim_PlayOnce(play, this, D_8085D1F8[this->av1.actionVar1]);
+                        }
                     }
                     func_8082DAD4(this);
                     return true;
@@ -9597,7 +10393,8 @@ s32 Player_ActionHandler_2(Player* this, PlayState* play) {
                         func_80838830(this, giEntry->objectId);
 
                         if (!(this->stateFlags2 & PLAYER_STATE2_400) ||
-                            (this->currentBoots == PLAYER_BOOTS_ZORA_UNDERWATER)) {
+                            (this->currentBoots == PLAYER_BOOTS_ZORA_UNDERWATER) ||
+                            (Player_OotmmIronBootsActive(this) && (this->currentBoots == PLAYER_BOOTS_GORON))) {
                             Player_StopCutscene(this);
                             Player_SetupWaitForPutAwayWithCs(play, this, func_80837C78,
                                                              play->playerCsIds[PLAYER_CS_ID_ITEM_GET]);
@@ -10153,14 +10950,20 @@ void func_8083EA44(Player* this, f32 arg1) {
         arg1 = 7.25f;
     }
 
-    sp24 = func_8083E9C4(this->unk_B38, arg1, 29.0f, 10.0f);
+    if (Player_OotmmHoverBootsActive(this) && !(this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) &&
+        (this->hoverBootsTimer != 0)) {
+        Actor_PlaySfx_FlaggedCentered1(&this->actor, NA_SE_PL_HOBBERBOOTS_LV - SFX_FLAG);
+        sp24 = false;
+    } else {
+        sp24 = func_8083E9C4(this->unk_B38, arg1, 29.0f, 10.0f);
 
-    if (sp24 || func_8083E9C4(this->unk_B38, arg1, 29.0f, 24.0f)) {
-        Player_AnimSfx_PlayFloorWalk(this, this->speedXZ);
-        if (this->speedXZ > 4.0f) {
-            this->stateFlags2 |= PLAYER_STATE2_8;
+        if (sp24 || func_8083E9C4(this->unk_B38, arg1, 29.0f, 24.0f)) {
+            Player_AnimSfx_PlayFloorWalk(this, this->speedXZ);
+            if (this->speedXZ > 4.0f) {
+                this->stateFlags2 |= PLAYER_STATE2_8;
+            }
+            this->actor.shape.unk_17 = sp24 ? 1 : 2;
         }
-        this->actor.shape.unk_17 = sp24 ? 1 : 2;
     }
 
     this->unk_B38 += arg1;
@@ -10663,6 +11466,85 @@ void func_808400CC(PlayState* play, Player* this) {
     func_80840094(play, this);
 }
 
+// #region 2S2H [OoTMM] Megaton Hammer world interactions, from upstream's Player.c
+extern BgHakuginPostUnkStruct D_80A9E028;
+
+// The posts check facing before reacting, so force-hitting every collider is safe.
+static void Player_OotmmHammerBonkHakuginPost(void) {
+    ColliderCylinder* collider;
+    s32 i;
+
+    for (i = 0; i < D_80A9E028.count; i++) {
+        collider = D_80A9E028.unk_0000[i].collider;
+        if (collider != NULL) {
+            collider->base.acFlags |= AC_HIT;
+        }
+    }
+}
+
+static Actor* Player_OotmmFindGrottoNearPos(PlayState* play, Vec3f* refPos, f32 distanceXZ, f32 distanceY) {
+    Actor* actor = play->actorCtx.actorLists[ACTORCAT_ITEMACTION].first;
+
+    while (actor != NULL) {
+        if ((actor->id == ACTOR_DOOR_ANA) &&
+            (Math_Vec3f_DistXZ(refPos, &actor->world.pos) <= distanceXZ) &&
+            (fabsf(refPos->y - actor->world.pos.y) <= distanceY)) {
+            return actor;
+        }
+        actor = actor->next;
+    }
+
+    return NULL;
+}
+
+static void Player_OotmmHammerShockwaveCheck(PlayState* play, Player* this) {
+    if (!PlayerAnimation_OnFrame(&this->skelAnime, this->skelAnime.endFrame) &&
+        (this->heldItemAction == PLAYER_IA_OOTMM_HAMMER)) {
+        if ((this->meleeWeaponAnimation == PLAYER_MWA_FORWARD_SLASH_2H) ||
+            (this->meleeWeaponAnimation == PLAYER_MWA_JUMPSLASH_FINISH)) {
+            static Vec3f sShockwaveOffset = { 0.0f, 40.0f, 45.0f };
+            static Vec3f sShockwaveZeroVec = { 0.0f, 0.0f, 0.0f };
+            Actor* nearbyGrotto;
+            Vec3f shockwavePos;
+            f32 heightDiff;
+            CollisionPoly* poly;
+            s32 bgId;
+
+            shockwavePos.y = func_80835CD8(play, this, &sShockwaveOffset, &shockwavePos, &poly, &bgId);
+            heightDiff = this->actor.world.pos.y - shockwavePos.y;
+
+            Math_ScaledStepToS(&this->actor.focus.rot.x, Math_Atan2S_XY(45.0f, heightDiff), 800);
+            func_80832754(this, true);
+
+            if ((((this->meleeWeaponAnimation == PLAYER_MWA_FORWARD_SLASH_2H) &&
+                  PlayerAnimation_OnFrame(&this->skelAnime, 7.0f)) ||
+                 ((this->meleeWeaponAnimation == PLAYER_MWA_JUMPSLASH_FINISH) &&
+                  PlayerAnimation_OnFrame(&this->skelAnime, 2.0f))) &&
+                (heightDiff > -40.0f) && (heightDiff < 40.0f)) {
+                Player_RequestQuakeAndRumble(play, this, NA_SE_IT_HAMMER_HIT);
+                EffectSsBlast_SpawnWhiteShockwave(play, &shockwavePos, &sShockwaveZeroVec, &sShockwaveZeroVec);
+                Actor_SetPlayerImpact(play, PLAYER_IMPACT_GORON_GROUND_POUND, 2, 100.0f, &this->actor.world.pos);
+                play->actorCtx.unk2 = 4;
+
+                if (bgId != BGCHECK_SCENE) {
+                    DynaPolyActor* dynaActor = DynaPoly_GetActor(&play->colCtx, bgId);
+
+                    if ((dynaActor != NULL) && (dynaActor->actor.id == ACTOR_BG_HAKUGIN_SWITCH)) {
+                        ((BgHakuginSwitch*)dynaActor)->collider.base.acFlags |= AC_HIT;
+                    }
+                }
+
+                // Open bomb grottos, which only check their collider while closed.
+                nearbyGrotto = Player_OotmmFindGrottoNearPos(play, &shockwavePos, 50.0f, 10.0f);
+                if ((nearbyGrotto != NULL) && (DOORANA_GET_TYPE(nearbyGrotto) == DOORANA_TYPE_HIDDEN_BOMB)) {
+                    ((DoorAna*)nearbyGrotto)->bombCollider.base.acFlags |= AC_HIT;
+                }
+            }
+        }
+    }
+}
+// #endregion
+
 s32 func_808401F4(PlayState* play, Player* this) {
     if (this->meleeWeaponState >= PLAYER_MELEE_WEAPON_STATE_1) {
         s32 temp_v0_3;
@@ -10699,7 +11581,8 @@ s32 func_808401F4(PlayState* play, Player* this) {
                             if (!SurfaceType_IsIgnoredByEntities(&play->colCtx, poly, bgId) &&
                                 (SurfaceType_GetFloorType(&play->colCtx, poly, bgId) != FLOOR_TYPE_6) &&
                                 !func_800B90AC(play, &this->actor, poly, bgId, &pos)) {
-                                if (this->transformation == PLAYER_FORM_GORON) {
+                                if ((this->transformation == PLAYER_FORM_GORON) ||
+                                    (this->heldItemAction == PLAYER_IA_OOTMM_HAMMER)) {
                                     MtxF sp64;
                                     Vec3s actorRot;
                                     DynaPolyActor* temp_v0;
@@ -10715,14 +11598,25 @@ s32 func_808401F4(PlayState* play, Player* this) {
                                                     actorRot.x, actorRot.y, actorRot.z, 500);
                                     }
 
+                                    if (this->heldItemAction == PLAYER_IA_OOTMM_HAMMER) {
+                                        Actor_SetPlayerImpact(play, PLAYER_IMPACT_GORON_GROUND_POUND, 2, 100.0f,
+                                                              &this->actor.world.pos);
+                                    }
+
                                     if (bgId != BGCHECK_SCENE) {
                                         temp_v0 = DynaPoly_GetActor(&play->colCtx, bgId);
 
-                                        if (((this->meleeWeaponQuads[0].base.atFlags & AT_HIT) &&
-                                             (&temp_v0->actor == this->meleeWeaponQuads[0].base.at)) ||
-                                            ((this->meleeWeaponQuads[1].base.atFlags & AT_HIT) &&
-                                             (&temp_v0->actor == this->meleeWeaponQuads[1].base.at))) {
-                                            return false;
+                                        if (this->heldItemAction != PLAYER_IA_OOTMM_HAMMER) {
+                                            if (((this->meleeWeaponQuads[0].base.atFlags & AT_HIT) &&
+                                                 (&temp_v0->actor == this->meleeWeaponQuads[0].base.at)) ||
+                                                ((this->meleeWeaponQuads[1].base.atFlags & AT_HIT) &&
+                                                 (&temp_v0->actor == this->meleeWeaponQuads[1].base.at))) {
+                                                return false;
+                                            }
+                                        } else if (temp_v0 != NULL) {
+                                            if (temp_v0->actor.id == ACTOR_BG_HAKUGIN_POST) {
+                                                Player_OotmmHammerBonkHakuginPost();
+                                            }
                                         }
                                     }
 
@@ -10965,7 +11859,7 @@ void func_80840EC0(Player* this, PlayState* play) {
 
 // Spin attack size
 void func_80840F34(Player* this) {
-    Math_StepToF(&this->unk_B08, CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_GREAT_SPIN_ATTACK) ? 1.0f : 0.5f, 0.02f);
+    Math_StepToF(&this->unk_B08, OotmmSpinUpgrade_ChargeLimit(), 0.02f);
 }
 
 s32 func_80840F90(PlayState* play, Player* this, CsCmdActorCue* cue, f32 arg3, s16 arg4, s32 arg5) {
@@ -11509,6 +12403,12 @@ void Player_Init(Actor* thisx, PlayState* play) {
     }
 
     Map_SetAreaEntrypoint(play);
+
+    OotmmCustomItems_AfterPlayerInit(play);
+    if (OotmmSession_IsActive() && (gSaveContext.respawnFlag == 8)) {
+        Player_OotmmInitFaroresWindRespawn(play, this);
+    }
+
     func_80841A50(play, this);
     this->unk_3CF = 0;
     R_PLAY_FILL_SCREEN_ON = 0;
@@ -11781,12 +12681,42 @@ void Player_UpdateInterface(PlayState* play, Player* this) {
     }
 }
 
+static void Player_OotmmIncrementFloorTypeTimer(Player* this) {
+    if (this->prevFloorType == sPlayerFloorType) {
+        this->floorTypeTimer++;
+    } else {
+        this->prevFloorType = sPlayerFloorType;
+        this->floorTypeTimer = 0;
+    }
+}
+
 s32 func_808430E0(Player* this) {
+    s32 canHoverOnGround;
+
     if ((this->transformation == PLAYER_FORM_DEKU) && (this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) &&
         func_8083784C(this)) {
         this->actor.bgCheckFlags &= ~BGCHECKFLAG_GROUND;
     }
+
+    if (Player_OotmmHoverBootsActive(this) && (this->hoverBootsTimer != 0)) {
+        this->hoverBootsTimer--;
+    } else {
+        this->hoverBootsTimer = 0;
+    }
+
+    canHoverOnGround = Player_OotmmHoverBootsActive(this) &&
+                       ((this->actor.depthInWater >= 0.0f) || (func_808340AC(sPlayerFloorType) >= 0) ||
+                        func_808340D4(sPlayerFloorType));
+
+    if (canHoverOnGround && (this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && (this->hoverBootsTimer != 0)) {
+        this->actor.bgCheckFlags &= ~BGCHECKFLAG_GROUND;
+    }
+
     if (this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) {
+        if (!canHoverOnGround) {
+            this->hoverBootsTimer = 19;
+        }
+        Player_OotmmIncrementFloorTypeTimer(this);
         return false;
     }
 
@@ -11796,6 +12726,7 @@ s32 func_808430E0(Player* this) {
     this->floorPitch = 0;
     this->floorPitchAlt = 0;
     sFloorPitchShape = 0;
+    Player_OotmmIncrementFloorTypeTimer(this);
     return true;
 }
 
@@ -12423,8 +13354,10 @@ void func_80844784(PlayState* play, Player* this) {
     s16 temp_v0;
     f32 temp_fv0_2;
 
-    if ((this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && (sPlayerFloorType == FLOOR_TYPE_5) &&
-        (this->currentBoots < PLAYER_BOOTS_ZORA_UNDERWATER)) {
+    if (((this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && (sPlayerFloorType == FLOOR_TYPE_5) &&
+         (this->currentBoots < PLAYER_BOOTS_ZORA_UNDERWATER)) ||
+        (Player_OotmmHoverBootsActive(this) &&
+         !(this->stateFlags1 & (PLAYER_STATE1_8000000 | PLAYER_STATE1_20000000)))) {
         var_a3 = this->yaw;
         var_fv0 = this->speedXZ;
         temp_v0 = this->actor.world.rot.y - var_a3;
@@ -12456,7 +13389,9 @@ void func_80844784(PlayState* play, Player* this) {
     Actor_UpdateVelocityWithGravity(&this->actor);
     D_80862B3C = 0.0f;
     if ((gSaveContext.save.saveInfo.playerData.health != 0) &&
-        ((this->pushedSpeed != 0.0f) || (this->windSpeed != 0.0f) || (play->envCtx.windSpeed >= 50.0f)) &&
+        ((this->pushedSpeed != 0.0f) ||
+         (!Player_OotmmIronBootsActive(this) &&
+          ((this->windSpeed != 0.0f) || (play->envCtx.windSpeed >= 50.0f)))) &&
         (!Player_InCsMode(play)) &&
         !(this->stateFlags1 & (PLAYER_STATE1_4 | PLAYER_STATE1_2000 | PLAYER_STATE1_4000 | PLAYER_STATE1_200000)) &&
         !(this->stateFlags3 & PLAYER_STATE3_100) && (Player_Action_33 != this->actionFunc) &&
@@ -12484,7 +13419,7 @@ void func_80844784(PlayState* play, Player* this) {
                 Math_Vec3f_Copy(this->unk_AF0, &this->actor.world.pos);
             }
 
-            if (play->envCtx.windSpeed >= 50.0f) {
+            if ((play->envCtx.windSpeed >= 50.0f) && !Player_OotmmIronBootsActive(this)) {
                 temp_fa0 = play->envCtx.windDirection.x;
                 temp_fa1 = play->envCtx.windDirection.y;
                 temp_ft4 = play->envCtx.windDirection.z;
@@ -12660,7 +13595,8 @@ void Player_UpdateCommon(Player* this, PlayState* play, Input* input) {
         s32 pad;
 
         if (this->currentBoots != this->prevBoots) {
-            if (this->currentBoots == PLAYER_BOOTS_ZORA_UNDERWATER) {
+            if ((this->currentBoots == PLAYER_BOOTS_ZORA_UNDERWATER) ||
+                (Player_OotmmIronBootsActive(this) && (this->currentBoots == PLAYER_BOOTS_GORON))) {
                 if (this->stateFlags1 & PLAYER_STATE1_8000000) {
                     func_8082DC64(play, this);
                     if (this->ageProperties->unk_2C < this->actor.depthInWater) {
@@ -12669,6 +13605,8 @@ void Player_UpdateCommon(Player* this, PlayState* play, Input* input) {
                 }
             } else if ((this->stateFlags1 & PLAYER_STATE1_8000000) &&
                        ((this->prevBoots == PLAYER_BOOTS_ZORA_UNDERWATER) ||
+                        (OotmmSession_IsActive() && (this->transformation == PLAYER_FORM_HUMAN) &&
+                         (this->prevBoots == PLAYER_BOOTS_GORON)) ||
                         (this->actor.bgCheckFlags & BGCHECKFLAG_GROUND))) {
                 func_8083B930(play, this);
                 this->stateFlags2 &= ~PLAYER_STATE2_400;
@@ -13111,6 +14049,8 @@ void Player_Update(Actor* thisx, PlayState* play) {
         goto skipUpdate;
     }
 
+    OotmmCustomItems_MaskBeforeUpdate(this);
+
     this->stateFlags3 &= ~PLAYER_STATE3_10;
 
     // This block is a leftover dog-following mechanic from OoT
@@ -13161,6 +14101,9 @@ void Player_Update(Actor* thisx, PlayState* play) {
     GameInteractor_ExecuteOnPassPlayerInputs(&input);
 
     Player_UpdateCommon(this, play, &input);
+
+    OotmmCustomItems_MaskAfterUpdate(this);
+    OotmmSongs_Update(play, this);
 skipUpdate:
     play->actorCtx.isOverrideInputOn = false;
     memset(&play->actorCtx.overrideInput, 0, sizeof(Input));
@@ -14153,7 +15096,7 @@ s32 Player_UpperAction_ChangeHeldItem(Player* this, PlayState* play) {
          (sPlayerUseHeldItem = (sPlayerUseHeldItem || ((this->modelAnimType != PLAYER_ANIMTYPE_3) &&
                                                        (this->heldItemAction != PLAYER_IA_DEKU_STICK) &&
                                                        (play->bButtonAmmoPlusOne == 0)))))) {
-        Player_SetUpperAction(play, this, sItemActionUpdateFuncs[this->heldItemAction]);
+        Player_SetUpperAction(play, this, Player_OotmmItemActionUpdateFunc(this));
         this->unk_ACC = 0;
         this->idleType = PLAYER_IDLE_DEFAULT;
         sPlayerHeldItemButtonIsHeldDown = sPlayerUseHeldItem;
@@ -14204,7 +15147,7 @@ s32 Player_UpperAction_4(Player* this, PlayState* play) {
 s32 Player_UpperAction_5(Player* this, PlayState* play) {
     sPlayerUseHeldItem = sPlayerHeldItemButtonIsHeldDown;
     if (sPlayerUseHeldItem || PlayerAnimation_Update(play, &this->skelAnimeUpper)) {
-        Player_SetUpperAction(play, this, sItemActionUpdateFuncs[this->heldItemAction]);
+        Player_SetUpperAction(play, this, Player_OotmmItemActionUpdateFunc(this));
         PlayerAnimation_PlayLoop(play, &this->skelAnimeUpper, D_8085BE84[PLAYER_ANIMGROUP_wait][this->modelAnimType]);
         this->idleType = PLAYER_IDLE_DEFAULT;
         this->upperActionFunc(this, play);
@@ -15519,7 +16462,8 @@ AnimSfxEntry D_8085D60C[] = {
 };
 
 void Player_Action_24(Player* this, PlayState* play) {
-    if ((this->transformation != PLAYER_FORM_GORON) && (this->actor.depthInWater <= 0.0f)) {
+    if ((this->transformation != PLAYER_FORM_GORON) && !Player_OotmmGoronTunicActive(this) &&
+        (this->actor.depthInWater <= 0.0f)) {
         if ((play->roomCtx.curRoom.environmentType == ROOM_ENV_HOT) || (sPlayerFloorType == FLOOR_TYPE_9) ||
             ((func_808340AC(sPlayerFloorType) >= 0) &&
              !SurfaceType_IsWallDamage(&play->colCtx, this->actor.floorPoly, this->actor.floorBgId))) {
@@ -18412,11 +19356,19 @@ void Player_Action_ExchangeItem(Player* this, PlayState* play) {
     func_8083249C(this);
 
     if (PlayerAnimation_Update(play, &this->skelAnime)) {
-        if (this->exchangeItemAction == PLAYER_IA_NONE) {
+        if ((this->av2.actionVar2 < 0) && Player_OotmmIsRutoLetterExchange(this)) {
+            func_80839E74(this, play);
+        } else if (this->exchangeItemAction == PLAYER_IA_NONE) {
             Actor* talkActor = this->talkActor;
 
             Player_StopCutscene(this);
             this->getItemDrawIdPlusOne = GID_NONE + 1;
+
+            // 2S2H [OoTMM] Reading the letter with no NPC ends the exchange with no talk actor.
+            if (talkActor == NULL) {
+                func_80839E74(this, play);
+                return;
+            }
 
             if ((talkActor->textId != 0) && (talkActor->textId != 0xFFFF)) {
                 this->actor.flags |= ACTOR_FLAG_TALK;
@@ -18430,7 +19382,9 @@ void Player_Action_ExchangeItem(Player* this, PlayState* play) {
             }
 
             if (this->av2.actionVar2 == 0) {
-                if ((this->actor.textId != 0) && (this->actor.textId != 0xFFFF)) {
+                if (Player_OotmmIsRutoLetterExchange(this) && (this->actor.textId == 0xFE)) {
+                    OotmmCustomItems_StartRutoLetterTextbox();
+                } else if ((this->actor.textId != 0) && (this->actor.textId != 0xFFFF)) {
                     Message_StartTextbox(play, this->actor.textId, &this->actor);
                 }
 
@@ -18439,8 +19393,14 @@ void Player_Action_ExchangeItem(Player* this, PlayState* play) {
                 Player_StopCutscene(this);
                 this->getItemDrawIdPlusOne = GID_NONE + 1;
                 this->actor.flags &= ~ACTOR_FLAG_TALK;
-                func_80839E74(this, play);
-                this->textboxBtnCooldownTimer = 10;
+                if (Player_OotmmIsRutoLetterExchange(this)) {
+                    this->textboxBtnCooldownTimer = 10;
+                    Player_Anim_PlayOnce(play, this, &gPlayerAnim_link_bottle_read_end);
+                    this->av2.actionVar2 = -1;
+                } else {
+                    func_80839E74(this, play);
+                    this->textboxBtnCooldownTimer = 10;
+                }
             }
         }
     } else if (this->av2.actionVar2 >= 0) {
@@ -18760,7 +19720,7 @@ void Player_Action_83(Player* this, PlayState* play) {
 }
 
 void Player_Action_84(Player* this, PlayState* play) {
-    AttackAnimInfo* attackInfoEntry = &sMeleeAttackAnimInfo[this->meleeWeaponAnimation];
+    AttackAnimInfo* attackInfoEntry = Player_OotmmMeleeAttackAnimInfo(this, this->meleeWeaponAnimation);
 
     if (this->skelAnime.curFrame < (this->skelAnime.endFrame - 6.0f)) {
         this->stateFlags2 |= PLAYER_STATE2_20;
@@ -18838,6 +19798,8 @@ void Player_Action_84(Player* this, PlayState* play) {
                 (this->meleeWeaponAnimation != PLAYER_MWA_GORON_PUNCH_BUTT))) {
         this->av2.actionVar2 |= CHECK_BTN_ALL(sPlayerControlInput->press.button, BTN_B) ? 1 : 0;
     }
+
+    Player_OotmmHammerShockwaveCheck(play, this);
 }
 
 void Player_Action_85(Player* this, PlayState* play) {

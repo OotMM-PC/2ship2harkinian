@@ -5,6 +5,7 @@
 #include "z64shrink_window.h"
 
 #include "overlays/kaleido_scope/ovl_kaleido_scope/z_kaleido_scope.h"
+#include "2s2h/OotmmOwls.h"
 #include <string.h>
 
 s16 sKaleidoSetupRightPageIndex[] = {
@@ -54,14 +55,16 @@ void func_800F4A10(PlayState* play) {
             }
         }
     } else {
+        u32 owlFlags = gSaveContext.save.saveInfo.playerData.owlActivationFlags | OotmmOwls_ActivatedMask();
+
         for (i = OWL_WARP_STONE_TOWER; i >= OWL_WARP_GREAT_BAY_COAST; i--) {
-            if ((gSaveContext.save.saveInfo.playerData.owlActivationFlags >> i) & 1) {
+            if ((owlFlags >> i) & 1) {
                 pauseCtx->worldMapPoints[i] = true;
                 pauseCtx->cursorPoint[PAUSE_WORLD_MAP] = i;
             }
         }
 
-        if ((gSaveContext.save.saveInfo.playerData.owlActivationFlags >> 4) & 1) {
+        if ((owlFlags >> 4) & 1) {
             pauseCtx->cursorPoint[PAUSE_WORLD_MAP] = 4;
         }
     }

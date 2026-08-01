@@ -8,8 +8,17 @@
 #include "overlays/effects/ovl_Effect_Ss_Solder_Srch_Ball/z_eff_ss_solder_srch_ball.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmCustomItems.h"
 
 #define FLAGS (ACTOR_FLAG_MINIMAP_ICON_ENABLED)
+
+static s32 EnLookNuts_OotmmWearingSkullMask(PlayState* play) {
+    Player* player = GET_PLAYER(play);
+
+    return OotmmSession_IsActive() && (player->transformation == PLAYER_FORM_HUMAN) &&
+           (OotmmCustomItems_EquippedMask() == OOTMM_MASK_SKULL);
+}
 
 void EnLookNuts_Init(Actor* thisx, PlayState* play);
 void EnLookNuts_Destroy(Actor* thisx, PlayState* play);
@@ -356,7 +365,7 @@ void EnLookNuts_Update(Actor* thisx, PlayState* play) {
                     effectFlags = 0;
                 }
 
-                if (Player_GetMask(play) != PLAYER_MASK_STONE) {
+                if ((Player_GetMask(play) != PLAYER_MASK_STONE) && !EnLookNuts_OotmmWearingSkullMask(play)) {
                     EffectSsSolderSrchBall_Spawn(play, &effectPos, &effectVelocity, &gZeroVec3f, 50,
                                                  &this->isPlayerDetected, effectFlags);
                 }

@@ -7,6 +7,9 @@ extern "C" {
 #include "functions.h"
 extern u8 sPlaybackState;
 #include "overlays/actors/ovl_En_Torch2/z_en_torch2.h"
+
+#include "2s2h/OotmmSongs.h"
+#include "2s2h/OotmmSongsPlayer.h"
 }
 
 #define CVAR_NAME "gEnhancements.Songs.FasterSongPlayback"
@@ -18,6 +21,10 @@ extern u8 sPlaybackState;
 
 void RegisterFasterSongPlayback() {
     COND_ID_HOOK(OnActorUpdate, ACTOR_PLAYER, CVAR, [](Actor* actor) {
+        // Zeroing sPlaybackState here would end MSGMODE_DISPLAY_SONG_PLAYED after a single note.
+        if (OotmmSongs_Played() != OOTMM_SONG_NONE) {
+            return;
+        }
         if (gPlayState->msgCtx.msgMode >= MSGMODE_SONG_PLAYED && gPlayState->msgCtx.msgMode <= MSGMODE_17 &&
             !gPlayState->csCtx.state && NOT_OCARINA_ACTION_BALAD_WIND_FISH) {
             if (gPlayState->msgCtx.stateTimer > 1) {

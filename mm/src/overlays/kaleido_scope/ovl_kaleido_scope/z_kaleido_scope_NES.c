@@ -21,6 +21,7 @@
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
 #include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmCustomItems.h"
 
 #include "2s2h_assets.h"
 
@@ -413,6 +414,13 @@ void Kaleido_LoadItemNameStatic(void** segment, u32 texIndex) {
         gItemNameDungeonMapENGTex,
         gItemNameStrayFairiesENGTex,
     };
+
+    const char* ootmmName = texIndex < 0x100 ? OotmmCustomItems_NameTexture(texIndex) : NULL;
+
+    if (ootmmName != NULL) {
+        *segment = (void*)ootmmName;
+        return;
+    }
 
     // 2S2H [Port] Bounds check texture to load to prevent crashes
     if (texIndex < ARRAY_COUNTU(gItemNameStatics)) {

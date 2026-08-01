@@ -30,6 +30,7 @@
 #include "2s2h/ShipUtils.h"
 #include "2s2h/ObjectExtension/ObjectExtension.h"
 #include "2s2h/ObjectExtension/ActorListIndex.h"
+#include "2s2h/OotmmSouls.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 // bss
@@ -2629,6 +2630,8 @@ void Actor_InitContext(PlayState* play, ActorContext* actorCtx, ActorEntry* acto
 void Actor_SpawnSetupActors(PlayState* play, ActorContext* actorCtx) {
     if (play->numSetupActors > 0) {
         ActorEntry* actorEntry = play->setupActorList;
+
+        OotmmSouls_ResetRoomState();
         s32 prevHalfDaysBitValue = actorCtx->halfDaysBit;
         s32 shiftedHalfDaysBit;
         s32 actorEntryHalfDayBit;
@@ -3624,7 +3627,7 @@ Actor* Actor_RemoveFromCategory(PlayState* play, ActorContext* actorCtx, Actor* 
     actorToRemove->prev = NULL;
 
     if ((actorToRemove->room == play->roomCtx.curRoom.num) && (actorToRemove->category == ACTORCAT_ENEMY) &&
-        (actorCtx->actorLists[ACTORCAT_ENEMY].length == 0)) {
+        (actorCtx->actorLists[ACTORCAT_ENEMY].length == 0) && !OotmmSouls_RoomClearBlocked()) {
         Flags_SetClearTemp(play, play->roomCtx.curRoom.num);
     }
 
@@ -3711,6 +3714,11 @@ Actor* Actor_SpawnAsChildAndCutscene(ActorContext* actorCtx, PlayState* play, s1
     ActorProfile* profile;
     s32 objectSlot;
     ActorOverlay* overlayEntry;
+
+    params = OotmmSouls_AdjustSpawnParams(play, index, params);
+    if (OotmmSouls_SuppressSpawn(play, index, params)) {
+        return NULL;
+    }
 
     if (actorCtx->totalLoadedActors >= 255) {
         return NULL;

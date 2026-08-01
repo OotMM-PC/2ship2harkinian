@@ -9,6 +9,8 @@
 
 #include "2s2h/BenGui/HudEditor.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmCustomItems.h"
+#include "2s2h/OotmmItemPage.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 s16 sEquipState = EQUIP_STATE_MAGIC_ARROW_GROW_ORB;
@@ -255,6 +257,12 @@ void KaleidoScope_DrawItemSelect(PlayState* play) {
     u16 i;
     u16 j;
 
+    if (OotmmItemPage_Active()) {
+        OotmmItemPage_Draw(play);
+        OotmmItemPage_DrawPageIndicator(play);
+        return;
+    }
+
     OPEN_DISPS(play->state.gfxCtx);
 
     Gfx_SetupDL42_Opa(play->state.gfxCtx);
@@ -364,6 +372,8 @@ void KaleidoScope_DrawItemSelect(PlayState* play) {
     }
 
     CLOSE_DISPS(play->state.gfxCtx);
+
+    OotmmItemPage_DrawPageIndicator(play);
 }
 
 u8 sPlayerFormItems[PLAYER_FORM_MAX] = {
@@ -391,6 +401,14 @@ void KaleidoScope_UpdateItemCursor(PlayState* play) {
 
     pauseCtx->cursorColorSet = PAUSE_CURSOR_COLOR_SET_WHITE;
     pauseCtx->nameColorSet = PAUSE_NAME_COLOR_SET_WHITE;
+
+    if (OotmmItemPage_ConsumePageToggle(play)) {
+        return;
+    }
+    if (OotmmItemPage_Active()) {
+        OotmmItemPage_UpdateCursor(play);
+        return;
+    }
 
     if ((pauseCtx->state == PAUSE_STATE_MAIN) && (pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE) &&
         (pauseCtx->pageIndex == PAUSE_ITEM) && !pauseCtx->itemDescriptionOn) {
@@ -1547,7 +1565,9 @@ void KaleidoScope_UpdateItemEquip(PlayState* play) {
         offsetY = ABS_ALT(pauseCtx->equipAnimY - cButtonPosY) / sEquipAnimTimer;
     }
 
-    if ((pauseCtx->equipTargetItem >= 0xB5) && (pauseCtx->equipAnimAlpha < 254)) {
+    // 2S2H [OoTMM] Only the magic arrow ids 0xB5..0xB7 grow the glowing orb.
+    if ((pauseCtx->equipTargetItem >= 0xB5) && (pauseCtx->equipTargetItem < 0xB8) &&
+        (pauseCtx->equipAnimAlpha < 254)) {
         pauseCtx->equipAnimAlpha += 14;
         if (pauseCtx->equipAnimAlpha > 255) {
             pauseCtx->equipAnimAlpha = 254;

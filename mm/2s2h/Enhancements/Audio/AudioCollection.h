@@ -68,6 +68,7 @@ class AudioCollection {
     uint16_t GetOriginalSequence(uint16_t seqId);
     void InitializeShufflePool();
     const char* GetSequenceName(uint16_t seqId);
+    int32_t GetSequenceNumByName(const char* name);
     bool HasSequenceNum(uint16_t seqId);
     size_t SequenceMapSize();
     std::string GetCvarKey(std::string sfxKey);
