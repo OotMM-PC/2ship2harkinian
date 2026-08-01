@@ -5,6 +5,7 @@
 #include "OotmmIpc.h"
 #include "OotmmItemApply.h"
 #include "OotmmItemProbe.h"
+#include "OotmmScales.h"
 
 #include <cstddef>
 #include <cstring>
@@ -540,6 +541,7 @@ void OotmmSession_Init() {
         ApplyEnhancements();
         OotmmItemProbe_Init();
         OotmmItemApply_Init();
+        OotmmScales_Init();
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveInit>(
             [](s16) { InitializeSave(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(
