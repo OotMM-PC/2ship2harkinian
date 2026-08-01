@@ -11,6 +11,8 @@ extern "C" {
 int32_t OotmmSession_TryBootDirectly(void* gameState);
 int32_t OotmmSession_IsActive(void);
 void OotmmSession_NotePlayerExitTransition(void);
+/// Gives death OoT's grotto rule: back at the grotto Link died in, or out of the one he arrived from.
+void OotmmSession_ApplyDeathRespawn(void);
 /// Runs after the conditional-trigger pass has landed a moon-crash reset in the Clock Tower.
 void OotmmSession_RedirectMoonCrashRespawn(void);
 /// Marks the result so the seed's entrance remap does not translate it twice. -1 when unresolvable.

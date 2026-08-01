@@ -29,6 +29,12 @@ bool sCrossGamePending = false;
 bool sCrossGameAccepted = false;
 uint32_t sCrossGameWaitFrames = 0;
 std::optional<uint32_t> sLastResolvedEntrance;
+uint16_t sGrottoReturnEntrance = 0;
+
+// respawnFlag values: reload the entrance only, restore respawn[TOP], restore the grotto slot.
+constexpr int32_t kRespawnSceneEntrance = -2;
+constexpr int32_t kRespawnFromOwlSave = -6;
+constexpr int32_t kRespawnGrottoPopOut = 4;
 
 constexpr uint32_t kGrottoGenericBase = 0x10000;
 constexpr uint32_t kGrottoCowField = 0x1000D;
@@ -81,7 +87,8 @@ void ApplyGrottoExit(const MmGrottoExit& exit) {
     respawn->tempCollectFlags = 0;
     gSaveContext.respawn[RESPAWN_MODE_DOWN] = *respawn;
     gSaveContext.respawn[RESPAWN_MODE_TOP] = *respawn;
-    gSaveContext.respawnFlag = 4;
+    gSaveContext.respawnFlag = kRespawnGrottoPopOut;
+    sGrottoReturnEntrance = exit.Entrance;
 }
 
 std::optional<uint32_t> CurrentGrottoExitId() {
@@ -422,6 +429,7 @@ void UpdateEntranceTransition() {
         return;
     }
     if (!playerExit && (gSaveContext.respawnFlag == 1 || gSaveContext.respawnFlag == 2 ||
+                        gSaveContext.respawnFlag == kRespawnGrottoPopOut ||
                         gSaveContext.respawnFlag == 8 || gSaveContext.respawnFlag < 0) &&
         IsResolvedReloadTarget(nextEntrance)) {
         sLastResolvedEntrance = nextEntrance;
@@ -437,6 +445,7 @@ void UpdateEntranceTransition() {
     if (sLastResolvedEntrance.has_value() && source == *sLastResolvedEntrance) {
         return;
     }
+    sGrottoReturnEntrance = 0;
     const auto* mapping = sGameState.FindEntrance(Ship::OotmmGame::Mm, source);
     if (mapping == nullptr || !mapping->ToNativeId.has_value()) {
         return;
@@ -596,6 +605,23 @@ extern "C" void OotmmSession_NotePlayerExitTransition(void) {
     if (sGameState.IsActive() && sGameState.HasSeed()) {
         sPlayerExitPending = true;
     }
+}
+
+extern "C" void OotmmSession_ApplyDeathRespawn(void) {
+    if (!OotmmSession_IsActive() || gPlayState == nullptr) {
+        return;
+    }
+    if (gPlayState->sceneId == SCENE_KAKUSIANA) {
+        gPlayState->nextEntrance = gSaveContext.save.entrance;
+        gSaveContext.respawnFlag = kRespawnSceneEntrance;
+        return;
+    }
+    if (gSaveContext.respawnFlag == kRespawnFromOwlSave || sGrottoReturnEntrance == 0 ||
+        sGrottoReturnEntrance != gSaveContext.save.entrance) {
+        return;
+    }
+    gPlayState->nextEntrance = gSaveContext.respawn[RESPAWN_MODE_UNK_3].entrance;
+    gSaveContext.respawnFlag = kRespawnGrottoPopOut;
 }
 
 extern "C" int32_t OotmmSession_ApplyResolvedMmEntrance(uint32_t entrance) {

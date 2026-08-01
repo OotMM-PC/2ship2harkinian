@@ -3966,6 +3966,7 @@ void KaleidoScope_Update(PlayState* play) {
                     if (pauseCtx->promptChoice == PAUSE_PROMPT_YES) {
                         func_80169FDC(play);
                         gSaveContext.respawnFlag = -2;
+                        OotmmSession_ApplyDeathRespawn();
                         gSaveContext.nextTransitionType = TRANS_TYPE_FADE_BLACK;
                         gSaveContext.save.saveInfo.playerData.health = 0x30;
                         Audio_SetSpec(0xA);

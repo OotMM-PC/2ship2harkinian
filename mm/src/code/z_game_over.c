@@ -7,6 +7,7 @@
 #include "macros.h"
 #include "overlays/kaleido_scope/ovl_kaleido_scope/z_kaleido_scope.h"
 #include <libultraship/bridge/consolevariablebridge.h>
+#include "2s2h/OotmmSession.h"
 
 void GameOver_Init(PlayState* play) {
     play->gameOverCtx.state = GAMEOVER_INACTIVE;
@@ -96,6 +97,7 @@ void GameOver_Update(PlayState* play) {
                 if (gSaveContext.respawnFlag != -7) {
                     gSaveContext.respawnFlag = -6;
                 }
+                OotmmSession_ApplyDeathRespawn();
                 gSaveContext.nextTransitionType = TRANS_TYPE_FADE_BLACK;
                 gSaveContext.save.saveInfo.playerData.health = 0x30;
                 gameOverCtx->state++;
