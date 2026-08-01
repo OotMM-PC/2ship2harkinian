@@ -52,6 +52,7 @@
 #include "2s2h/OotmmCustomItems.h"
 #include "2s2h/OotmmCustomItemsPlayer.h"
 #include "2s2h/OotmmCustomEquipment.h"
+#include "2s2h/OotmmScales.h"
 
 typedef struct {
     /* 0x00 */ Vec3f unk_00;
@@ -1874,7 +1875,10 @@ s32 Player_GetEnvironmentalHazard(PlayState* play) {
 
     if (play->roomCtx.curRoom.environmentType == ROOM_ENV_HOT) {
         envHazard = PLAYER_ENV_HAZARD_HOTROOM - 1;
-    } else if ((player->transformation != PLAYER_FORM_ZORA) && (player->underwaterTimer > 80)) {
+    } else if ((player->transformation != PLAYER_FORM_ZORA) && (player->underwaterTimer > 80) &&
+               // Scales trade MM's 80 frames for OoT's grace, so drowning waits out the timer's 300 cap.
+               (!OotmmScales_ExtendsUnderwaterTime() || (player->underwaterTimer >= 300) ||
+                (OotmmCustomItems_EquippedBoots() == OOTMM_BOOTS_IRON))) {
         if ((OotmmCustomItems_EquippedBoots() == OOTMM_BOOTS_IRON) &&
             (player->actor.bgCheckFlags & BGCHECKFLAG_GROUND)) {
             envHazard = PLAYER_ENV_HAZARD_UNDERWATER_FLOOR - 1;

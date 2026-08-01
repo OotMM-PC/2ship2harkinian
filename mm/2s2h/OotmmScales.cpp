@@ -7,6 +7,7 @@
 
 #include <libultraship/bridge/OotmmScales.h>
 
+#include <algorithm>
 #include <cstdint>
 
 extern "C" {
@@ -23,6 +24,12 @@ namespace {
 // Paces only the no-ground fallback; a respawn that is itself wet would re-void every frame.
 constexpr uint8_t kNoGroundVoidFrames = 20;
 constexpr int32_t kVoidPlayerParams = 0xDFF;
+
+// Dive depth per UPG_SCALE rung; vanilla MM only ever reaches the first. One counter step per 40.
+constexpr float kDiveDepths[] = { 120.0f, 240.0f, 360.0f };
+constexpr float kDiveStep = 40.0f;
+constexpr uint8_t kDiveDoActions[] = { DO_ACTION_1, DO_ACTION_2, DO_ACTION_3, DO_ACTION_4,
+                                       DO_ACTION_5, DO_ACTION_6, DO_ACTION_7, DO_ACTION_8 };
 
 struct SafeGround {
     bool Valid = false;
@@ -147,6 +154,27 @@ extern "C" void OotmmScales_Init(void) {
         sNoGroundVoidTimer = 0;
         sConsecutiveVoids = 0;
     });
+}
+
+extern "C" float OotmmScales_MaxDiveDepth(void) {
+    // Read the tier rather than UPG_SCALE: the grant writes that upgrade once through the applied
+    // ledger, so it stays zero on any save that already recorded the scale. Bronze dives no deeper.
+    const int32_t tier = OotmmScales_Tier();
+    const int32_t rung = std::min<int32_t>(tier > 0 ? tier - 1 : 0, ARRAY_COUNT(kDiveDepths) - 1);
+    return kDiveDepths[rung];
+}
+
+extern "C" int OotmmScales_DiveDoAction(float depthInWater) {
+    if (!OotmmSession_IsActive()) {
+        return -1;
+    }
+    int32_t step = static_cast<int32_t>((OotmmScales_MaxDiveDepth() - depthInWater) / kDiveStep);
+    step = CLAMP(step, 0, static_cast<int32_t>(ARRAY_COUNT(kDiveDoActions)) - 1);
+    return kDiveDoActions[step];
+}
+
+extern "C" int OotmmScales_ExtendsUnderwaterTime(void) {
+    return OotmmSession_IsActive() && OotmmSession_GetState().GetBoolSetting("scalesMm", false) ? 1 : 0;
 }
 
 extern "C" int OotmmScales_Tier(void) {

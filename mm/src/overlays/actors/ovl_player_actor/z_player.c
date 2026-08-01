@@ -54,6 +54,7 @@
 #include "2s2h/OotmmCustomItemsPlayer.h"
 #include "2s2h/OotmmCustomEquipment.h"
 #include "2s2h/OotmmSongsPlayer.h"
+#include "2s2h/OotmmScales.h"
 #include "overlays/actors/ovl_Ootmm_Boomerang/z_ootmm_boomerang.h"
 #include "overlays/actors/ovl_Bg_Hakugin_Post/z_bg_hakugin_post.h"
 #include "overlays/actors/ovl_Bg_Hakugin_Switch/z_bg_hakugin_switch.h"
@@ -12603,11 +12604,12 @@ void Player_UpdateInterface(PlayState* play, Player* this) {
         } else if (this->stateFlags2 & PLAYER_STATE2_800) {
             static u8 D_8085D354[] = { DO_ACTION_1, DO_ACTION_2 };
             s32 var_v0;
+            s32 ootmmDive = OotmmScales_DiveDoAction(this->actor.depthInWater);
 
             var_v0 = ((120.0f - this->actor.depthInWater) / 40.0f);
             var_v0 = CLAMP(var_v0, 0, ARRAY_COUNT(D_8085D354) - 1);
 
-            doActionA = D_8085D354[var_v0];
+            doActionA = (ootmmDive >= 0) ? (u8)ootmmDive : D_8085D354[var_v0];
         } else if (this->stateFlags3 & PLAYER_STATE3_100) {
             doActionA = DO_ACTION_JUMP;
         } else if (this->stateFlags3 & PLAYER_STATE3_1000) {
@@ -18482,7 +18484,8 @@ void Player_Action_59(Player* this, PlayState* play) {
             this->unk_AAA = 0x3E80;
 
             if (CHECK_BTN_ALL(sPlayerControlInput->cur.button, BTN_A) && !Player_ActionHandler_2(this, play) &&
-                !(this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && (this->actor.depthInWater < 120.0f)) {
+                !(this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) &&
+                (this->actor.depthInWater < OotmmScales_MaxDiveDepth())) {
                 func_808481CC(play, this, -2.0f);
             } else {
                 this->av1.actionVar1++;
