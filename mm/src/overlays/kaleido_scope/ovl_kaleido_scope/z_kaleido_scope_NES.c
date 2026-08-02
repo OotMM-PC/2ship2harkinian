@@ -20,6 +20,7 @@
 #include "archives/map_name_static/map_name_static.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
+#include "2s2h/OotmmSaveMenu.h"
 #include "2s2h/OotmmSession.h"
 #include "2s2h/OotmmCustomItems.h"
 
@@ -3621,6 +3622,7 @@ void KaleidoScope_Update(PlayState* play) {
                                 pauseCtx->savePromptState = PAUSE_SAVEPROMPT_STATE_4;
                             }
                             sDelayTimer = 90;
+                            OotmmSaveMenu_Open(play);
                         }
                     } else if (CHECK_BTN_ALL(input->press.button, BTN_START)) {
                         Interface_SetAButtonDoAction(play, DO_ACTION_NONE);
@@ -3649,8 +3651,11 @@ void KaleidoScope_Update(PlayState* play) {
                     break;
 
                 case PAUSE_SAVEPROMPT_STATE_5:
-                    if (CHECK_BTN_ALL(input->press.button, BTN_B) || CHECK_BTN_ALL(input->press.button, BTN_A) ||
-                        CHECK_BTN_ALL(input->press.button, BTN_START) || (--sDelayTimer == 0)) {
+                    if (OotmmSaveMenu_Active()
+                            ? OotmmSaveMenu_Update(play)
+                            : (CHECK_BTN_ALL(input->press.button, BTN_B) ||
+                               CHECK_BTN_ALL(input->press.button, BTN_A) ||
+                               CHECK_BTN_ALL(input->press.button, BTN_START) || (--sDelayTimer == 0))) {
                         Interface_SetAButtonDoAction(play, DO_ACTION_NONE);
                         pauseCtx->savePromptState = PAUSE_SAVEPROMPT_STATE_3;
                         sPauseMenuVerticalOffset = -6240.0f;

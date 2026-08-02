@@ -607,6 +607,27 @@ extern "C" void OotmmSession_NotePlayerExitTransition(void) {
     }
 }
 
+extern "C" int32_t OotmmSession_ReturnToSpawn(void) {
+    if (!OotmmSession_IsActive() || gPlayState == nullptr) {
+        return 0;
+    }
+    // MM has no spawn of its own in the seed, so the arrival entrance is where Link came in.
+    const auto& boot = sGameState.GetBootConfig();
+    if (!boot.BootEntrance.has_value()) {
+        return 0;
+    }
+    const auto target = ResolveMmEntrance(*boot.BootEntrance);
+    if (!target.has_value()) {
+        return 0;
+    }
+    gPlayState->nextEntrance = *target;
+    gSaveContext.respawnFlag = 0;
+    gPlayState->transitionTrigger = TRANS_TRIGGER_START;
+    gPlayState->transitionType = TRANS_TYPE_FADE_BLACK;
+    sLastResolvedEntrance = *target;
+    return 1;
+}
+
 extern "C" void OotmmSession_ApplyDeathRespawn(void) {
     if (!OotmmSession_IsActive() || gPlayState == nullptr) {
         return;
