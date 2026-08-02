@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <fstream>
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <optional>
 #include <spdlog/spdlog.h>
@@ -366,14 +367,24 @@ void StampFileMagic() {
     std::memcpy(gSaveContext.save.saveInfo.playerData.newf, magic, sizeof(magic) - 1);
 }
 
+uint32_t BootSlot() {
+    // OoT picks its file at its own file select, so the marker it leaves outranks the launcher slot.
+    std::ifstream in(sGameState.GetBootConfig().StatePath + ".last-file");
+    int32_t fileNum = -1;
+    if (in >> fileNum && fileNum >= 0 && fileNum < 3) {
+        return static_cast<uint32_t>(fileNum);
+    }
+    return sGameState.GetBootConfig().LogicalSlot.value_or(0);
+}
+
 void PersistNewSave(uint8_t* saveBuffer) {
     gSaveContext.save.saveInfo.checksum = 0;
     gSaveContext.save.saveInfo.checksum = Sram_CalcChecksum(&gSaveContext.save, sizeof(Save));
     std::memset(saveBuffer, 0, SAVE_BUFFER_SIZE);
     std::memcpy(saveBuffer, &gSaveContext.save, sizeof(Save));
     std::memcpy(saveBuffer + SAVE_BUFFER_SIZE_HALF, &gSaveContext.save, sizeof(Save));
-    SysFlashrom_WriteDataSync(saveBuffer, gFlashSaveStartPages[FLASH_SAVE_FILE_1_NEW_CYCLE_SAVE],
-                              gFlashSpecialSaveNumPages[FLASH_SAVE_FILE_1_NEW_CYCLE_SAVE]);
+    const uint32_t page = FLASH_SAVE_FILE_1_NEW_CYCLE_SAVE + BootSlot() * FLASH_SAVE_MAIN_MULTIPLIER;
+    SysFlashrom_WriteDataSync(saveBuffer, gFlashSaveStartPages[page], gFlashSpecialSaveNumPages[page]);
 }
 
 void PersistTransitionSave() {
@@ -484,13 +495,16 @@ void BootIntoGame(GameState* gameState) {
     static uint8_t saveBuffer[SAVE_BUFFER_SIZE];
     bool loaded = false;
 
+    const uint32_t slot = BootSlot();
+    const uint32_t owlPage = slot * FLASH_SAVE_MAIN_MULTIPLIER;
     std::memset(saveBuffer, 0, sizeof(saveBuffer));
-    if (SysFlashrom_ReadData(saveBuffer, gFlashOwlSaveStartPages[0], gFlashOwlSaveNumPages[0]) == 0) {
+    if (SysFlashrom_ReadData(saveBuffer, gFlashOwlSaveStartPages[owlPage],
+                             gFlashOwlSaveNumPages[owlPage]) == 0) {
         loaded = RestoreSave(gSaveContext, saveBuffer, true);
     }
     if (!loaded) {
         std::memset(saveBuffer, 0, sizeof(saveBuffer));
-        if (SysFlashrom_ReadData(saveBuffer, gFlashSaveStartPages[0], gFlashSaveNumPages[0]) == 0) {
+        if (SysFlashrom_ReadData(saveBuffer, gFlashSaveStartPages[slot], gFlashSaveNumPages[slot]) == 0) {
             loaded = RestoreSave(gSaveContext, saveBuffer, false);
         }
     }
@@ -500,7 +514,7 @@ void BootIntoGame(GameState* gameState) {
     } else {
         Sram_InitNewSave();
         StampFileMagic();
-        GameInteractor_ExecuteOnSaveInit(0);
+        GameInteractor_ExecuteOnSaveInit(static_cast<s16>(slot));
         std::memset(gSaveContext.eventInf, 0, sizeof(gSaveContext.eventInf));
     }
 
@@ -536,8 +550,8 @@ void BootIntoGame(GameState* gameState) {
     SPDLOG_INFO("[OoTMM] Booting MM at entrance 0x{:X}", target);
     gSaveContext.fileNum = 0xFE;
     MapSelect_LoadGame(reinterpret_cast<MapSelectState*>(gameState), target, 0);
-    gSaveContext.fileNum = 0;
-    GameInteractor_ExecuteOnSaveLoad(0);
+    gSaveContext.fileNum = static_cast<s16>(slot);
+    GameInteractor_ExecuteOnSaveLoad(static_cast<s16>(slot));
     if (!loaded) {
         PersistNewSave(saveBuffer);
     }
