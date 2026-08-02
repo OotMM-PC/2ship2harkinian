@@ -332,6 +332,7 @@ void ApplySaveFlags() {
 }
 
 void InitializeSave() {
+    OotmmItemApply_ResetLedgerForNewSave();
     gSaveContext.save.time = CLOCK_TIME(8, 0);
     gSaveContext.save.day = 1;
     gSaveContext.save.cutsceneIndex = 0;

@@ -19,5 +19,7 @@ void OotmmItemApply_SetTradeItemOwned(uint8_t slot, uint8_t item, int32_t owned)
 }
 
 void OotmmItemApply_Init();
+/// Clears the applied ledger so a fresh file re-receives every item the seed already gave.
+void OotmmItemApply_ResetLedgerForNewSave();
 void OotmmItemApply_Reconcile();
 #endif

@@ -2,6 +2,7 @@
 
 #include "CustomMessage/CustomMessage.h"
 #include "OotmmIpc.h"
+#include "OotmmCustomEquipment.h"
 #include "OotmmSession.h"
 
 #include <array>
@@ -18,6 +19,7 @@ extern "C" {
 #include "OotmmCustomItemsPlayer.h"
 
 uint8_t ResourceMgr_FileExists(const char* path);
+Gfx* ResourceMgr_LoadGfxByName(const char* path);
 extern PlayState* gPlayState;
 }
 
@@ -147,6 +149,14 @@ extern "C" void* OotmmCustomItems_ButtonIcon(uint8_t item) {
 }
 
 extern "C" const char* OotmmCustomItems_NameTexture(uint8_t item) {
+    // The Deku shield shares the Hero's Shield item id, so only ownership tells the two names apart.
+    if (item == ITEM_SHIELD_HERO && OotmmCustomItems_WearingDekuShield()) {
+        static constexpr const char* kName =
+            "__OTR__textures/ot_item_name_static/gDekuShieldItemNameENGTex";
+        if (ResourceMgr_FileExists(kName)) {
+            return kName;
+        }
+    }
     const CustomItem* entry = Find(item);
     if (entry == nullptr || !ResourceMgr_FileExists(entry->NameTexture)) {
         return nullptr;
@@ -283,6 +293,25 @@ int32_t sSlingshotAmmo = -1;
 constexpr int32_t kMaxSeeds[4] = { 0, 30, 40, 50 };
 
 } // namespace
+
+extern "C" int OotmmCustomItems_WearingDekuShield(void) {
+    if (!OotmmSession_IsActive()) {
+        return 0;
+    }
+    const auto& inventory = OotmmIpc_GetInventory();
+    const bool deku = inventory.Has("MM_SHIELD_DEKU") || inventory.Has("SHARED_SHIELD_DEKU");
+    // Upstream files both shields under the same equip value, so the better one simply wins.
+    const bool hero = inventory.Has("MM_SHIELD_HERO") || inventory.Has("SHARED_SHIELD_HYLIAN");
+    return deku && !hero ? 1 : 0;
+}
+
+extern "C" const char* OotmmCustomItems_DekuShieldIcon(void) {
+    static constexpr const char* kIcon = "__OTR__textures/ot_icon_item_static/gItemIconShieldDekuTex";
+    if (!OotmmCustomItems_WearingDekuShield() || !ResourceMgr_FileExists(kIcon)) {
+        return nullptr;
+    }
+    return kIcon;
+}
 
 extern "C" int32_t OotmmCustomItems_EquippedBoots(void) {
     return OotmmSession_IsActive() ? sEquippedBoots : OOTMM_BOOTS_NONE;

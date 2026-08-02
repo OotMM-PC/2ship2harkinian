@@ -22,6 +22,9 @@ Gfx* OotmmEquipment_LeftHandBoomerangDList(void);
 Gfx* OotmmEquipment_RightHandSlingshotDList(void);
 Gfx* OotmmEquipment_FirstPersonSlingshotDList(void);
 Gfx* OotmmEquipment_BoomerangFlightDList(void);
+/// OoT's Deku shield for the sheath limb and the guarding fist, or NULL when not shipped.
+Gfx* OotmmEquipment_DekuShieldBackDList(void);
+Gfx* OotmmEquipment_DekuShieldHandDList(int lod);
 
 void OotmmEquipment_GetTunicColor(uint8_t* r, uint8_t* g, uint8_t* b);
 /// Patches or restores human Link's cloth prim colors; call once per player draw.

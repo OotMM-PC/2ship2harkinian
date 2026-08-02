@@ -440,6 +440,18 @@ void OotmmEquipment_DrawSlingshotString(PlayState* play, Player* player) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+// OoT authored these in child-Link limb space, which MM's human Link shares; the back list even
+// carries its own offset matrix, so neither needs any transform here.
+Gfx* OotmmEquipment_DekuShieldBackDList(void) {
+    return LoadOptionalGfx("__OTR__objects/ot_obj_link_child/gLinkChildDekuShieldWithMatrixDL");
+}
+
+Gfx* OotmmEquipment_DekuShieldHandDList(int lod) {
+    return LoadOptionalGfx(lod != 0
+                               ? "__OTR__objects/ot_obj_link_child/gLinkChildRightFistAndDekuShieldFarDL"
+                               : "__OTR__objects/ot_obj_link_child/gLinkChildRightFistAndDekuShieldNearDL");
+}
+
 Gfx* OotmmEquipment_LeftHandHammerDList(void) {
     return LoadOptionalGfx(OT_LEFT_HAND_HAMMER_DL);
 }

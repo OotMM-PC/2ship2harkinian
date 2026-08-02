@@ -108,6 +108,10 @@ int OotmmCustomItems_HasMagicUpgrade(void);
 int32_t OotmmCustomItems_ItemAction(uint8_t item);
 
 /// Currently equipped custom boots/tunic/mask; 0 outside an active session.
+/// True while the seed's only shield is the Deku one, which shares the Hero's Shield slot.
+int OotmmCustomItems_WearingDekuShield(void);
+/// OoT's Deku shield icon for MM's shield slot, or NULL when the Hero's Shield icon should stand.
+const char* OotmmCustomItems_DekuShieldIcon(void);
 int32_t OotmmCustomItems_EquippedBoots(void);
 int32_t OotmmCustomItems_EquippedTunic(void);
 int32_t OotmmCustomItems_EquippedMask(void);

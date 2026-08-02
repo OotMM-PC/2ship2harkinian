@@ -2821,6 +2821,16 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
                     }
                 }
 
+                if ((sPlayerRightHandType == PLAYER_MODELTYPE_RH_SHIELD) &&
+                    (player->transformation == PLAYER_FORM_HUMAN) &&
+                    (player->currentShield != PLAYER_SHIELD_NONE) && OotmmCustomItems_WearingDekuShield()) {
+                    Gfx* ootmmDList = OotmmEquipment_DekuShieldHandDList(sPlayerLod);
+
+                    if (ootmmDList != NULL) {
+                        *dList = ootmmDList;
+                    }
+                }
+
                 if (BEN_ANIM_EQUAL(player->skelAnime.animation, gPlayerAnim_pg_punchB)) {
                     func_80125CE0(player, D_801C0784, pos, rot);
                 }
@@ -4394,7 +4404,11 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList1, G
              (player->sheathType == PLAYER_MODELTYPE_SHEATH_15))) {
             OPEN_DISPS(play->state.gfxCtx);
 
-            gSPDisplayList(POLY_OPA_DISP++, gPlayerShields[2 * ((player->currentShield - 1) ^ 0)]);
+            Gfx* ootmmShield =
+                OotmmCustomItems_WearingDekuShield() ? OotmmEquipment_DekuShieldBackDList() : NULL;
+            gSPDisplayList(POLY_OPA_DISP++, ootmmShield != NULL
+                                                ? ootmmShield
+                                                : gPlayerShields[2 * ((player->currentShield - 1) ^ 0)]);
 
             CLOSE_DISPS(play->state.gfxCtx);
         }

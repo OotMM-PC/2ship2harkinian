@@ -7,6 +7,7 @@
 #include "z_kaleido_scope.h"
 #include "interface/parameter_static/parameter_static.h"
 #include "archives/icon_item_static/icon_item_static_yar.h"
+#include "2s2h/OotmmCustomItems.h"
 #include "2s2h/OotmmOcarinaButtons.h"
 
 s32 KaleidoScope_UpdateQuestStatusPoint(PauseContext* pauseCtx, s16 point);
@@ -203,7 +204,11 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
 
     if (GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD) != EQUIP_VALUE_SHIELD_NONE) {
         gSPVertex(POLY_OPA_DISP++, &pauseCtx->questVtx[j], 4, 0);
-        KaleidoScope_DrawTexQuadRGBA32(play->state.gfxCtx, gItemIcons[(ITEM_SHIELD_HERO - 1) + GET_CUR_EQUIP_VALUE(1)],
+        const char* ootmmShieldIcon = OotmmCustomItems_DekuShieldIcon();
+        KaleidoScope_DrawTexQuadRGBA32(play->state.gfxCtx,
+                                       ootmmShieldIcon != NULL
+                                           ? (TexturePtr)ootmmShieldIcon
+                                           : gItemIcons[(ITEM_SHIELD_HERO - 1) + GET_CUR_EQUIP_VALUE(1)],
                                        32, 32, 0);
     }
 

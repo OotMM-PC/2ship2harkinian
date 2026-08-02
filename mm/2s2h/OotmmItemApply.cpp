@@ -242,6 +242,20 @@ bool IsTradeGrantOp(const Ship::OotmmGrantOp& op) {
     }
 }
 
+// Swords and shields live in the save rather than the ledger, so a file that was never written
+// after its grant would otherwise stay empty for good.
+bool EquipmentMissing(uint8_t item) {
+    if (item >= ITEM_SWORD_KOKIRI && item <= ITEM_SWORD_GILDED) {
+        return GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SWORD) <
+               static_cast<u16>(item - ITEM_SWORD_KOKIRI + EQUIP_VALUE_SWORD_KOKIRI);
+    }
+    if (item >= ITEM_SHIELD_HERO && item <= ITEM_SHIELD_MIRROR) {
+        return GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD) <
+               static_cast<u16>(item - ITEM_SHIELD_HERO + EQUIP_VALUE_SHIELD_HERO);
+    }
+    return false;
+}
+
 bool IsGrantedTradeItem(const std::string& itemId, uint32_t count, uint8_t item) {
     if (count == 0 || OotmmCustomItems_IdForItemId(itemId.c_str()) != ITEM_NONE) {
         return false;
@@ -348,12 +362,14 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                     }
                     break;
                 }
-                if (already == 0) {
+                {
                     const auto found = kNativeItems.find(itemId);
-                    if (found != kNativeItems.end()) {
+                    if (found == kNativeItems.end()) {
+                        if (already == 0) {
+                            sUnhandled[itemId] = op.Slot + " (no native item)";
+                        }
+                    } else if (already == 0 || EquipmentMissing(found->second)) {
                         ApplyOnce(play, itemId, found->second);
-                    } else {
-                        sUnhandled[itemId] = op.Slot + " (no native item)";
                     }
                 }
                 break;
@@ -515,6 +531,16 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
 }
 
 } // namespace
+
+void OotmmItemApply_ResetLedgerForNewSave() {
+    if (!OotmmSession_IsActive()) {
+        return;
+    }
+    sLedger.Reset();
+    sLedger.Save(LedgerPath());
+    sLedgerLoaded = true;
+    sAppliedRevision = 0;
+}
 
 void OotmmItemApply_Reconcile() {
     if (gPlayState == nullptr || !OotmmSession_IsActive()) {
