@@ -339,6 +339,16 @@ void InitializeSave() {
     gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
     gSaveContext.save.linkAge = 0;
     gSaveContext.save.entrance = ENTRANCE(SOUTH_CLOCK_TOWN, 0);
+    // The seed hands out MM's sword and shield; Fierce Deity's own blade is part of the form.
+    SET_EQUIP_VALUE(EQUIP_TYPE_SWORD, EQUIP_VALUE_SWORD_NONE);
+    SET_EQUIP_VALUE(EQUIP_TYPE_SHIELD, EQUIP_VALUE_SHIELD_NONE);
+    for (auto& form : gSaveContext.save.saveInfo.equips.buttonItems) {
+        for (auto& item : form) {
+            if (item == ITEM_SWORD_KOKIRI) {
+                item = ITEM_NONE;
+            }
+        }
+    }
     ApplySaveFlags();
 }
 
