@@ -52,6 +52,7 @@
 #include "2s2h/OotmmCustomItems.h"
 #include "2s2h/OotmmCustomItemsPlayer.h"
 #include "2s2h/OotmmCustomEquipment.h"
+#include "2s2h/OotmmAdultLink.h"
 #include "2s2h/OotmmScales.h"
 
 typedef struct {
@@ -2189,6 +2190,7 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
 
     if (actor->id == ACTOR_PLAYER) {
         OotmmEquipment_UpdateTunicTint();
+        OotmmAdultLink_SetTunicColor(play);
     }
 
     D_801F59E0 = playerForm * 2;
@@ -2699,6 +2701,11 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
     Player* player = (Player*)actor;
 
     if (!Player_OverrideLimbDrawGameplayCommon(play, limbIndex, dList, pos, rot, &player->actor)) {
+        // Raise the model root while carried/held so the taller adult body lines up.
+        if ((limbIndex == PLAYER_LIMB_ROOT) && (player->stateFlags3 & PLAYER_STATE3_20000000) &&
+            OotmmAdultLink_IsAdult()) {
+            pos->y += 1280.0f;
+        }
         if (limbIndex == PLAYER_LIMB_LEFT_HAND) {
             Gfx** leftHandDLists = player->leftHandDLists;
             EquipValueSword swordEquipValue;
@@ -2823,7 +2830,8 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
 
                 if ((sPlayerRightHandType == PLAYER_MODELTYPE_RH_SHIELD) &&
                     (player->transformation == PLAYER_FORM_HUMAN) &&
-                    (player->currentShield != PLAYER_SHIELD_NONE) && OotmmCustomItems_WearingDekuShield()) {
+                    (player->currentShield != PLAYER_SHIELD_NONE) && OotmmCustomItems_WearingDekuShield() &&
+                    !OotmmAdultLink_IsAdult()) {
                     Gfx* ootmmDList = OotmmEquipment_DekuShieldHandDList(sPlayerLod);
 
                     if (ootmmDList != NULL) {
@@ -3959,7 +3967,7 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList1, G
                     Vec3s* temp_s1;
                     Vec3f* var_a0 = &D_801C0D60;
 
-                    if (player->transformation == PLAYER_FORM_HUMAN) {
+                    if ((player->transformation == PLAYER_FORM_HUMAN) && !OotmmAdultLink_IsAdult()) {
                         var_a0 = &D_801C0D6C;
                     }
 
@@ -3997,7 +4005,9 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList1, G
                     } else if (player->itemAction == PLAYER_IA_DEKU_STICK) {
                         D_801C0994->x = player->unk_B0C * 5000.0f;
                     } else {
-                        D_801C0994->x = sMeleeWeaponLengths[Player_GetMeleeWeaponHeld(player)];
+                        D_801C0994->x = OotmmAdultLink_MeleeWeaponLength(
+                            Player_GetMeleeWeaponHeld(player),
+                            sMeleeWeaponLengths[Player_GetMeleeWeaponHeld(player)]);
                     }
                     func_80126B8C(play, player);
                 }
@@ -4042,7 +4052,7 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList1, G
                 Matrix_Scale(1.0f, player->unk_B08, 1.0f, MTXMODE_APPLY);
 
                 MATRIX_FINALIZE_AND_LOAD(POLY_XLU_DISP++, play->state.gfxCtx);
-                gSPDisplayList(POLY_XLU_DISP++, D_801C0D94);
+                gSPDisplayList(POLY_XLU_DISP++, OotmmAdultLink_BowStringDL(D_801C0D94));
 
                 Matrix_Pop();
 
@@ -4404,8 +4414,9 @@ void Player_PostLimbDrawGameplay(PlayState* play, s32 limbIndex, Gfx** dList1, G
              (player->sheathType == PLAYER_MODELTYPE_SHEATH_15))) {
             OPEN_DISPS(play->state.gfxCtx);
 
-            Gfx* ootmmShield =
-                OotmmCustomItems_WearingDekuShield() ? OotmmEquipment_DekuShieldBackDList() : NULL;
+            Gfx* ootmmShield = (OotmmCustomItems_WearingDekuShield() && !OotmmAdultLink_IsAdult())
+                                   ? OotmmEquipment_DekuShieldBackDList()
+                                   : NULL;
             gSPDisplayList(POLY_OPA_DISP++, ootmmShield != NULL
                                                 ? ootmmShield
                                                 : gPlayerShields[2 * ((player->currentShield - 1) ^ 0)]);

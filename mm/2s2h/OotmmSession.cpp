@@ -4,6 +4,7 @@
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
 #include "OotmmIpc.h"
 #include "OotmmItemApply.h"
+#include "OotmmAdultLink.h"
 #include "OotmmItemProbe.h"
 #include "OotmmScales.h"
 
@@ -576,6 +577,7 @@ void OotmmSession_Init() {
         OotmmItemProbe_Init();
         OotmmItemApply_Init();
         OotmmScales_Init();
+        OotmmAdultLink_Init();
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveInit>(
             [](s16) { InitializeSave(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(

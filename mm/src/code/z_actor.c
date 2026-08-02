@@ -30,6 +30,7 @@
 #include "2s2h/ShipUtils.h"
 #include "2s2h/ObjectExtension/ObjectExtension.h"
 #include "2s2h/ObjectExtension/ActorListIndex.h"
+#include "2s2h/OotmmAdultLink.h"
 #include "2s2h/OotmmSouls.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
@@ -1499,6 +1500,9 @@ f32 Player_GetHeight(Player* player) {
             return extraHeight + 36.0f;
 
         case PLAYER_FORM_HUMAN:
+            if (OotmmAdultLink_IsAdult()) {
+                return extraHeight + 68.0f;
+            }
             return extraHeight + 44.0f;
     }
 }

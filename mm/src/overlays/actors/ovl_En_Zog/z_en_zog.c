@@ -6,6 +6,7 @@
 
 #include "z_en_zog.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmAdultLink.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
 
@@ -914,7 +915,7 @@ void func_80B94E34(EnZog* this, PlayState* play) {
     }
 
     if (ABS_ALT(this->actor.yawTowardsPlayer - this->actor.world.rot.y) > 0x5000) {
-        Actor_OfferGetItem(&this->actor, play, GI_NONE, 60.0f, 40.0f);
+        Actor_OfferGetItem(&this->actor, play, GI_NONE, 60.0f, OotmmAdultLink_IsAdult() ? 96.0f : 40.0f);
     }
 
     if (this->unk_324 > 0) {

@@ -54,6 +54,7 @@
 #include "2s2h/OotmmCustomItemsPlayer.h"
 #include "2s2h/OotmmCustomEquipment.h"
 #include "2s2h/OotmmSongsPlayer.h"
+#include "2s2h/OotmmAdultLink.h"
 #include "2s2h/OotmmScales.h"
 #include "overlays/actors/ovl_Ootmm_Boomerang/z_ootmm_boomerang.h"
 #include "overlays/actors/ovl_Bg_Hakugin_Post/z_bg_hakugin_post.h"
@@ -7882,7 +7883,7 @@ s32 func_8083868C(PlayState* play, Player* this) {
     if (this->unk_AA5 == PLAYER_UNKAA5_3) {
         if (func_800B7118(this)) {
             if (this->transformation == PLAYER_FORM_HUMAN) {
-                camMode = CAM_MODE_SLINGSHOT;
+                camMode = OotmmAdultLink_IsAdult() ? CAM_MODE_BOWARROW : CAM_MODE_SLINGSHOT;
             } else if (this->transformation == PLAYER_FORM_DEKU) {
                 camMode = CAM_MODE_DEKUSHOOT;
             } else {
