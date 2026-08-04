@@ -54,6 +54,7 @@
 #include "2s2h/OotmmCustomEquipment.h"
 #include "2s2h/OotmmAdultLink.h"
 #include "2s2h/OotmmScales.h"
+#include "2s2h/OotmmPresence.h"
 
 typedef struct {
     /* 0x00 */ Vec3f unk_00;
@@ -2188,8 +2189,11 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
 
     POLY_OPA_DISP = &gfx[2];
 
+    OotmmEquipment_UpdateTunicTint();
+    OotmmEquipment_PushTunicSegment(play, OotmmEquipment_TakePendingTunic());
     if (actor->id == ACTOR_PLAYER) {
-        OotmmEquipment_UpdateTunicTint();
+        OotmmPresence_CaptureCustomHand(0, OOTMM_CUSTOM_HAND_NONE);
+        OotmmPresence_CaptureCustomHand(1, OOTMM_CUSTOM_HAND_NONE);
         OotmmAdultLink_SetTunicColor(play);
     }
 
@@ -2759,6 +2763,13 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
                 if (ootmmDList != NULL) {
                     *dList = ootmmDList;
                 }
+
+                if (player == GET_PLAYER(play)) {
+                    OotmmPresence_CaptureCustomHand(
+                        0, (player->heldItemAction == PLAYER_IA_OOTMM_HAMMER)      ? OOTMM_CUSTOM_HAND_HAMMER
+                           : (ootmmDList != NULL)                                 ? OOTMM_CUSTOM_HAND_BOOMERANG
+                                                                                  : OOTMM_CUSTOM_HAND_NONE);
+                }
             }
 
             if (player->transformation == PLAYER_FORM_GORON) {
@@ -2778,6 +2789,9 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
                         func_80125CE0(player, phi_a1 ? D_801C0538 : D_801C0560, pos, rot);
                     }
                 }
+            }
+            if (player == GET_PLAYER(play)) {
+                OotmmPresence_CaptureEquipDl(0, *dList);
             }
         } else if (limbIndex == PLAYER_LIMB_RIGHT_HAND) {
             if ((player->transformation == PLAYER_FORM_ZORA) &&
@@ -2825,6 +2839,9 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
 
                     if (ootmmDList != NULL) {
                         *dList = ootmmDList;
+                        if (player == GET_PLAYER(play)) {
+                            OotmmPresence_CaptureCustomHand(1, OOTMM_CUSTOM_HAND_SLINGSHOT);
+                        }
                     }
                 }
 
@@ -2836,12 +2853,19 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
 
                     if (ootmmDList != NULL) {
                         *dList = ootmmDList;
+                        if (player == GET_PLAYER(play)) {
+                            OotmmPresence_CaptureCustomHand(1, OOTMM_CUSTOM_HAND_DEKU_SHIELD);
+                        }
                     }
                 }
 
                 if (BEN_ANIM_EQUAL(player->skelAnime.animation, gPlayerAnim_pg_punchB)) {
                     func_80125CE0(player, D_801C0784, pos, rot);
                 }
+            }
+
+            if (player == GET_PLAYER(play)) {
+                OotmmPresence_CaptureEquipDl(1, *dList);
             }
         } else if (limbIndex == PLAYER_LIMB_SHEATH) {
             Gfx** sheathDLists = player->sheathDLists;
@@ -2860,8 +2884,16 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
             }
 
             *dList = sheathDLists[sPlayerLod];
+
+            if (player == GET_PLAYER(play)) {
+                OotmmPresence_CaptureEquipDl(2, *dList);
+            }
         } else if (limbIndex == PLAYER_LIMB_WAIST) {
             *dList = player->waistDLists[sPlayerLod];
+
+            if (player == GET_PLAYER(play)) {
+                OotmmPresence_CaptureEquipDl(3, *dList);
+            }
         } else if (limbIndex == PLAYER_LIMB_HAT) {
             if (player->transformation == PLAYER_FORM_ZORA) {
                 Matrix_Scale((player->unk_B10[0] * 1) + 1.0f, 1.0f, 1.0f, MTXMODE_APPLY);

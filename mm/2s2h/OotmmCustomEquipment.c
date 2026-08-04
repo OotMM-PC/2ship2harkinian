@@ -243,8 +243,8 @@ static Gfx sHoverBootsCircleDL[] = {
     gsSPEndDisplayList(),
 };
 
-void OotmmEquipment_GetTunicColor(uint8_t* r, uint8_t* g, uint8_t* b) {
-    switch (OotmmCustomItems_EquippedTunic()) {
+void OotmmEquipment_TunicColorOf(int32_t tunic, uint8_t* r, uint8_t* g, uint8_t* b) {
+    switch (tunic) {
         case OOTMM_TUNIC_GORON:
             *r = 100;
             *g = 20;
@@ -263,11 +263,9 @@ void OotmmEquipment_GetTunicColor(uint8_t* r, uint8_t* g, uint8_t* b) {
     }
 }
 
-static Gfx sTunicTintDL[] = {
-    gsDPSetPrimColor(0, 0, 30, 105, 27, 255),
-    gsDPPipeSync(),
-    gsSPEndDisplayList(),
-};
+void OotmmEquipment_GetTunicColor(uint8_t* r, uint8_t* g, uint8_t* b) {
+    OotmmEquipment_TunicColorOf(OotmmCustomItems_EquippedTunic(), r, g, b);
+}
 
 typedef struct {
     const char* path;
@@ -290,11 +288,39 @@ static const TunicPatchSlot sTunicPatchSlots[] = {
     { "objects/object_link_child/gLinkHumanTorsoDL", "ootmmTunic", 5 },
 };
 
-void OotmmEquipment_UpdateTunicTint(void) {
-    static int sPatched = 0;
+static int32_t sPendingTunic = -1;
+
+void OotmmEquipment_SetPendingTunic(int32_t tunic) {
+    sPendingTunic = tunic;
+}
+
+int32_t OotmmEquipment_TakePendingTunic(void) {
+    int32_t tunic = sPendingTunic;
+
+    sPendingTunic = -1;
+    return tunic >= 0 ? tunic : OotmmCustomItems_EquippedTunic();
+}
+
+void OotmmEquipment_PushTunicSegment(PlayState* play, int32_t tunic) {
+    Gfx* tint = GRAPH_ALLOC(play->state.gfxCtx, 3 * sizeof(Gfx));
     uint8_t r;
     uint8_t g;
     uint8_t b;
+
+    OotmmEquipment_TunicColorOf(tunic, &r, &g, &b);
+
+    OPEN_DISPS(play->state.gfxCtx);
+
+    gDPSetPrimColor(&tint[0], 0, 0, r, g, b, 255);
+    gDPPipeSync(&tint[1]);
+    gSPEndDisplayList(&tint[2]);
+    gSPSegment(POLY_OPA_DISP++, OOTMM_TUNIC_SEGMENT, tint);
+
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
+void OotmmEquipment_UpdateTunicTint(void) {
+    static int sPatched = 0;
     size_t i;
 
     if (!OotmmSession_IsActive()) {
@@ -307,14 +333,8 @@ void OotmmEquipment_UpdateTunicTint(void) {
         return;
     }
 
-    OotmmEquipment_GetTunicColor(&r, &g, &b);
-    {
-        Gfx tint[] = { gsDPSetPrimColor(0, 0, r, g, b, 255) };
-        sTunicTintDL[0] = tint[0];
-    }
-
     if (!sPatched) {
-        Gfx call[] = { gsSPDisplayList(sTunicTintDL) };
+        Gfx call[] = { gsSPDisplayList(OOTMM_TUNIC_SEGMENT_ADDR) };
 
         for (i = 0; i < ARRAY_COUNT(sTunicPatchSlots); i++) {
             ResourceMgr_PatchGfxByName(sTunicPatchSlots[i].path, sTunicPatchSlots[i].patchName,
@@ -324,10 +344,10 @@ void OotmmEquipment_UpdateTunicTint(void) {
     }
 }
 
-void OotmmEquipment_DrawBoots(PlayState* play, Player* player) {
+void OotmmEquipment_DrawBootsOf(PlayState* play, int32_t boots) {
     OPEN_DISPS(play->state.gfxCtx);
 
-    switch (OotmmCustomItems_EquippedBoots()) {
+    switch (boots) {
         case OOTMM_BOOTS_IRON:
             gSPDisplayList(POLY_OPA_DISP++, sLeftIronBootDL);
             gSPDisplayList(POLY_OPA_DISP++, sRightIronBootDL);
@@ -339,6 +359,10 @@ void OotmmEquipment_DrawBoots(PlayState* play, Player* player) {
     }
 
     CLOSE_DISPS(play->state.gfxCtx);
+}
+
+void OotmmEquipment_DrawBoots(PlayState* play, Player* player) {
+    OotmmEquipment_DrawBootsOf(play, OotmmCustomItems_EquippedBoots());
 }
 
 void OotmmEquipment_DrawHoverCircle(PlayState* play, Player* player) {

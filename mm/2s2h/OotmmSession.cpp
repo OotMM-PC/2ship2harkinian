@@ -7,6 +7,7 @@
 #include "OotmmAdultLink.h"
 #include "OotmmItemProbe.h"
 #include "OotmmScales.h"
+#include "OotmmPresence.h"
 
 #include <cstddef>
 #include <cstring>
@@ -578,6 +579,7 @@ void OotmmSession_Init() {
         OotmmItemApply_Init();
         OotmmScales_Init();
         OotmmAdultLink_Init();
+        OotmmPresence_Init();
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveInit>(
             [](s16) { InitializeSave(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(

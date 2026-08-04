@@ -6,6 +6,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 void OotmmIpc_Init();
 void OotmmIpc_Pump();
@@ -19,5 +20,13 @@ bool OotmmIpc_RequestDebugItemPresentation(const std::string& itemId, uint32_t r
 bool OotmmIpc_TryPopItemPresentation(Ship::GameIpcItemPresentation& presentation);
 bool OotmmIpc_IsConnected();
 
+bool OotmmIpc_PresenceActive();
+bool OotmmIpc_SendPlayerPose(const Ship::OotmmPlayerPose& pose);
+bool OotmmIpc_SendPvpHit(const Ship::OotmmPvpHit& hit);
+bool OotmmIpc_TakeRemotePresence(std::vector<Ship::OotmmPlayerPose>& poses,
+                                 std::vector<Ship::OotmmPvpHit>& hits);
+
+extern "C" int gOotmmPvpEnabled;
+extern "C" int gOotmmShowNames;
 extern "C" int gOotmmGameSpeedPercent;
 extern "C" int gOotmmGameSpeedSmooth;
