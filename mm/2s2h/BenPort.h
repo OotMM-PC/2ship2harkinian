@@ -98,6 +98,7 @@ Gfx* ResourceMgr_LoadGfxByCRC(uint64_t crc);
 Gfx* ResourceMgr_LoadGfxByName(const char* path);
 void ResourceMgr_PatchGfxByName(const char* path, const char* patchName, int index, Gfx instruction);
 void ResourceMgr_UnpatchGfxByName(const char* path, const char* patchName);
+size_t ResourceMgr_GetGfxCountByName(const char* path);
 size_t ResourceMgr_GetPatchCountForDL(const char* path);
 void ResourceMgr_ResetAllPatchesForDL(const char* path);
 u8* ResourceMgr_LoadArrayByNameAsU8(const char* path, u8* buffer);

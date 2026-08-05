@@ -2190,7 +2190,6 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
     POLY_OPA_DISP = &gfx[2];
 
     OotmmEquipment_UpdateTunicTint();
-    OotmmEquipment_PushTunicSegment(play, OotmmEquipment_TakePendingTunic());
     if (actor->id == ACTOR_PLAYER) {
         OotmmPresence_CaptureCustomHand(0, OOTMM_CUSTOM_HAND_NONE);
         OotmmPresence_CaptureCustomHand(1, OOTMM_CUSTOM_HAND_NONE);

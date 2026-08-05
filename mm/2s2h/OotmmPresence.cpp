@@ -329,7 +329,6 @@ void PuppetDrawFunc(Actor* actor, PlayState* play) {
     gPuppetDekuShield = state->dekuShield;
     gPuppetCustomHand[0] = state->customHand[0];
     gPuppetCustomHand[1] = state->customHand[1];
-    OotmmEquipment_SetPendingTunic(state->tunic);
     Player_DrawImpl(play, state->skelAnime.skeleton, state->skelAnime.jointTable, state->skelAnime.dListCount, 0,
                     (PlayerTransformation)state->form, state->boots, 0, OotmmPuppet_OverrideLimbDraw,
                     OotmmPuppet_PostLimbDraw, actor);

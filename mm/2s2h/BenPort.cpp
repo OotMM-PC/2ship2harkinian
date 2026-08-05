@@ -1299,6 +1299,12 @@ extern "C" void ResourceMgr_UnpatchGfxByName(const char* path, const char* patch
     }
 }
 
+extern "C" size_t ResourceMgr_GetGfxCountByName(const char* path) {
+    auto res = std::static_pointer_cast<Fast::DisplayList>(
+        Ship::Context::GetInstance()->GetResourceManager()->LoadResource(path));
+    return res != nullptr ? res->Instructions.size() : 0;
+}
+
 extern "C" size_t ResourceMgr_GetPatchCountForDL(const char* path) {
     if (originalGfx.contains(path)) {
         return originalGfx[path].size();

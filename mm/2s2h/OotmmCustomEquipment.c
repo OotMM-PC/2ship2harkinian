@@ -288,59 +288,64 @@ static const TunicPatchSlot sTunicPatchSlots[] = {
     { "objects/object_link_child/gLinkHumanTorsoDL", "ootmmTunic", 5 },
 };
 
-static int32_t sPendingTunic = -1;
+// Slot indices are authored against the vanilla cloth DLs; a model pack's own lists put anything
+// (or nothing) at them, so a slot is patched only while it still holds the baked prim color.
+static int TunicSlotPatchable(const TunicPatchSlot* slot) {
+    Gfx* dl = ResourceMgr_LoadGfxByName(slot->path);
+    size_t count = ResourceMgr_GetGfxCountByName(slot->path);
 
-void OotmmEquipment_SetPendingTunic(int32_t tunic) {
-    sPendingTunic = tunic;
+    if (dl == NULL || (size_t)slot->index >= count) {
+        return 0;
+    }
+    return (dl[slot->index].words.w0 >> 24) == G_SETPRIMCOLOR;
 }
 
-int32_t OotmmEquipment_TakePendingTunic(void) {
-    int32_t tunic = sPendingTunic;
-
-    sPendingTunic = -1;
-    return tunic >= 0 ? tunic : OotmmCustomItems_EquippedTunic();
-}
-
-void OotmmEquipment_PushTunicSegment(PlayState* play, int32_t tunic) {
-    Gfx* tint = GRAPH_ALLOC(play->state.gfxCtx, 3 * sizeof(Gfx));
+// Patched in place per slot; no segment indirection (0x0C and friends are contended by
+// z_actor/z_scene_proc, and an unresolved segment call executes as a raw address).
+void OotmmEquipment_UpdateTunicTint(void) {
+    static int sAppliedTunic = -2;
+    static int sVerified = 0;
+    static uint8_t sSlotOk[ARRAY_COUNT(sTunicPatchSlots)];
     uint8_t r;
     uint8_t g;
     uint8_t b;
-
-    OotmmEquipment_TunicColorOf(tunic, &r, &g, &b);
-
-    OPEN_DISPS(play->state.gfxCtx);
-
-    gDPSetPrimColor(&tint[0], 0, 0, r, g, b, 255);
-    gDPPipeSync(&tint[1]);
-    gSPEndDisplayList(&tint[2]);
-    gSPSegment(POLY_OPA_DISP++, OOTMM_TUNIC_SEGMENT, tint);
-
-    CLOSE_DISPS(play->state.gfxCtx);
-}
-
-void OotmmEquipment_UpdateTunicTint(void) {
-    static int sPatched = 0;
     size_t i;
 
     if (!OotmmSession_IsActive()) {
-        if (sPatched) {
+        if (sAppliedTunic != -2) {
             for (i = 0; i < ARRAY_COUNT(sTunicPatchSlots); i++) {
-                ResourceMgr_UnpatchGfxByName(sTunicPatchSlots[i].path, sTunicPatchSlots[i].patchName);
+                if (sSlotOk[i]) {
+                    ResourceMgr_UnpatchGfxByName(sTunicPatchSlots[i].path, sTunicPatchSlots[i].patchName);
+                }
             }
-            sPatched = 0;
+            sAppliedTunic = -2;
+            sVerified = 0;
         }
         return;
     }
 
-    if (!sPatched) {
-        Gfx call[] = { gsSPDisplayList(OOTMM_TUNIC_SEGMENT_ADDR) };
+    if (!sVerified) {
+        for (i = 0; i < ARRAY_COUNT(sTunicPatchSlots); i++) {
+            sSlotOk[i] = TunicSlotPatchable(&sTunicPatchSlots[i]);
+        }
+        sVerified = 1;
+    }
+
+    if (OotmmCustomItems_EquippedTunic() == sAppliedTunic) {
+        return;
+    }
+
+    sAppliedTunic = OotmmCustomItems_EquippedTunic();
+    OotmmEquipment_TunicColorOf(sAppliedTunic, &r, &g, &b);
+    {
+        Gfx tint[] = { gsDPSetPrimColor(0, 0, r, g, b, 255) };
 
         for (i = 0; i < ARRAY_COUNT(sTunicPatchSlots); i++) {
-            ResourceMgr_PatchGfxByName(sTunicPatchSlots[i].path, sTunicPatchSlots[i].patchName,
-                                       sTunicPatchSlots[i].index, call[0]);
+            if (sSlotOk[i]) {
+                ResourceMgr_PatchGfxByName(sTunicPatchSlots[i].path, sTunicPatchSlots[i].patchName,
+                                           sTunicPatchSlots[i].index, tint[0]);
+            }
         }
-        sPatched = 1;
     }
 }
 

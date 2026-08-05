@@ -47,8 +47,6 @@ u8 sMotionBlurStatus;
 #include "2s2h/DeveloperTools/CollisionViewer.h"
 #include "2s2h/OotmmClocks.h"
 #include "2s2h/OotmmSession.h"
-#include "2s2h/OotmmCustomEquipment.h"
-#include "2s2h/OotmmCustomItems.h"
 #include "2s2h/framebuffer_effects.h"
 #include <string.h>
 
@@ -1244,10 +1242,6 @@ void Play_DrawMain(PlayState* this) {
     gSPSegment(POLY_OPA_DISP++, 0x02, this->sceneSegment);
     gSPSegment(POLY_XLU_DISP++, 0x02, this->sceneSegment);
     gSPSegment(OVERLAY_DISP++, 0x02, this->sceneSegment);
-
-    // The patched cloth materials call through this segment; an unset one would be executed as a
-    // raw address, so every frame establishes a default before anything draws.
-    OotmmEquipment_PushTunicSegment(this, OotmmCustomItems_EquippedTunic());
 
     if (1) {
         ShrinkWindow_Draw(gfxCtx);
