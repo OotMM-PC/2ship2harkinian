@@ -46,6 +46,7 @@ CrowdControl* CrowdControl::Instance;
 #endif
 
 #include <libultraship/libultraship.h>
+#include "libultraship/bridge/ModLoadOrder.h"
 #include <libultraship/controller/controldeck/ControlDeck.h>
 #include <fast/resource/ResourceType.h>
 #include <BenGui/BenGui.hpp>
@@ -167,6 +168,10 @@ OTRGlobals::OTRGlobals() {
         return std::lexicographical_compare(aFileName.begin(), aFileName.end(), bFileName.begin(), bFileName.end(),
                                             [](char c1, char c2) { return std::tolower(c1) < std::tolower(c2); });
     });
+
+    // A mods directory may rank its archives explicitly; alphabetical order only decides
+    // what it leaves unranked.
+    Ship::ModLoadOrder::SortForMounting(patchFiles, patchesPath);
 
     archiveFiles.insert(archiveFiles.end(), patchFiles.begin(), patchFiles.end());
 
