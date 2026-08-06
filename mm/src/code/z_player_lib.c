@@ -53,6 +53,7 @@
 #include "2s2h/OotmmCustomItemsPlayer.h"
 #include "2s2h/OotmmCustomEquipment.h"
 #include "2s2h/OotmmAdultLink.h"
+#include "2s2h/OotmmChildLink.h"
 #include "2s2h/OotmmScales.h"
 #include "2s2h/OotmmPresence.h"
 
@@ -2888,7 +2889,11 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
                 OotmmPresence_CaptureEquipDl(2, *dList);
             }
         } else if (limbIndex == PLAYER_LIMB_WAIST) {
-            *dList = player->waistDLists[sPlayerLod];
+            // A custom adult model keeps its skeleton's waist limb, like SoH's carve-out,
+            // and OoT child has no waist DL at all; the flap would poke through otherwise.
+            if (!OotmmAdultLink_CustomModelActive() && !OotmmChildLink_Active()) {
+                *dList = player->waistDLists[sPlayerLod];
+            }
 
             if (player == GET_PLAYER(play)) {
                 OotmmPresence_CaptureEquipDl(3, *dList);

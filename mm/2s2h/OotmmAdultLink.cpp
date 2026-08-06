@@ -1,9 +1,11 @@
 #include "OotmmAdultLink.h"
+#include "OotmmChildLink.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "OotmmCustomEquipment.h"
 #include "OotmmSession.h"
 
+#include <ship/Context.h>
 #include <spdlog/spdlog.h>
 
 #include <cstring>
@@ -96,6 +98,7 @@ constexpr int kHumanNear = 2 * PLAYER_FORM_HUMAN;
 constexpr int kHumanFar = 2 * PLAYER_FORM_HUMAN + 1;
 
 bool sApplied = false;
+bool sCustomModel = false;
 
 Gfx* sBackupDLs[64];
 int sBackupCount = 0;
@@ -226,6 +229,18 @@ void ApplyAdultLink() {
     if (sApplied) {
         return;
     }
+
+    // A model archive can shadow the skeleton with a resource this build cannot parse;
+    // SkelAnime dereferences whatever this resolves to. Failing stays un-applied, so
+    // Active/Restore never act on a swap that did not happen.
+    auto adultSkel = Ship::Context::GetInstance()->GetResourceManager()->LoadResource(
+        (const char*)gLinkAdultSkel + 7);
+    if (adultSkel == nullptr) {
+        SPDLOG_WARN("[OoTMM] adult skeleton failed to load; keeping the MM human model");
+        return;
+    }
+    // A model pack's skeleton keeps its own waist limb, mirroring SoH's custom-model rule.
+    sCustomModel = adultSkel->GetInitData()->IsCustom;
     sApplied = true;
 
     static bool sBackedUp = false;
@@ -269,6 +284,7 @@ void RestoreChildLink() {
         return;
     }
     sApplied = false;
+    sCustomModel = false;
 
     gPlayerSkeletons[kHuman] = sBackupSkel;
     for (int i = 0; i < sBackupCount; i++) {
@@ -282,6 +298,10 @@ void RestoreChildLink() {
 }
 
 } // namespace
+
+extern "C" int32_t OotmmAdultLink_CustomModelActive(void) {
+    return sApplied && sCustomModel ? 1 : 0;
+}
 
 extern "C" int32_t OotmmAdultLink_IsAdult(void) {
     return sApplied ? 1 : 0;
@@ -308,7 +328,7 @@ extern "C" float OotmmAdultLink_MeleeWeaponLength(int32_t meleeWeapon, float chi
 }
 
 extern "C" void OotmmAdultLink_SetTunicColor(struct PlayState* play) {
-    if (!sApplied) {
+    if (!sApplied && !OotmmChildLink_Active()) {
         return;
     }
     uint8_t r;
@@ -323,10 +343,18 @@ extern "C" void OotmmAdultLink_SetTunicColor(struct PlayState* play) {
 
 extern "C" void OotmmAdultLink_Init(void) {
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>([](s16) {
+        // Three states own the human form: adult, ported OoT child, vanilla. The current
+        // mapper restores before the next applies, so a backup can never capture a mapped state.
         if (ComputeIsAdult()) {
+            OotmmChildLink::Restore();
             ApplyAdultLink();
         } else {
             RestoreChildLink();
+            if (OotmmChildLink::Wanted()) {
+                OotmmChildLink::Apply();
+            } else {
+                OotmmChildLink::Restore();
+            }
         }
     });
 }
