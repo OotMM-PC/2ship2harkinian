@@ -24,6 +24,15 @@ void OotmmPresence_CaptureCustomHand(int32_t index, int32_t which);
 /// Stores slot i when the pointer is a resource path; composed DLs fall back to the bare limb.
 void OotmmPresence_CaptureEquipDl(int32_t index, void* dl);
 
+/// The face texture for the current draw: the drawing puppet's own (synced or ported)
+/// face when one resolves, else the vanilla table entry.
+void* OotmmPuppet_EyeTexture(int32_t playerForm, int32_t eyeIndex);
+void* OotmmPuppet_MouthTexture(int32_t playerForm, int32_t mouthIndex);
+
+struct PlayState;
+/// Emits the drawing puppet's synced tunic as ENV color when it wears ported OoT cloth.
+void OotmmPuppet_SetTunicColor(struct PlayState* play);
+
 #ifdef __cplusplus
 }
 #endif

@@ -2171,7 +2171,7 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
 
     // Only Human, Zora, and Goron will read the eye textures in the head limb display list.
     // Fierce Deity and Deku will point this segment to garbage data, but it will be unread from.
-    gSPSegment(&gfx[0], 0x08, Lib_SegmentedToVirtual(sPlayerEyesTextures[playerForm][eyeIndex]));
+    gSPSegment(&gfx[0], 0x08, Lib_SegmentedToVirtual(OotmmPuppet_EyeTexture(playerForm, eyeIndex)));
 
     // 2S2H [Port] Hess crash fix
     if (mouthIndex >= PLAYER_MOUTH_MAX) {
@@ -2186,7 +2186,7 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
 
     // Only Human and Zora will read the mouth textures in the head limb display list.
     // Goron, Fierce Deity, and Deku will point this segment to garbage data, but it will be unread from.
-    gSPSegment(&gfx[1], 0x09, Lib_SegmentedToVirtual(sPlayerMouthTextures[playerForm][mouthIndex]));
+    gSPSegment(&gfx[1], 0x09, Lib_SegmentedToVirtual(OotmmPuppet_MouthTexture(playerForm, mouthIndex)));
 
     POLY_OPA_DISP = &gfx[2];
 
@@ -2195,6 +2195,8 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
         OotmmPresence_CaptureCustomHand(0, OOTMM_CUSTOM_HAND_NONE);
         OotmmPresence_CaptureCustomHand(1, OOTMM_CUSTOM_HAND_NONE);
         OotmmAdultLink_SetTunicColor(play);
+    } else {
+        OotmmPuppet_SetTunicColor(play);
     }
 
     D_801F59E0 = playerForm * 2;

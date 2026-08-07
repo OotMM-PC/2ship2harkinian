@@ -8,8 +8,10 @@
 #include "OotmmCustomItems.h"
 #include "OotmmCustomEquipment.h"
 #include "OotmmAdultLink.h"
+#include "OotmmChildLink.h"
 
 #include <libultraship/bridge/OotmmPresence.h>
+#include <ship/Context.h>
 
 #include <algorithm>
 #include <cstring>
@@ -27,10 +29,13 @@ extern "C" {
 extern PlayState* gPlayState;
 extern FlexSkeletonHeader* gPlayerSkeletons[PLAYER_FORM_MAX];
 extern PlayerAgeProperties sPlayerAgeProperties[PLAYER_FORM_MAX];
+extern TexturePtr sPlayerEyesTextures[PLAYER_FORM_MAX][PLAYER_EYES_MAX];
+extern TexturePtr sPlayerMouthTextures[PLAYER_FORM_MAX][PLAYER_MOUTH_MAX];
 extern const char* D_801C0B20[];
 extern Gfx* gPlayerShields[];
 
 Gfx* ResourceMgr_LoadGfxByName(const char* path);
+uint8_t ResourceMgr_FileExists(const char* resName);
 
 void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dListCount, s32 lod,
                      PlayerTransformation playerForm, s32 boots, s32 face, OverrideLimbDrawFlex overrideLimbDraw,
@@ -74,6 +79,9 @@ u8 gPuppetSheathType = 0;
 u8 gPuppetRightHandType = 0;
 bool gPuppetDekuShield = false;
 s32 gPuppetCustomHand[2] = { 0, 0 };
+int32_t gPuppetPlayerId = 0;   // drawing puppet's owner during a puppet draw, 0 otherwise
+int32_t gPuppetHumanModel = 0; // that puppet's human-form model source (pose "hm")
+int32_t gPuppetTunic = 0;      // that puppet's synced tunic (colors ported cloth via ENV)
 
 struct PuppetState {
     SkelAnime skelAnime{};
@@ -84,9 +92,13 @@ struct PuppetState {
     s16 targetYaw = 0;
     u8 moveFlags = 0;
     u8 form = PLAYER_FORM_HUMAN;
+    u8 humanModel = 0;
     uint16_t playerId = 0;
     bool hasPose = false;
     bool skeletonReady = false;
+    // Backs the FlexSkeletonHeader* handed to SkelAnime whenever the puppet wears a
+    // namespaced skeleton; the string must outlive the SkelAnime that points into it.
+    std::string skelPath;
     std::string dlLeftHand;
     std::string dlRightHand;
     std::string dlSheath;
@@ -147,11 +159,58 @@ ColliderCylinderInit sPuppetCylinderInit = {
     { 20, 60, 0, { 0, 0, 0 } },
 };
 
+// Composes "__OTR__pNNobjs/…" for a canonical objects/ path when player N's synced
+// namespace provides it; the caller's buffer holds the result.
+const char* PuppetNamespaced(char* buf, size_t cap, uint16_t playerId, const char* canonical) {
+    if (playerId == 0 || canonical == nullptr || std::strncmp(canonical, "objects/", 8) != 0) {
+        return nullptr;
+    }
+    std::snprintf(buf, cap, "__OTR__p%02xobjs/%s", playerId & 0xFF, canonical + 8);
+    return ResourceMgr_FileExists(buf + 7) ? buf : nullptr;
+}
+
+Gfx* PuppetLoadGfx(const char* name) {
+    char ns[128];
+    if (PuppetNamespaced(ns, sizeof(ns), static_cast<uint16_t>(gPuppetPlayerId), name) != nullptr) {
+        return ResourceMgr_LoadGfxByName(ns + 7);
+    }
+    return ResourceMgr_LoadGfxByName(name);
+}
+
+// The human form draws whichever model the sender reported; the sender's synced pNN
+// namespace overrides any form, and an unparseable resource falls back before SkelAnime.
+FlexSkeletonHeader* PuppetSkeleton(PuppetState* state, u8 form) {
+    const char* canonical = nullptr;
+    if (form == PLAYER_FORM_HUMAN) {
+        canonical = state->humanModel == 2   ? "objects/ot_obj_link_boy/gLinkAdultSkel"
+                    : state->humanModel == 1 ? "objects/ot_obj_link_child/gLinkChildSkel"
+                                             : "objects/object_link_child/gLinkHumanSkel";
+    } else if (const char* live = reinterpret_cast<const char*>(gPlayerSkeletons[form]);
+               live != nullptr && std::strncmp(live, "__OTR__", 7) == 0) {
+        canonical = live + 7;
+    }
+
+    char ns[96];
+    const char* path = PuppetNamespaced(ns, sizeof(ns), state->playerId, canonical);
+    if (path == nullptr && form == PLAYER_FORM_HUMAN && state->humanModel != 0) {
+        // Nothing synced: the canonical ported object (ootmm_assets' vanilla OoT Link)
+        // still matches the sender better than this machine's human model.
+        std::snprintf(ns, sizeof(ns), "__OTR__%s", canonical);
+        path = ResourceMgr_FileExists(ns + 7) ? ns : nullptr;
+    }
+    if (path != nullptr &&
+        Ship::Context::GetInstance()->GetResourceManager()->LoadResource(path + 7) != nullptr) {
+        state->skelPath = path;
+        return reinterpret_cast<FlexSkeletonHeader*>(const_cast<char*>(state->skelPath.c_str()));
+    }
+    return gPlayerSkeletons[form];
+}
+
 void PuppetInitSkeleton(PuppetState* state, PlayState* play, u8 form) {
     if (form >= PLAYER_FORM_MAX) {
         form = PLAYER_FORM_HUMAN;
     }
-    SkelAnime_InitPlayer(play, &state->skelAnime, gPlayerSkeletons[form],
+    SkelAnime_InitPlayer(play, &state->skelAnime, PuppetSkeleton(state, form),
                          (PlayerAnimationHeader*)gPlayerAnim_link_normal_wait, 1 | 8, state->jointTable,
                          state->morphTable, PLAYER_LIMB_MAX);
     state->form = form;
@@ -169,7 +228,13 @@ extern "C" s32 OotmmPuppet_OverrideLimbDraw(PlayState* play, s32 limbIndex, Gfx*
     (void)actor;
     if (limbIndex == PLAYER_LIMB_ROOT && gPuppetForm >= 0 && gPuppetForm < PLAYER_FORM_MAX &&
         gPuppetForm != PLAYER_FORM_FIERCE_DEITY) {
-        const f32 scale = sPlayerAgeProperties[gPuppetForm].unk_08;
+        // The sender's human height depends on THEIR mapper state, never this client's
+        // tables — locally the human row holds adult metrics while our own mapper is on.
+        const f32 scale =
+            gPuppetForm == PLAYER_FORM_HUMAN
+                ? (gPuppetHumanModel == 2 ? sPlayerAgeProperties[PLAYER_FORM_ZORA].unk_08
+                                          : OotmmAdultLink_VanillaHumanRootScale())
+                : sPlayerAgeProperties[gPuppetForm].unk_08;
         const int32_t mf = gPuppetMoveFlags;
         if (!(mf & 4) || (mf & 1)) {
             pos->x *= scale;
@@ -191,7 +256,7 @@ extern "C" s32 OotmmPuppet_OverrideLimbDraw(PlayState* play, s32 limbIndex, Gfx*
             name = gPuppetEquipDl[3];
         }
         if (name != NULL && name[0] != '\0') {
-            *dList = (name[0] == '-') ? NULL : ResourceMgr_LoadGfxByName(name);
+            *dList = (name[0] == '-') ? NULL : PuppetLoadGfx(name);
         }
         const s32 which = limbIndex == PLAYER_LIMB_LEFT_HAND    ? gPuppetCustomHand[0]
                           : limbIndex == PLAYER_LIMB_RIGHT_HAND ? gPuppetCustomHand[1]
@@ -261,6 +326,109 @@ extern "C" void OotmmPuppet_PostLimbDraw(PlayState* play, s32 limbIndex, Gfx** d
 
 namespace {
 
+// Face symbol families per human-form model, mirroring the mapper tables; the human table
+// rows cannot be read live because the local mappers overwrite them.
+const char* const kPuppetHumanEyes[PLAYER_EYES_MAX] = {
+    "gLinkHumanEyesOpenTex", "gLinkHumanEyesHalfTex", "gLinkHumanEyesClosedTex",
+    "gLinkHumanEyesRightTex", "gLinkHumanEyesLeftTex", "gLinkHumanEyesUpTex",
+    "gLinkHumanEyesDownTex", "gLinkHumanEyesWincingTex",
+};
+const char* const kPuppetHumanMouths[PLAYER_MOUTH_MAX] = {
+    "gLinkHumanMouthClosedTex", "gLinkHumanMouthHalfTex", "gLinkHumanMouthOpenTex",
+    "gLinkHumanMouthSmileTex",
+};
+const char* const kPuppetChildEyes[PLAYER_EYES_MAX] = {
+    "gLinkChildEyesOpenTex", "gLinkChildEyesHalfTex", "gLinkChildEyesClosedfTex",
+    "gLinkChildEyesRollRightTex", "gLinkChildEyesRollLeftTex", "gLinkChildEyesUnk1Tex",
+    "gLinkChildEyesUnk2Tex", "gLinkChildEyesShockTex",
+};
+const char* const kPuppetChildMouths[PLAYER_MOUTH_MAX] = {
+    "gLinkChildMouth1Tex", "gLinkChildMouth2Tex", "gLinkChildMouth3Tex", "gLinkChildMouth4Tex",
+};
+const char* const kPuppetAdultEyes[PLAYER_EYES_MAX] = {
+    "gLinkAdultEyesOpenTex", "gLinkAdultEyesHalfTex", "gLinkAdultEyesClosedfTex",
+    "gLinkAdultEyesRollRightTex", "gLinkAdultEyesRollLeftTex", "gLinkAdultEyesUnk1Tex",
+    "gLinkAdultEyesUnk2Tex", "gLinkAdultEyesShockTex",
+};
+const char* const kPuppetAdultMouths[PLAYER_MOUTH_MAX] = {
+    "gLinkAdultMouth1Tex", "gLinkAdultMouth2Tex", "gLinkAdultMouth3Tex", "gLinkAdultMouth4Tex",
+};
+
+void* PuppetFaceTexture(char* buf, size_t cap, bool eyes, int32_t playerForm, int32_t index,
+                        void* fallback) {
+    if (gPuppetForm < 0 || gPuppetPlayerId == 0 || index < 0 ||
+        index >= (eyes ? PLAYER_EYES_MAX : PLAYER_MOUTH_MAX)) {
+        return fallback;
+    }
+    char canonical[96];
+    if (playerForm == PLAYER_FORM_HUMAN) {
+        const char* dir = gPuppetHumanModel == 2   ? "ot_obj_link_boy"
+                          : gPuppetHumanModel == 1 ? "ot_obj_link_child"
+                                                   : "object_link_child";
+        const char* name =
+            gPuppetHumanModel == 2   ? (eyes ? kPuppetAdultEyes[index] : kPuppetAdultMouths[index])
+            : gPuppetHumanModel == 1 ? (eyes ? kPuppetChildEyes[index] : kPuppetChildMouths[index])
+                                     : (eyes ? kPuppetHumanEyes[index] : kPuppetHumanMouths[index]);
+        std::snprintf(canonical, sizeof(canonical), "objects/%s/%s", dir, name);
+    } else {
+        // Non-human rows never get remapped locally, so the live entry names the canonical
+        // texture; a null row (a form without that texture) stays as-is.
+        const char* live = static_cast<const char*>(fallback);
+        if (live == nullptr || std::strncmp(live, "__OTR__", 7) != 0) {
+            return fallback;
+        }
+        std::snprintf(canonical, sizeof(canonical), "%s", live + 7);
+    }
+
+    if (PuppetNamespaced(buf, cap, static_cast<uint16_t>(gPuppetPlayerId), canonical) != nullptr) {
+        return buf;
+    }
+    if (playerForm == PLAYER_FORM_HUMAN && gPuppetHumanModel != 0) {
+        std::snprintf(buf, cap, "__OTR__%s", canonical);
+        if (ResourceMgr_FileExists(buf + 7)) {
+            return buf;
+        }
+    }
+    return fallback;
+}
+
+} // namespace
+
+extern "C" void OotmmPuppet_SetTunicColor(PlayState* play) {
+    // Ported cloth reads the tunic from ENV color; emit the SENDER's synced tunic, not ours.
+    if (gPuppetForm != PLAYER_FORM_HUMAN || gPuppetHumanModel == 0) {
+        return;
+    }
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    OotmmEquipment_TunicColorOf(gPuppetTunic, &r, &g, &b);
+    OPEN_DISPS(play->state.gfxCtx);
+    gSPSegment(POLY_OPA_DISP++, 0x0C, (uintptr_t)OotmmAdultLink_CullSegmentDL());
+    gDPSetEnvColor(POLY_OPA_DISP++, r, g, b, 0);
+    CLOSE_DISPS(play->state.gfxCtx);
+}
+
+extern "C" void* OotmmPuppet_EyeTexture(int32_t playerForm, int32_t eyeIndex) {
+    void* fallback = playerForm >= 0 && playerForm < PLAYER_FORM_MAX && eyeIndex >= 0 &&
+                             eyeIndex < PLAYER_EYES_MAX
+                         ? sPlayerEyesTextures[playerForm][eyeIndex]
+                         : NULL;
+    static char sPath[128];
+    return PuppetFaceTexture(sPath, sizeof(sPath), true, playerForm, eyeIndex, fallback);
+}
+
+extern "C" void* OotmmPuppet_MouthTexture(int32_t playerForm, int32_t mouthIndex) {
+    void* fallback = playerForm >= 0 && playerForm < PLAYER_FORM_MAX && mouthIndex >= 0 &&
+                             mouthIndex < PLAYER_MOUTH_MAX
+                         ? sPlayerMouthTextures[playerForm][mouthIndex]
+                         : NULL;
+    static char sPath[128];
+    return PuppetFaceTexture(sPath, sizeof(sPath), false, playerForm, mouthIndex, fallback);
+}
+
+namespace {
+
 void PuppetActionFunc(Actor* actor, PlayState* play) {
     PuppetState* state = gStateByActor.count(actor) ? gStateByActor[actor] : nullptr;
     if (state == nullptr || !state->hasPose) {
@@ -315,6 +483,9 @@ void PuppetDrawFunc(Actor* actor, PlayState* play) {
     Matrix_RotateYS(actor->shape.rot.y, MTXMODE_APPLY);
     Matrix_Scale(0.01f, 0.01f, 0.01f, MTXMODE_APPLY);
     gPuppetForm = state->form;
+    gPuppetPlayerId = state->playerId;
+    gPuppetHumanModel = state->humanModel;
+    gPuppetTunic = state->tunic;
     gPuppetMoveFlags = state->moveFlags;
     gPuppetEquipDl[0] = state->dlLeftHand.c_str();
     gPuppetEquipDl[1] = state->dlRightHand.c_str();
@@ -341,13 +512,18 @@ void PuppetDrawFunc(Actor* actor, PlayState* play) {
         OotmmEquipment_DrawBootsOf(play, state->customBoots);
     }
     gPuppetForm = -1;
+    gPuppetPlayerId = 0;
+    gPuppetHumanModel = 0;
+    gPuppetTunic = 0;
 }
 
 void ApplyPoseToPuppet(PuppetSlot& slot, PlayState* play, const Ship::OotmmPlayerPose& pose) {
     PuppetState* state = slot.state.get();
     const u8 form = static_cast<u8>(pose.Form);
+    const u8 humanModel = static_cast<u8>(pose.HumanModel & 0xFF);
     state->playerId = pose.PlayerId;
-    if (!state->skeletonReady || form != state->form) {
+    if (!state->skeletonReady || form != state->form || humanModel != state->humanModel) {
+        state->humanModel = humanModel;
         PuppetInitSkeleton(state, play, form);
     }
     const size_t count = std::min(pose.JointTable.size() / 3, static_cast<size_t>(kLimbBuf));
@@ -422,6 +598,7 @@ void PresenceTick() {
     pose.YOffset = player->actor.shape.yOffset;
     pose.MoveFlags = player->skelAnime.movementFlags;
     pose.Form = player->transformation;
+    pose.HumanModel = OotmmAdultLink_IsAdult() ? 2 : (OotmmChildLink_Active() ? 1 : 0);
     pose.Seq = ++gLocalSeq;
     const auto canonical = [](const char* name) -> std::string {
         if (name == nullptr) {

@@ -88,6 +88,13 @@ ADULT_SYM(gLinkAdultMouth4Tex);
 
 #define ADULT_DL(name) ((Gfx*)(name))
 
+// OoT's player draw binds segment 0x0C to this; vanilla OoT limb DLs jump through it
+// for their cull mode, so it must be bound whenever ported OoT geometry draws in MM.
+alignas(8) Gfx sCullBackDL[] = {
+    gsSPSetGeometryMode(G_CULL_BACK),
+    gsSPEndDisplayList(),
+};
+
 // Slots with no adult counterpart show nothing rather than child-scaled geometry.
 alignas(8) Gfx sAdultEmptyDL[] = {
     gsSPEndDisplayList(),
@@ -303,6 +310,10 @@ extern "C" int32_t OotmmAdultLink_CustomModelActive(void) {
     return sApplied && sCustomModel ? 1 : 0;
 }
 
+extern "C" float OotmmAdultLink_VanillaHumanRootScale(void) {
+    return (sApplied ? &sBackupAgeProperties : &sPlayerAgeProperties[kHuman])->unk_08;
+}
+
 extern "C" int32_t OotmmAdultLink_IsAdult(void) {
     return sApplied ? 1 : 0;
 }
@@ -337,8 +348,13 @@ extern "C" void OotmmAdultLink_SetTunicColor(struct PlayState* play) {
     OotmmEquipment_GetTunicColor(&r, &g, &b);
 
     OPEN_DISPS(play->state.gfxCtx);
+    gSPSegment(POLY_OPA_DISP++, 0x0C, (uintptr_t)sCullBackDL);
     gDPSetEnvColor(POLY_OPA_DISP++, r, g, b, 0);
     CLOSE_DISPS(play->state.gfxCtx);
+}
+
+extern "C" Gfx* OotmmAdultLink_CullSegmentDL(void) {
+    return sCullBackDL;
 }
 
 extern "C" void OotmmAdultLink_Init(void) {
