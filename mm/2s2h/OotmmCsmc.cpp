@@ -1,15 +1,13 @@
 #include "OotmmCsmc.h"
 
+// OPEN_DISPS block-declares the FrameInterpolation functions; this include keeps the
+// extern "C" declarations visible so those redeclarations inherit C linkage.
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
-#include "2s2h/ShipInit.hpp"
 #include "OotmmIpc.h"
 #include "OotmmSession.h"
-#include "assets/2s2h_assets.h"
 
 #include <libultraship/bridge/OotmmCsmc.h>
-
-#include <cstring>
 
 extern "C" {
 #include "functions.h"
@@ -24,46 +22,10 @@ Gfx* EnBox_SetRenderMode1(GraphicsContext* gfxCtx);
 Gfx* EnBox_SetRenderMode2(GraphicsContext* gfxCtx);
 Gfx* EnBox_SetRenderMode3(GraphicsContext* gfxCtx);
 Gfx* ResourceMgr_LoadGfxByName(const char* path);
+uint8_t ResourceMgr_FileExists(const char* resName);
 }
 
 namespace {
-
-// Vanilla chest display lists with their texture loads redirected to segments
-// 0x09 (corner) and 0x0A (lock), so each chest can bind its own art per draw.
-Gfx sChestBaseDL[42];
-Gfx sChestLidDL[48];
-Gfx sChestBaseOrnateDL[41];
-Gfx sChestLidOrnateDL[38];
-
-struct ChestLook {
-    const char* corner;
-    const char* lock;
-    // The ornate mesh carries the decorated braces the variant art was drawn for.
-    bool ornate;
-};
-
-ChestLook LookFor(Ship::OotmmCsmcClass itemClass) {
-    switch (itemClass) {
-        case Ship::OotmmCsmcClass::BossKey:
-            return { gBoxChestCornerOrnateTex, gBoxChestLockOrnateTex, true };
-        // Souls borrow the major look until they have art of their own.
-        case Ship::OotmmCsmcClass::Major:
-        case Ship::OotmmCsmcClass::Soul:
-            return { gBoxChestCornerMajorTex, gBoxChestLockMajorTex, false };
-        case Ship::OotmmCsmcClass::Key:
-            return { gBoxChestCornerSmallKeyTex, gBoxChestLockSmallKeyTex, true };
-        case Ship::OotmmCsmcClass::Spider:
-            return { gBoxChestCornerSkullTokenTex, gBoxChestLockSkullTokenTex, true };
-        case Ship::OotmmCsmcClass::Fairy:
-            return { gBoxChestCornerStrayFairyTex, gBoxChestLockStrayFairyTex, true };
-        case Ship::OotmmCsmcClass::Heart:
-            return { gBoxChestCornerHealthTex, gBoxChestLockHealthTex, true };
-        case Ship::OotmmCsmcClass::MapCompass:
-            return { gBoxChestCornerLesserTex, gBoxChestLockLesserTex, false };
-        default:
-            return { gBoxChestCornerTex, gBoxChestLockTex, false };
-    }
-}
 
 bool HasAgonyStone() {
     return Ship::OotmmCsmc_MmHasAgony(OotmmSession_GetState(), OotmmIpc_GetInventory());
@@ -85,21 +47,59 @@ Ship::OotmmCsmcClass ClassFor(const Ship::OotmmPlacement& placement) {
     return Ship::OotmmCsmc_Classify(state, Ship::OotmmGame::Mm, placement, revealed);
 }
 
+// The launcher bakes these from OoTMM's own art into ootmm_assets.o2r.
+const char* BakedName(Ship::OotmmCsmcClass itemClass, bool lid) {
+    switch (itemClass) {
+        case Ship::OotmmCsmcClass::Major:
+            return lid ? "__OTR__objects/ootmm_csmc/gCsmcChestMajorLidDL"
+                       : "__OTR__objects/ootmm_csmc/gCsmcChestMajorBodyDL";
+        case Ship::OotmmCsmcClass::Key:
+            return lid ? "__OTR__objects/ootmm_csmc/gCsmcChestKeyLidDL"
+                       : "__OTR__objects/ootmm_csmc/gCsmcChestKeyBodyDL";
+        case Ship::OotmmCsmcClass::Spider:
+            return lid ? "__OTR__objects/ootmm_csmc/gCsmcChestSpiderLidDL"
+                       : "__OTR__objects/ootmm_csmc/gCsmcChestSpiderBodyDL";
+        case Ship::OotmmCsmcClass::Fairy:
+            return lid ? "__OTR__objects/ootmm_csmc/gCsmcChestFairyLidDL"
+                       : "__OTR__objects/ootmm_csmc/gCsmcChestFairyBodyDL";
+        case Ship::OotmmCsmcClass::Heart:
+            return lid ? "__OTR__objects/ootmm_csmc/gCsmcChestHeartLidDL"
+                       : "__OTR__objects/ootmm_csmc/gCsmcChestHeartBodyDL";
+        case Ship::OotmmCsmcClass::Soul:
+            return lid ? "__OTR__objects/ootmm_csmc/gCsmcChestSoulLidDL"
+                       : "__OTR__objects/ootmm_csmc/gCsmcChestSoulBodyDL";
+        case Ship::OotmmCsmcClass::MapCompass:
+            return lid ? "__OTR__objects/ootmm_csmc/gCsmcChestMapLidDL"
+                       : "__OTR__objects/ootmm_csmc/gCsmcChestMapBodyDL";
+        default:
+            // BossKey and Normal use the game's own ornate and plain art.
+            return nullptr;
+    }
+}
+
+void DrawChestPart(PlayState* play, EnBox* chest, bool lid, Gfx** gfx) {
+    const auto* placement = ChestPlacement(play, chest);
+    const auto itemClass =
+        placement != nullptr ? ClassFor(*placement) : Ship::OotmmCsmcClass::Normal;
+
+    MATRIX_FINALIZE_AND_LOAD((*gfx)++, play->state.gfxCtx);
+    if (const char* baked = BakedName(itemClass, lid);
+        baked != nullptr && ResourceMgr_FileExists(baked)) {
+        gSPDisplayList((*gfx)++, ResourceMgr_LoadGfxByName(baked));
+    } else if (itemClass == Ship::OotmmCsmcClass::BossKey) {
+        gSPDisplayList((*gfx)++, (Gfx*)(lid ? gBoxChestLidOrnateDL : gBoxChestBaseOrnateDL));
+    } else {
+        gSPDisplayList((*gfx)++, (Gfx*)(lid ? gBoxChestLidDL : gBoxChestBaseDL));
+    }
+}
+
 void CsmcPostLimbDraw(PlayState* play, s32 limbIndex, Gfx** dList, Vec3s* rot, Actor* actor,
                       Gfx** gfx) {
     EnBox* chest = (EnBox*)actor;
-    const auto* placement = ChestPlacement(play, chest);
-    const ChestLook look =
-        LookFor(placement ? ClassFor(*placement) : Ship::OotmmCsmcClass::Normal);
-
-    gSPSegment((*gfx)++, 0x09, (uintptr_t)look.corner);
-    gSPSegment((*gfx)++, 0x0A, (uintptr_t)look.lock);
-    MATRIX_FINALIZE_AND_LOAD((*gfx)++, play->state.gfxCtx);
-
     if (limbIndex == OBJECT_BOX_CHEST_LIMB_01) {
-        gSPDisplayList((*gfx)++, look.ornate ? sChestBaseOrnateDL : sChestBaseDL);
+        DrawChestPart(play, chest, false, gfx);
     } else if (limbIndex == OBJECT_BOX_CHEST_LIMB_03) {
-        gSPDisplayList((*gfx)++, look.ornate ? sChestLidOrnateDL : sChestLidDL);
+        DrawChestPart(play, chest, true, gfx);
     }
 }
 
@@ -140,43 +140,6 @@ static void CsmcChestDraw(Actor* thisx, PlayState* play) {
 
     CLOSE_DISPS(play->state.gfxCtx);
 }
-
-namespace {
-
-// Redirects a display list's two texture loads to segments 0x09/0x0A. The command
-// indices are fixed offsets into the vanilla chest display lists.
-void RedirectTextureLoads(Gfx* dl, size_t cornerIndex, size_t lockIndex) {
-    dl[cornerIndex] = gsDPSetTextureImage(G_IM_FMT_RGBA, G_IM_SIZ_16b_LOAD_BLOCK, 1, 0x09000000 | 1);
-    dl[cornerIndex + 1] = gsDPNoOp();
-    dl[lockIndex] = gsDPSetTextureImage(G_IM_FMT_RGBA, G_IM_SIZ_16b_LOAD_BLOCK, 1, 0x0A000000 | 1);
-    dl[lockIndex + 1] = gsDPNoOp();
-}
-
-RegisterShipInitFunc sInitChestCopies(
-    []() {
-        Gfx* baseDL = ResourceMgr_LoadGfxByName(gBoxChestBaseDL);
-        Gfx* lidDL = ResourceMgr_LoadGfxByName(gBoxChestLidDL);
-        Gfx* baseOrnateDL = ResourceMgr_LoadGfxByName(gBoxChestBaseOrnateDL);
-        Gfx* lidOrnateDL = ResourceMgr_LoadGfxByName(gBoxChestLidOrnateDL);
-        if (baseDL == nullptr || lidDL == nullptr || baseOrnateDL == nullptr ||
-            lidOrnateDL == nullptr) {
-            return;
-        }
-
-        memcpy(sChestBaseDL, baseDL, sizeof(sChestBaseDL));
-        RedirectTextureLoads(sChestBaseDL, 7, 28);
-        memcpy(sChestLidDL, lidDL, sizeof(sChestLidDL));
-        RedirectTextureLoads(sChestLidDL, 7, 26);
-        memcpy(sChestBaseOrnateDL, baseOrnateDL, sizeof(sChestBaseOrnateDL));
-        RedirectTextureLoads(sChestBaseOrnateDL, 7, 25);
-        memcpy(sChestLidOrnateDL, lidOrnateDL, sizeof(sChestLidOrnateDL));
-        sChestLidOrnateDL[7] =
-            gsDPSetTextureImage(G_IM_FMT_RGBA, G_IM_SIZ_16b_LOAD_BLOCK, 1, 0x09000000 | 1);
-        sChestLidOrnateDL[8] = gsDPNoOp();
-    },
-    {});
-
-} // namespace
 
 void OotmmCsmc_Init() {
     GameInteractor::Instance->RegisterGameHookForID<GameInteractor::OnActorInit>(
