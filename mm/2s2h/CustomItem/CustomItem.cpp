@@ -1,6 +1,7 @@
 #include "CustomItem.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmAdultLink.h"
 
 extern "C" {
 #include "z64actor.h"
@@ -179,6 +180,12 @@ void CustomItem00_Update(Actor* actor, PlayState* play) {
                 case PLAYER_FORM_ZORA:
                     height = 60.0f;
                     break;
+                case PLAYER_FORM_HUMAN:
+                    // The ported OoT adult stands between child and Zora height.
+                    if (OotmmAdultLink_IsAdult()) {
+                        height = 56.0f;
+                    }
+                    break;
             }
 
             // Bob the item up and down
@@ -231,6 +238,12 @@ void CustomItem00_Update(Actor* actor, PlayState* play) {
                         break;
                     case PLAYER_FORM_ZORA:
                         height = 75.0f;
+                        break;
+                    case PLAYER_FORM_HUMAN:
+                        // The ported OoT adult stands between child and Zora height.
+                        if (OotmmAdultLink_IsAdult()) {
+                            height = 66.0f;
+                        }
                         break;
                 }
 

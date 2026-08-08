@@ -26,6 +26,10 @@ bool OotmmIpc_SendPvpHit(const Ship::OotmmPvpHit& hit);
 bool OotmmIpc_TakeRemotePresence(std::vector<Ship::OotmmPlayerPose>& poses,
                                  std::vector<Ship::OotmmPvpHit>& hits);
 
+bool OotmmIpc_SendCheckCollected(const std::string& checkId);
+bool OotmmIpc_IsCheckCompleted(const std::string& checkId);
+uint64_t OotmmIpc_CompletedChecksRevision();
+
 extern "C" int gOotmmPvpEnabled;
 extern "C" int gOotmmShowNames;
 extern "C" int gOotmmGameSpeedPercent;

@@ -2,6 +2,7 @@
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
+#include "OotmmChecks.h"
 #include "OotmmIpc.h"
 #include "OotmmItemApply.h"
 #include "OotmmAdultLink.h"
@@ -575,6 +576,7 @@ void BootIntoGame(GameState* gameState) {
 void OotmmSession_Init() {
     if (sGameState.LoadFromEnvironment()) {
         ApplyEnhancements();
+        OotmmChecks_Init();
         OotmmItemProbe_Init();
         OotmmItemApply_Init();
         OotmmScales_Init();
