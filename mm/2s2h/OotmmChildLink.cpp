@@ -41,18 +41,15 @@ extern TexturePtr sPlayerMouthTextures[PLAYER_FORM_MAX][PLAYER_MOUTH_MAX];
 uint8_t ResourceMgr_FileExists(const char* resName);
 }
 
+#include "OotmmHandComposites.h"
+
 namespace {
 
 #define CHILD_SYM(name) \
     alignas(4) constexpr char name[] = "__OTR__objects/ot_obj_link_child/" #name
 CHILD_SYM(gLinkChildSkel);
-CHILD_SYM(gLinkChildRightFistAndDekuShieldNearDL);
-CHILD_SYM(gLinkChildHylianShieldAndSheathNearDL);
-CHILD_SYM(gLinkChildSwordAndSheathNearDL);
-CHILD_SYM(gLinkChildSheathNearDL);
 CHILD_SYM(gLinkChildLeftHandNearDL);
 CHILD_SYM(gLinkChildLeftFistNearDL);
-CHILD_SYM(gLinkChildLeftFistAndKokiriSwordNearDL);
 CHILD_SYM(gLinkChildLeftHandUpNearDL);
 CHILD_SYM(gLinkChildRightHandNearDL);
 CHILD_SYM(gLinkChildRightHandClosedNearDL);
@@ -83,6 +80,7 @@ alignas(8) Gfx sChildEmptyDL[] = {
     gsSPEndDisplayList(),
 };
 
+
 constexpr int kHuman = PLAYER_FORM_HUMAN;
 constexpr int kHumanNear = 2 * PLAYER_FORM_HUMAN;
 constexpr int kHumanFar = 2 * PLAYER_FORM_HUMAN + 1;
@@ -101,49 +99,20 @@ struct DlPatch {
     Gfx* Value;
 };
 
-// OoT child has no in-hand shield, hookshot or two-hander (fists stand in), and no waist DL at
-// all: that geometry lives in the skeleton limb, which the z_player_lib carve-out keeps.
+// OoT child has no waist DL at all: that geometry lives in the skeleton limb, which the
+// z_player_lib carve-out keeps. MM's equipment meshes stay authoritative: sheathed gear is
+// native, and hand-held gear is rebuilt around the ported fist by the hold patches below.
 const DlPatch kDlPatches[] = {
-    { &gPlayerHandHoldingShields[0], CHILD_DL(gLinkChildRightFistAndDekuShieldNearDL) },
-    { &gPlayerHandHoldingShields[1], CHILD_DL(gLinkChildRightFistAndDekuShieldNearDL) },
-    { &gPlayerHandHoldingShields[2], CHILD_DL(gLinkChildRightFistAndDekuShieldNearDL) },
-    { &gPlayerHandHoldingShields[3], CHILD_DL(gLinkChildRightFistAndDekuShieldNearDL) },
     { &gPlayerSheath12DLs[kHumanNear], sChildEmptyDL },
     { &gPlayerSheath12DLs[kHumanFar], sChildEmptyDL },
     { &gPlayerSheath13DLs[kHumanNear], sChildEmptyDL },
     { &gPlayerSheath13DLs[kHumanFar], sChildEmptyDL },
     { &gPlayerSheath14DLs[kHumanNear], sChildEmptyDL },
     { &gPlayerSheath14DLs[kHumanFar], sChildEmptyDL },
-    { &gPlayerShields[0], CHILD_DL(gLinkChildHylianShieldAndSheathNearDL) },
-    { &gPlayerShields[1], CHILD_DL(gLinkChildHylianShieldAndSheathNearDL) },
-    { &gPlayerShields[2], CHILD_DL(gLinkChildHylianShieldAndSheathNearDL) },
-    { &gPlayerShields[3], CHILD_DL(gLinkChildHylianShieldAndSheathNearDL) },
-    { &gPlayerSheathedSwords[0], CHILD_DL(gLinkChildSwordAndSheathNearDL) },
-    { &gPlayerSheathedSwords[1], CHILD_DL(gLinkChildSwordAndSheathNearDL) },
-    { &gPlayerSheathedSwords[2], CHILD_DL(gLinkChildSwordAndSheathNearDL) },
-    { &gPlayerSheathedSwords[3], CHILD_DL(gLinkChildSwordAndSheathNearDL) },
-    { &gPlayerSheathedSwords[4], CHILD_DL(gLinkChildSwordAndSheathNearDL) },
-    { &gPlayerSheathedSwords[5], CHILD_DL(gLinkChildSwordAndSheathNearDL) },
-    { &gPlayerSwordSheaths[0], CHILD_DL(gLinkChildSheathNearDL) },
-    { &gPlayerSwordSheaths[1], CHILD_DL(gLinkChildSheathNearDL) },
-    { &gPlayerSwordSheaths[2], CHILD_DL(gLinkChildSheathNearDL) },
-    { &gPlayerSwordSheaths[3], CHILD_DL(gLinkChildSheathNearDL) },
-    { &gPlayerSwordSheaths[4], CHILD_DL(gLinkChildSheathNearDL) },
-    { &gPlayerSwordSheaths[5], CHILD_DL(gLinkChildSheathNearDL) },
-    { &gPlayerLeftHandTwoHandSwordDLs[kHumanNear], CHILD_DL(gLinkChildLeftFistNearDL) },
-    { &gPlayerLeftHandTwoHandSwordDLs[kHumanFar], CHILD_DL(gLinkChildLeftFistNearDL) },
     { &gPlayerLeftHandOpenDLs[kHumanNear], CHILD_DL(gLinkChildLeftHandNearDL) },
     { &gPlayerLeftHandOpenDLs[kHumanFar], CHILD_DL(gLinkChildLeftHandNearDL) },
     { &gPlayerLeftHandClosedDLs[kHumanNear], CHILD_DL(gLinkChildLeftFistNearDL) },
     { &gPlayerLeftHandClosedDLs[kHumanFar], CHILD_DL(gLinkChildLeftFistNearDL) },
-    { &gPlayerLeftHandOneHandSwordDLs[kHumanNear], CHILD_DL(gLinkChildLeftFistAndKokiriSwordNearDL) },
-    { &gPlayerLeftHandOneHandSwordDLs[kHumanFar], CHILD_DL(gLinkChildLeftFistAndKokiriSwordNearDL) },
-    { &D_801C018C[0], CHILD_DL(gLinkChildLeftFistAndKokiriSwordNearDL) },
-    { &D_801C018C[1], CHILD_DL(gLinkChildLeftFistAndKokiriSwordNearDL) },
-    { &D_801C018C[2], CHILD_DL(gLinkChildLeftFistAndKokiriSwordNearDL) },
-    { &D_801C018C[3], CHILD_DL(gLinkChildLeftFistAndKokiriSwordNearDL) },
-    { &D_801C018C[4], CHILD_DL(gLinkChildLeftFistAndKokiriSwordNearDL) },
-    { &D_801C018C[5], CHILD_DL(gLinkChildLeftFistAndKokiriSwordNearDL) },
     { &gPlayerRightHandOpenDLs[kHumanNear], CHILD_DL(gLinkChildRightHandNearDL) },
     { &gPlayerRightHandOpenDLs[kHumanFar], CHILD_DL(gLinkChildRightHandNearDL) },
     { &gPlayerRightHandClosedDLs[kHumanNear], CHILD_DL(gLinkChildRightHandClosedNearDL) },
@@ -163,6 +132,33 @@ const DlPatch kDlPatches[] = {
     { &sPlayerFirstPersonRightHandDLs[kHuman], CHILD_DL(gLinkChildRightArmStretchedSlingshotDL) },
     { &sPlayerFirstPersonRightHandHookshotDLs[kHuman], CHILD_DL(gLinkChildRightHandClosedNearDL) },
 };
+
+// MM's hand-holding composites rebuilt around the ported fist, so hands stay the model's.
+struct HoldPatch {
+    Gfx** Slot;
+    const char* Native;
+    const char* Fist;
+};
+
+const HoldPatch kHoldPatches[] = {
+    { &gPlayerHandHoldingShields[0], OOTMM_HOLD_HEROS_SHIELD, gLinkChildRightHandClosedNearDL },
+    { &gPlayerHandHoldingShields[1], OOTMM_HOLD_HEROS_SHIELD, gLinkChildRightHandClosedNearDL },
+    { &gPlayerHandHoldingShields[2], OOTMM_HOLD_MIRROR_SHIELD, gLinkChildRightHandClosedNearDL },
+    { &gPlayerHandHoldingShields[3], OOTMM_HOLD_MIRROR_SHIELD, gLinkChildRightHandClosedNearDL },
+    { &gPlayerLeftHandTwoHandSwordDLs[kHumanNear], OOTMM_HOLD_GREAT_FAIRYS_SWORD, gLinkChildLeftFistNearDL },
+    { &gPlayerLeftHandTwoHandSwordDLs[kHumanFar], OOTMM_HOLD_GREAT_FAIRYS_SWORD, gLinkChildLeftFistNearDL },
+    { &gPlayerLeftHandOneHandSwordDLs[kHumanNear], OOTMM_HOLD_KOKIRI_SWORD, gLinkChildLeftFistNearDL },
+    { &gPlayerLeftHandOneHandSwordDLs[kHumanFar], OOTMM_HOLD_KOKIRI_SWORD, gLinkChildLeftFistNearDL },
+    { &D_801C018C[0], OOTMM_HOLD_KOKIRI_SWORD, gLinkChildLeftFistNearDL },
+    { &D_801C018C[1], OOTMM_HOLD_KOKIRI_SWORD, gLinkChildLeftFistNearDL },
+    { &D_801C018C[2], OOTMM_HOLD_RAZOR_SWORD, gLinkChildLeftFistNearDL },
+    { &D_801C018C[3], OOTMM_HOLD_RAZOR_SWORD, gLinkChildLeftFistNearDL },
+    { &D_801C018C[4], OOTMM_HOLD_GILDED_SWORD, gLinkChildLeftFistNearDL },
+    { &D_801C018C[5], OOTMM_HOLD_GILDED_SWORD, gLinkChildLeftFistNearDL },
+};
+
+constexpr size_t kHoldCount = sizeof(kHoldPatches) / sizeof(kHoldPatches[0]);
+Gfx* sHoldBackups[kHoldCount];
 
 const TexturePtr kChildEyes[PLAYER_EYES_MAX] = {
     (TexturePtr)gLinkChildEyesOpenTex,      (TexturePtr)gLinkChildEyesHalfTex,
@@ -203,6 +199,7 @@ void Apply() {
     sApplied = true;
 
     static bool sBackedUp = false;
+    const bool firstApply = !sBackedUp;
     if (!sBackedUp) {
         sBackedUp = true;
         sBackupSkel = gPlayerSkeletons[kHuman];
@@ -221,6 +218,14 @@ void Apply() {
         *p.Slot = p.Value;
     }
 
+    for (size_t i = 0; i < kHoldCount; i++) {
+        if (firstApply) {
+            sHoldBackups[i] = *kHoldPatches[i].Slot;
+        }
+        Gfx* built = OotmmHandComposites_Build(kHoldPatches[i].Native, kHoldPatches[i].Fist);
+        *kHoldPatches[i].Slot = built != nullptr ? built : sHoldBackups[i];
+    }
+
     std::memcpy(sPlayerEyesTextures[kHuman], kChildEyes, sizeof(kChildEyes));
     std::memcpy(sPlayerMouthTextures[kHuman], kChildMouth, sizeof(kChildMouth));
 
@@ -237,6 +242,9 @@ void Restore() {
     gPlayerSkeletons[kHuman] = sBackupSkel;
     for (int i = 0; i < sBackupCount; i++) {
         *kDlPatches[i].Slot = sBackupDLs[i];
+    }
+    for (size_t i = 0; i < kHoldCount; i++) {
+        *kHoldPatches[i].Slot = sHoldBackups[i];
     }
     std::memcpy(sPlayerEyesTextures[kHuman], sBackupEyes, sizeof(sBackupEyes));
     std::memcpy(sPlayerMouthTextures[kHuman], sBackupMouth, sizeof(sBackupMouth));

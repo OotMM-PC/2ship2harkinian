@@ -278,6 +278,18 @@ void ApplySaveFlags() {
         return;
     }
 
+    // Refill form B slots emptied by the old swordless start: an empty form B triggers the
+    // "Weird B" bug, where attacking uses the item sharing the do-action label's id.
+    if (BUTTON_ITEM_EQUIP(PLAYER_FORM_GORON, EQUIP_SLOT_B) == ITEM_NONE) {
+        BUTTON_ITEM_EQUIP(PLAYER_FORM_GORON, EQUIP_SLOT_B) = ITEM_SWORD_KOKIRI;
+    }
+    if (BUTTON_ITEM_EQUIP(PLAYER_FORM_ZORA, EQUIP_SLOT_B) == ITEM_NONE) {
+        BUTTON_ITEM_EQUIP(PLAYER_FORM_ZORA, EQUIP_SLOT_B) = ITEM_SWORD_KOKIRI;
+    }
+    if (BUTTON_ITEM_EQUIP(PLAYER_FORM_DEKU, EQUIP_SLOT_B) == ITEM_NONE) {
+        BUTTON_ITEM_EQUIP(PLAYER_FORM_DEKU, EQUIP_SLOT_B) = ITEM_FD;
+    }
+
     static constexpr struct {
         const char* Key;
         OwlWarpId Warp;
@@ -349,14 +361,12 @@ void InitializeSave() {
     gSaveContext.save.hasTatl = true;
     gSaveContext.save.entrance = ENTRANCE(SOUTH_CLOCK_TOWN, 0);
     // The seed hands out MM's sword and shield; Fierce Deity's own blade is part of the form.
+    // Only the human row's B goes empty: the form rows must keep their vanilla items (the Zora
+    // one doubles as the fin-throw item action) or the Weird B bug fires on form attacks.
     SET_EQUIP_VALUE(EQUIP_TYPE_SWORD, EQUIP_VALUE_SWORD_NONE);
     SET_EQUIP_VALUE(EQUIP_TYPE_SHIELD, EQUIP_VALUE_SHIELD_NONE);
-    for (auto& form : gSaveContext.save.saveInfo.equips.buttonItems) {
-        for (auto& item : form) {
-            if (item == ITEM_SWORD_KOKIRI) {
-                item = ITEM_NONE;
-            }
-        }
+    if (BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_B) == ITEM_SWORD_KOKIRI) {
+        BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_B) = ITEM_NONE;
     }
     ApplySaveFlags();
 }

@@ -45,6 +45,8 @@ extern PlayerAgeProperties sPlayerAgeProperties[PLAYER_FORM_MAX];
 extern PlayerAnimationHeader* D_8085BE84[PLAYER_ANIMGROUP_MAX][PLAYER_ANIMTYPE_MAX];
 }
 
+#include "OotmmHandComposites.h"
+
 namespace {
 
 // The interpreter, skeleton loader and segment resolver all accept path pointers as resources.
@@ -52,16 +54,8 @@ namespace {
     alignas(4) constexpr char name[] = "__OTR__objects/ot_obj_link_boy/" #name
 ADULT_SYM(gLinkAdultSkel);
 ADULT_SYM(gLinkAdultWaistNearDL);
-ADULT_SYM(gLinkAdultRightHandHoldingHylianShieldNearDL);
-ADULT_SYM(gLinkAdultRightHandHoldingMirrorShieldNearDL);
-ADULT_SYM(gLinkAdultHylianShieldAndSheathNearDL);
-ADULT_SYM(gLinkAdultMirrorShieldAndSheathNearDL);
-ADULT_SYM(gLinkAdultMasterSwordAndSheathNearDL);
-ADULT_SYM(gLinkAdultSheathNearDL);
-ADULT_SYM(gLinkAdultLeftHandHoldingBgsNearDL);
 ADULT_SYM(gLinkAdultLeftHandNearDL);
 ADULT_SYM(gLinkAdultLeftHandClosedNearDL);
-ADULT_SYM(gLinkAdultLeftHandHoldingMasterSwordNearDL);
 ADULT_SYM(gLinkAdultRightHandNearDL);
 ADULT_SYM(gLinkAdultRightHandClosedNearDL);
 ADULT_SYM(gLinkAdultRightHandHoldingBowNearDL);
@@ -121,53 +115,21 @@ struct DlPatch {
     Gfx* Value;
 };
 
-// OoTMM's MM-equipment-on-adult combo models are not extractable, so same-role OoT DLs stand
-// in: Hero's Shield as the Hylian Shield, every sword as the Master Sword.
+// MM's equipment meshes stay authoritative: sheathed gear is native, and hand-held gear is
+// rebuilt around the ported fist by the hold patches below.
 const DlPatch kDlPatches[] = {
     { &gPlayerWaistDLs[kHumanNear], ADULT_DL(gLinkAdultWaistNearDL) },
     { &gPlayerWaistDLs[kHumanFar], ADULT_DL(gLinkAdultWaistNearDL) },
-    { &gPlayerHandHoldingShields[0], ADULT_DL(gLinkAdultRightHandHoldingHylianShieldNearDL) },
-    { &gPlayerHandHoldingShields[1], ADULT_DL(gLinkAdultRightHandHoldingHylianShieldNearDL) },
-    { &gPlayerHandHoldingShields[2], ADULT_DL(gLinkAdultRightHandHoldingMirrorShieldNearDL) },
-    { &gPlayerHandHoldingShields[3], ADULT_DL(gLinkAdultRightHandHoldingMirrorShieldNearDL) },
     { &gPlayerSheath12DLs[kHumanNear], sAdultEmptyDL },
     { &gPlayerSheath12DLs[kHumanFar], sAdultEmptyDL },
     { &gPlayerSheath13DLs[kHumanNear], sAdultEmptyDL },
     { &gPlayerSheath13DLs[kHumanFar], sAdultEmptyDL },
     { &gPlayerSheath14DLs[kHumanNear], sAdultEmptyDL },
     { &gPlayerSheath14DLs[kHumanFar], sAdultEmptyDL },
-    // OoT has no standalone back-shield DL; the shield-and-sheath combos stand in, and their
-    // sheath mesh coincides with gLinkAdultSheathNearDL below.
-    { &gPlayerShields[0], ADULT_DL(gLinkAdultHylianShieldAndSheathNearDL) },
-    { &gPlayerShields[1], ADULT_DL(gLinkAdultHylianShieldAndSheathNearDL) },
-    { &gPlayerShields[2], ADULT_DL(gLinkAdultMirrorShieldAndSheathNearDL) },
-    { &gPlayerShields[3], ADULT_DL(gLinkAdultMirrorShieldAndSheathNearDL) },
-    { &gPlayerSheathedSwords[0], ADULT_DL(gLinkAdultMasterSwordAndSheathNearDL) },
-    { &gPlayerSheathedSwords[1], ADULT_DL(gLinkAdultMasterSwordAndSheathNearDL) },
-    { &gPlayerSheathedSwords[2], ADULT_DL(gLinkAdultMasterSwordAndSheathNearDL) },
-    { &gPlayerSheathedSwords[3], ADULT_DL(gLinkAdultMasterSwordAndSheathNearDL) },
-    { &gPlayerSheathedSwords[4], ADULT_DL(gLinkAdultMasterSwordAndSheathNearDL) },
-    { &gPlayerSheathedSwords[5], ADULT_DL(gLinkAdultMasterSwordAndSheathNearDL) },
-    { &gPlayerSwordSheaths[0], ADULT_DL(gLinkAdultSheathNearDL) },
-    { &gPlayerSwordSheaths[1], ADULT_DL(gLinkAdultSheathNearDL) },
-    { &gPlayerSwordSheaths[2], ADULT_DL(gLinkAdultSheathNearDL) },
-    { &gPlayerSwordSheaths[3], ADULT_DL(gLinkAdultSheathNearDL) },
-    { &gPlayerSwordSheaths[4], ADULT_DL(gLinkAdultSheathNearDL) },
-    { &gPlayerSwordSheaths[5], ADULT_DL(gLinkAdultSheathNearDL) },
-    { &gPlayerLeftHandTwoHandSwordDLs[kHumanNear], ADULT_DL(gLinkAdultLeftHandHoldingBgsNearDL) },
-    { &gPlayerLeftHandTwoHandSwordDLs[kHumanFar], ADULT_DL(gLinkAdultLeftHandHoldingBgsNearDL) },
     { &gPlayerLeftHandOpenDLs[kHumanNear], ADULT_DL(gLinkAdultLeftHandNearDL) },
     { &gPlayerLeftHandOpenDLs[kHumanFar], ADULT_DL(gLinkAdultLeftHandNearDL) },
     { &gPlayerLeftHandClosedDLs[kHumanNear], ADULT_DL(gLinkAdultLeftHandClosedNearDL) },
     { &gPlayerLeftHandClosedDLs[kHumanFar], ADULT_DL(gLinkAdultLeftHandClosedNearDL) },
-    { &gPlayerLeftHandOneHandSwordDLs[kHumanNear], ADULT_DL(gLinkAdultLeftHandHoldingMasterSwordNearDL) },
-    { &gPlayerLeftHandOneHandSwordDLs[kHumanFar], ADULT_DL(gLinkAdultLeftHandHoldingMasterSwordNearDL) },
-    { &D_801C018C[0], ADULT_DL(gLinkAdultLeftHandHoldingMasterSwordNearDL) },
-    { &D_801C018C[1], ADULT_DL(gLinkAdultLeftHandHoldingMasterSwordNearDL) },
-    { &D_801C018C[2], ADULT_DL(gLinkAdultLeftHandHoldingMasterSwordNearDL) },
-    { &D_801C018C[3], ADULT_DL(gLinkAdultLeftHandHoldingMasterSwordNearDL) },
-    { &D_801C018C[4], ADULT_DL(gLinkAdultLeftHandHoldingMasterSwordNearDL) },
-    { &D_801C018C[5], ADULT_DL(gLinkAdultLeftHandHoldingMasterSwordNearDL) },
     { &gPlayerRightHandOpenDLs[kHumanNear], ADULT_DL(gLinkAdultRightHandNearDL) },
     { &gPlayerRightHandOpenDLs[kHumanFar], ADULT_DL(gLinkAdultRightHandNearDL) },
     { &gPlayerRightHandClosedDLs[kHumanNear], ADULT_DL(gLinkAdultRightHandClosedNearDL) },
@@ -188,6 +150,33 @@ const DlPatch kDlPatches[] = {
     { &sPlayerFirstPersonRightHandDLs[kHuman], ADULT_DL(gLinkAdultRightHandHoldingBowFirstPersonDL) },
     { &sPlayerFirstPersonRightHandHookshotDLs[kHuman], ADULT_DL(gLinkAdultRightHandHoldingHookshotFarDL) },
 };
+
+// MM's hand-holding composites rebuilt around the ported fist, so hands stay the model's.
+struct HoldPatch {
+    Gfx** Slot;
+    const char* Native;
+    const char* Fist;
+};
+
+const HoldPatch kHoldPatches[] = {
+    { &gPlayerHandHoldingShields[0], OOTMM_HOLD_HEROS_SHIELD, gLinkAdultRightHandClosedNearDL },
+    { &gPlayerHandHoldingShields[1], OOTMM_HOLD_HEROS_SHIELD, gLinkAdultRightHandClosedNearDL },
+    { &gPlayerHandHoldingShields[2], OOTMM_HOLD_MIRROR_SHIELD, gLinkAdultRightHandClosedNearDL },
+    { &gPlayerHandHoldingShields[3], OOTMM_HOLD_MIRROR_SHIELD, gLinkAdultRightHandClosedNearDL },
+    { &gPlayerLeftHandTwoHandSwordDLs[kHumanNear], OOTMM_HOLD_GREAT_FAIRYS_SWORD, gLinkAdultLeftHandClosedNearDL },
+    { &gPlayerLeftHandTwoHandSwordDLs[kHumanFar], OOTMM_HOLD_GREAT_FAIRYS_SWORD, gLinkAdultLeftHandClosedNearDL },
+    { &gPlayerLeftHandOneHandSwordDLs[kHumanNear], OOTMM_HOLD_KOKIRI_SWORD, gLinkAdultLeftHandClosedNearDL },
+    { &gPlayerLeftHandOneHandSwordDLs[kHumanFar], OOTMM_HOLD_KOKIRI_SWORD, gLinkAdultLeftHandClosedNearDL },
+    { &D_801C018C[0], OOTMM_HOLD_KOKIRI_SWORD, gLinkAdultLeftHandClosedNearDL },
+    { &D_801C018C[1], OOTMM_HOLD_KOKIRI_SWORD, gLinkAdultLeftHandClosedNearDL },
+    { &D_801C018C[2], OOTMM_HOLD_RAZOR_SWORD, gLinkAdultLeftHandClosedNearDL },
+    { &D_801C018C[3], OOTMM_HOLD_RAZOR_SWORD, gLinkAdultLeftHandClosedNearDL },
+    { &D_801C018C[4], OOTMM_HOLD_GILDED_SWORD, gLinkAdultLeftHandClosedNearDL },
+    { &D_801C018C[5], OOTMM_HOLD_GILDED_SWORD, gLinkAdultLeftHandClosedNearDL },
+};
+
+constexpr size_t kHoldCount = sizeof(kHoldPatches) / sizeof(kHoldPatches[0]);
+Gfx* sHoldBackups[kHoldCount];
 
 // OoT has no up/down eye textures; Unk1/Unk2 take those slots and shock stands in for wincing.
 const TexturePtr kAdultEyes[PLAYER_EYES_MAX] = {
@@ -251,6 +240,7 @@ void ApplyAdultLink() {
     sApplied = true;
 
     static bool sBackedUp = false;
+    const bool firstApply = !sBackedUp;
     if (!sBackedUp) {
         sBackedUp = true;
         sBackupSkel = gPlayerSkeletons[kHuman];
@@ -270,6 +260,14 @@ void ApplyAdultLink() {
 
     for (const DlPatch& p : kDlPatches) {
         *p.Slot = p.Value;
+    }
+
+    for (size_t i = 0; i < kHoldCount; i++) {
+        if (firstApply) {
+            sHoldBackups[i] = *kHoldPatches[i].Slot;
+        }
+        Gfx* built = OotmmHandComposites_Build(kHoldPatches[i].Native, kHoldPatches[i].Fist);
+        *kHoldPatches[i].Slot = built != nullptr ? built : sHoldBackups[i];
     }
 
     std::memcpy(sPlayerEyesTextures[kHuman], kAdultEyes, sizeof(kAdultEyes));
@@ -296,6 +294,9 @@ void RestoreChildLink() {
     gPlayerSkeletons[kHuman] = sBackupSkel;
     for (int i = 0; i < sBackupCount; i++) {
         *kDlPatches[i].Slot = sBackupDLs[i];
+    }
+    for (size_t i = 0; i < kHoldCount; i++) {
+        *kHoldPatches[i].Slot = sHoldBackups[i];
     }
     std::memcpy(sPlayerEyesTextures[kHuman], sBackupEyes, sizeof(sBackupEyes));
     std::memcpy(sPlayerMouthTextures[kHuman], sBackupMouth, sizeof(sBackupMouth));
