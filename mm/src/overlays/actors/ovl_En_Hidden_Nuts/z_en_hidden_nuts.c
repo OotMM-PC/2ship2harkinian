@@ -5,6 +5,7 @@
  */
 
 #include "z_en_hidden_nuts.h"
+#include "2s2h/OotmmSongEvents.h"
 #include "z64voice.h"
 #include "overlays/effects/ovl_Effect_Ss_Hahen/z_eff_ss_hahen.h"
 
@@ -209,7 +210,9 @@ void func_80BDB2B8(EnHiddenNuts* this, PlayState* play) {
     }
 
     if (!(this->actor.xzDistToPlayer > 120.0f)) {
-        if ((play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) && (play->msgCtx.lastPlayedSong == OCARINA_SONG_SONATA)) {
+        if ((play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
+            OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_AWAKENING_SCRUB, play->msgCtx.lastPlayedSong)) {
+            OotmmSongEvents_ClearPlayed(play);
             play->msgCtx.ocarinaMode = OCARINA_MODE_END;
             func_80BDB788(this);
         } else if (AudioVoice_GetWord() == VOICE_WORD_ID_WAKE_UP) {

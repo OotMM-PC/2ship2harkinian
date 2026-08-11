@@ -1642,10 +1642,21 @@ static const OcarinaSongButtons sOotmmSongButtons[OOTMM_SONG_COUNT] = {
            OCARINA_BTN_C_LEFT } },
 };
 
+const OcarinaSongButtons* AudioOcarina_OotmmSongButtons(s32 song) {
+    if (song <= OOTMM_SONG_NONE || song > OOTMM_SONG_COUNT) {
+        return NULL;
+    }
+    return &sOotmmSongButtons[song - 1];
+}
+
 // sOoTOcarinaSongNotes row for each OotmmMmSongId - 1.
 static const u8 sOotmmPlaybackRows[OOTMM_SONG_COUNT] = { 0, 1, 2, 3, 4, 5, 7, 6 };
 
 static u16 sOotmmAvailSongs = 0;
+
+void AudioOcarina_SetOotmmAvailSongs(u16 mask) {
+    sOotmmAvailSongs = mask;
+}
 u8 sMusicStaffNumNotesPerTest = 0;
 u8 D_801D8530 = false;
 u32 D_801D8534 = 0;

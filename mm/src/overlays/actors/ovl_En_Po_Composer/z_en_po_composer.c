@@ -5,6 +5,7 @@
  */
 
 #include "z_en_po_composer.h"
+#include "2s2h/OotmmSongEvents.h"
 
 #define FLAGS                                                                                  \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -316,19 +317,13 @@ void EnPoComposer_PlayCurse(EnPoComposer* this, PlayState* play) {
 
     // Song check, check if player just played song of storms or song of healing
     if (play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) {
-        switch (play->msgCtx.lastPlayedSong) {
-            case OCARINA_SONG_STORMS:
-                this->sharpCsNum = SHARP_CS_SONG_STORMS;
-                EnPoComposer_SetupStartCutscene(this);
-                break;
-
-            case OCARINA_SONG_HEALING:
-                this->sharpCsNum = SHARP_CS_SONG_HEALING;
-                EnPoComposer_SetupStartCutscene(this);
-                break;
-
-            default:
-                break;
+        if (OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_STORMS_COMPOSER, play->msgCtx.lastPlayedSong)) {
+            OotmmSongEvents_ClearPlayed(play);
+            this->sharpCsNum = SHARP_CS_SONG_STORMS;
+            EnPoComposer_SetupStartCutscene(this);
+        } else if (play->msgCtx.lastPlayedSong == OCARINA_SONG_HEALING) {
+            this->sharpCsNum = SHARP_CS_SONG_HEALING;
+            EnPoComposer_SetupStartCutscene(this);
         }
     }
 

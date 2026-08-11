@@ -9,6 +9,7 @@
  */
 
 #include "z_en_time_tag.h"
+#include "2s2h/OotmmSongEvents.h"
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -117,7 +118,9 @@ void EnTimeTag_RooftopOath_Cutscene(EnTimeTag* this, PlayState* play) {
 void EnTimeTag_RooftopOath_Wait(EnTimeTag* this, PlayState* play) {
     Actor* thisx = &this->actor;
 
-    if ((play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) && (play->msgCtx.lastPlayedSong == OCARINA_SONG_OATH)) {
+    if ((play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
+        OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_CLOCK_TOWER_ROOF, play->msgCtx.lastPlayedSong)) {
+        OotmmSongEvents_ClearPlayed(play);
         if (this->actor.csId != CS_ID_NONE) {
             this->actionFunc = EnTimeTag_RooftopOath_Cutscene;
             CutsceneManager_Queue(thisx->csId);

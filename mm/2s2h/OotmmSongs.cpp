@@ -6,6 +6,7 @@
 #include "2s2h/ShipInit.hpp"
 #include "OotmmIpc.h"
 #include "OotmmSession.h"
+#include "OotmmSongEvents.h"
 
 #include <array>
 #include <string>
@@ -261,7 +262,9 @@ bool EnsureWarpFont(const SongDef& def) {
 
 RegisterShipInitFunc sInit([]() {
     REGISTER_VB_SHOULD(VB_MSG_CAPTURE_MSGMODE_TEXT_CLOSING_OCARINA_ACTION, {
-        if (OotmmSession_IsActive() && sPlayedSong != OOTMM_SONG_NONE && gPlayState != nullptr) {
+        // A pad's matched song belongs to its event actor; the song's own effect must not run.
+        if (OotmmSession_IsActive() && sPlayedSong != OOTMM_SONG_NONE && gPlayState != nullptr &&
+            !OotmmSongEvents_PadOwnsPlayedSong(gPlayState)) {
             *should = true;
             HandleSongAct(gPlayState);
         }
@@ -282,6 +285,13 @@ extern "C" uint16_t OotmmSongs_AvailableMask(void) {
 }
 
 extern "C" uint16_t OotmmSongs_ScarecrowBlockMask(void) {
+    if (!OotmmSession_IsActive()) {
+        return 0;
+    }
+    return OwnedMask();
+}
+
+extern "C" uint16_t OotmmSongs_OwnedMask(void) {
     if (!OotmmSession_IsActive()) {
         return 0;
     }

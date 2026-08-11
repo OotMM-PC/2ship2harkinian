@@ -7,6 +7,7 @@
 #include "OotmmDrops.h"
 #include "OotmmDebugChecks.h"
 #include "OotmmIpc.h"
+#include "OotmmSongEvents.h"
 #include "OotmmItemApply.h"
 #include "OotmmAdultLink.h"
 #include "OotmmItemProbe.h"
@@ -345,6 +346,7 @@ void InitializeSave() {
     gSaveContext.nextCutsceneIndex = 0;
     gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
     gSaveContext.save.linkAge = 0;
+    gSaveContext.save.hasTatl = true;
     gSaveContext.save.entrance = ENTRANCE(SOUTH_CLOCK_TOWN, 0);
     // The seed hands out MM's sword and shield; Fierce Deity's own blade is part of the form.
     SET_EQUIP_VALUE(EQUIP_TYPE_SWORD, EQUIP_VALUE_SWORD_NONE);
@@ -583,6 +585,7 @@ void OotmmSession_Init() {
         OotmmCsmc_Init();
         OotmmDrops_Init();
         OotmmDebugChecks_Init();
+        OotmmSongEvents_Init();
         OotmmItemProbe_Init();
         OotmmItemApply_Init();
         OotmmScales_Init();

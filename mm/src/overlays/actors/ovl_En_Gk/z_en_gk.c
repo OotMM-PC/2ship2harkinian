@@ -5,6 +5,7 @@
  */
 
 #include "z_en_gk.h"
+#include "2s2h/OotmmSongEvents.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -295,7 +296,8 @@ s32 func_80B50854(EnGk* this, PlayState* play) {
     }
 
     if ((player->transformation == PLAYER_FORM_GORON) && (play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
-        (play->msgCtx.lastPlayedSong == OCARINA_SONG_GORON_LULLABY)) {
+        OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_LULLABY_KID, play->msgCtx.lastPlayedSong)) {
+        OotmmSongEvents_ClearPlayed(play);
         Flags_SetSwitch(play, ENGK_GET_SWITCH_FLAG(&this->actor));
         this->animIndex = ENGK_ANIM_3;
         Actor_ChangeAnimationByInfo(&this->skelAnime, sAnimationInfo, ENGK_ANIM_3);
@@ -548,7 +550,8 @@ void func_80B51410(EnGk* this, PlayState* play) {
 
     if (this->actor.xzDistToPlayer < 100.0f) {
         if ((player->transformation == PLAYER_FORM_GORON) && (play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
-            (play->msgCtx.lastPlayedSong == OCARINA_SONG_GORON_LULLABY_INTRO)) {
+            OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_LULLABY_KID, play->msgCtx.lastPlayedSong)) {
+            OotmmSongEvents_ClearPlayed(play);
             this->unk_1E4 |= 0x20;
         }
 

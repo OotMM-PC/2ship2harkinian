@@ -10,6 +10,10 @@ extern "C" {
 
 /// Records the OoT song the ocarina just matched.
 void OotmmSongs_NotePlayed(int32_t song);
+/// Button sequence for a cross-game song, or NULL when out of range.
+const OcarinaSongButtons* AudioOcarina_OotmmSongButtons(int32_t song);
+/// Restricts which cross-game songs the engine may match until the next ocarina start.
+void AudioOcarina_SetOotmmAvailSongs(uint16_t mask);
 int32_t OotmmSongs_Played(void);
 void OotmmSongs_ClearPlayed(void);
 

@@ -5,6 +5,7 @@
  */
 
 #include "prevent_bss_reordering.h"
+#include "2s2h/OotmmSongEvents.h"
 #include "z_dm_char01.h"
 #include "objects/object_mtoride/object_mtoride.h"
 #include "overlays/actors/ovl_Obj_Etcetera/z_obj_etcetera.h"
@@ -181,7 +182,8 @@ void func_80AA8698(DmChar01* this, PlayState* play) {
     if (GameInteractor_Should(VB_OPEN_WOODFALL_FROM_SONG,
                               (player->transformation == PLAYER_FORM_DEKU) &&
                                   (play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
-                                  (play->msgCtx.lastPlayedSong == OCARINA_SONG_SONATA),
+                                  OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_TEMPLE_WOODFALL,
+                                                          play->msgCtx.lastPlayedSong),
                               this)) {
 
         if ((player2->actor.world.pos.x > -40.0f) && (player2->actor.world.pos.x < 40.0f) &&

@@ -5,6 +5,7 @@
  */
 
 #include "z_en_dai.h"
+#include "2s2h/OotmmSongEvents.h"
 
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -456,8 +457,10 @@ void func_80B3EEDC(EnDai* this, PlayState* play) {
     if (GameInteractor_Should(VB_OPEN_SNOWHEAD_FROM_SONG,
                               (player->transformation == PLAYER_FORM_GORON) &&
                                   (play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
-                                  (play->msgCtx.lastPlayedSong == OCARINA_SONG_GORON_LULLABY),
+                                  OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_TEMPLE_SNOWHEAD,
+                                                          play->msgCtx.lastPlayedSong),
                               this)) {
+        OotmmSongEvents_ClearPlayed(play);
         EnDai_ChangeAnim(this, ENDAI_ANIM_1);
         this->actionFunc = func_80B3EE8C;
     } else if (!(player->stateFlags2 & PLAYER_STATE2_USING_OCARINA)) {

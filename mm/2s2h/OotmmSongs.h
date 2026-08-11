@@ -27,6 +27,8 @@ typedef enum OotmmMmSongId {
 
 /// Bit (1 << song) is set for every OoT song the player may play right now.
 uint16_t OotmmSongs_AvailableMask(void);
+/// Bit (1 << song) is set for every OoT song the player owns, regardless of ocarina state.
+uint16_t OotmmSongs_OwnedMask(void);
 /// Bit (1 << song) is set for every OoT song the scarecrow or Termina wall songs must not contain.
 uint16_t OotmmSongs_ScarecrowBlockMask(void);
 /// Custom sequence id for the song's fanfare, or -1 when the asset pack lacks it.

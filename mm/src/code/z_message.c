@@ -10,6 +10,8 @@
 #include "BenPort.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmOwls.h"
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmSongEvents.h"
 #include "2s2h/OotmmSongs.h"
 #include "2s2h/OotmmSongsPlayer.h"
 #include "assets/archives/schedule_dma_static/schedule_dma_static_yar.h"
@@ -1206,6 +1208,9 @@ void Message_HandleOcarina(PlayState* play) {
                    (msgCtx->ocarinaAction == OCARINA_ACTION_PROMPT_WIND_FISH_GORON) ||
                    (msgCtx->ocarinaAction == OCARINA_ACTION_PROMPT_WIND_FISH_ZORA) ||
                    (msgCtx->ocarinaAction == OCARINA_ACTION_PROMPT_WIND_FISH_DEKU)) {
+            msgCtx->msgMode = MSGMODE_SONG_PROMPT_STARTING;
+        } else if ((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_OOTMM_MINUET) &&
+                   (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_OOTMM_SARIA)) {
             msgCtx->msgMode = MSGMODE_SONG_PROMPT_STARTING;
         } else if ((msgCtx->ocarinaAction == OCARINA_ACTION_0) || (msgCtx->ocarinaAction == OCARINA_ACTION_FREE_PLAY) ||
                    (msgCtx->ocarinaAction >= OCARINA_ACTION_CHECK_TIME)) {
@@ -3698,6 +3703,9 @@ void Message_DisplayOcarinaStaffImpl(PlayState* play, u16 ocarinaAction) {
     s32 k;
     u32 i;
 
+    // A song pad turns free play into a guided prompt for its asked song.
+    ocarinaAction = OotmmSongEvents_PromptAction(play, ocarinaAction);
+
     msgCtx->ocarinaAvailableSongs = 0;
     OotmmSongs_ClearPlayed();
 
@@ -3760,6 +3768,12 @@ void Message_DisplayOcarinaStaffImpl(PlayState* play, u16 ocarinaAction) {
         noStop = true;
         Message_OpenText(play, 0x1B59);
         func_80150A84(play);
+    } else if ((ocarinaAction >= OCARINA_ACTION_PROMPT_OOTMM_MINUET) &&
+               (ocarinaAction <= OCARINA_ACTION_PROMPT_OOTMM_SARIA)) {
+        noStop = true;
+        // Cross-game prompts only ever come from pads, so the text advertises B to Stop.
+        OotmmSongEvents_OpenPadPromptText(play);
+        func_80150A84(play);
     } else if ((ocarinaAction == OCARINA_ACTION_FREE_PLAY) || (ocarinaAction >= OCARINA_ACTION_CHECK_TIME)) {
         if ((ocarinaAction >= OCARINA_ACTION_CHECK_TIME) && (ocarinaAction <= OCARINA_ACTION_CHECK_STORMS)) {
             Audio_PlaySfx(NA_SE_SY_TRE_BOX_APPEAR);
@@ -3774,7 +3788,12 @@ void Message_DisplayOcarinaStaffImpl(PlayState* play, u16 ocarinaAction) {
     } else {
         noStop = true;
         if (ocarinaAction >= OCARINA_ACTION_PROMPT_SONATA) {
-            Message_OpenText(play, 0x1B59);
+            // A pad prompt advertises B to Stop like free play; NPC prompts keep the vanilla text.
+            if (OotmmSongEvents_IsPadPrompt(play)) {
+                OotmmSongEvents_OpenPadPromptText(play);
+            } else {
+                Message_OpenText(play, 0x1B59);
+            }
             func_80150A84(play);
         } else {
             Message_OpenText(play, D_801D028C[ocarinaAction]);
@@ -3799,7 +3818,8 @@ void Message_DisplayOcarinaStaffImpl(PlayState* play, u16 ocarinaAction) {
     msgCtx->textboxColorAlphaCurrent = msgCtx->textboxColorAlphaTarget;
     msgCtx->textboxColorAlphaCurrent = msgCtx->textboxColorAlphaTarget;
 
-    if (!noStop) {
+    // A pad prompt keeps free play's B=Stop label; it is voluntary and B backs out.
+    if (!noStop || OotmmSongEvents_IsPadPrompt(play)) {
         Interface_SetBButtonInterfaceDoAction(play, DO_ACTION_STOP);
         noStop = gSaveContext.hudVisibility;
         Interface_SetHudVisibility(HUD_VISIBILITY_B_ALT);
@@ -4232,38 +4252,44 @@ void Message_DrawOcarinaButtons(PlayState* play, Gfx** gfxP) {
             if ((msgCtx->msgMode == MSGMODE_SONG_PROMPT) || (msgCtx->msgMode == MSGMODE_36)) {
                 if ((msgCtx->ocarinaAction != OCARINA_ACTION_PROMPT_EVAN_PART1_SECOND_HALF) &&
                     (msgCtx->ocarinaAction != OCARINA_ACTION_PROMPT_EVAN_PART2_SECOND_HALF)) {
-                    if (msgCtx->ocarinaAction >= OCARINA_ACTION_TIMED_PROMPT_SONATA) {
-                        sOcarinaButtonStepG = msgCtx->ocarinaAction - OCARINA_ACTION_TIMED_PROMPT_SONATA;
-                    } else if ((msgCtx->ocarinaAction == OCARINA_ACTION_PROMPT_EVAN_PART1_SECOND_HALF) ||
-                               (msgCtx->ocarinaAction == OCARINA_ACTION_PROMPT_EVAN_PART2_SECOND_HALF)) {
-                        // Can never pass as the conditional is opposite to one scope higher
-                        sOcarinaButtonStepG = (msgCtx->ocarinaAction - OCARINA_ACTION_PROMPT_EVAN_PART1_SECOND_HALF) +
-                                              OCARINA_SONG_EVAN_PART1;
-                    } else if ((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) &&
-                               (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_WIND_FISH_DEKU)) {
-                        sOcarinaButtonStepG = msgCtx->ocarinaAction - OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN +
-                                              OCARINA_SONG_WIND_FISH_HUMAN;
+                    const OcarinaSongButtons* promptButtons;
+
+                    if ((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_OOTMM_MINUET) &&
+                        (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_OOTMM_SARIA)) {
+                        promptButtons = AudioOcarina_OotmmSongButtons(msgCtx->ocarinaAction -
+                                                                      OCARINA_ACTION_PROMPT_OOTMM_MINUET + 1);
                     } else {
-                        sOcarinaButtonStepG = msgCtx->ocarinaAction - OCARINA_ACTION_PROMPT_SONATA;
+                        if (msgCtx->ocarinaAction >= OCARINA_ACTION_TIMED_PROMPT_SONATA) {
+                            sOcarinaButtonStepG = msgCtx->ocarinaAction - OCARINA_ACTION_TIMED_PROMPT_SONATA;
+                        } else if ((msgCtx->ocarinaAction == OCARINA_ACTION_PROMPT_EVAN_PART1_SECOND_HALF) ||
+                                   (msgCtx->ocarinaAction == OCARINA_ACTION_PROMPT_EVAN_PART2_SECOND_HALF)) {
+                            // Can never pass as the conditional is opposite to one scope higher
+                            sOcarinaButtonStepG =
+                                (msgCtx->ocarinaAction - OCARINA_ACTION_PROMPT_EVAN_PART1_SECOND_HALF) +
+                                OCARINA_SONG_EVAN_PART1;
+                        } else if ((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) &&
+                                   (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_WIND_FISH_DEKU)) {
+                            sOcarinaButtonStepG = msgCtx->ocarinaAction - OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN +
+                                                  OCARINA_SONG_WIND_FISH_HUMAN;
+                        } else {
+                            sOcarinaButtonStepG = msgCtx->ocarinaAction - OCARINA_ACTION_PROMPT_SONATA;
+                        }
+                        promptButtons = &gOcarinaSongButtons[sOcarinaButtonStepG];
                     }
-                    sOcarinaButtonStepR = gOcarinaSongButtons[sOcarinaButtonStepG].numButtons;
+                    sOcarinaButtonStepR = promptButtons != NULL ? promptButtons->numButtons : 0;
 
                     for (notePosX = 98, i = 0; i < sOcarinaButtonStepR; notePosX += 18, i++) {
                         gDPPipeSync(gfx++);
                         gDPSetPrimColor(gfx++, 0, 0, 150, 150, 150, 150);
                         gDPSetEnvColor(gfx++, 10, 10, 10, 0);
 
-                        gDPLoadTextureBlock(
-                            gfx++, sOcarinaButtonTextures[gOcarinaSongButtons[sOcarinaButtonStepG].buttonIndex[i]],
-                            G_IM_FMT_IA, G_IM_SIZ_8b, 16, 16, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
-                            G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+                        gDPLoadTextureBlock(gfx++, sOcarinaButtonTextures[promptButtons->buttonIndex[i]], G_IM_FMT_IA,
+                                            G_IM_SIZ_8b, 16, 16, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
+                                            G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
 
                         gSPTextureRectangle(
-                            gfx++, notePosX << 2,
-                            msgCtx->ocarinaButtonsPosY[gOcarinaSongButtons[sOcarinaButtonStepG].buttonIndex[i]] << 2,
-                            (notePosX + 16) << 2,
-                            (msgCtx->ocarinaButtonsPosY[gOcarinaSongButtons[sOcarinaButtonStepG].buttonIndex[i]] + 16)
-                                << 2,
+                            gfx++, notePosX << 2, msgCtx->ocarinaButtonsPosY[promptButtons->buttonIndex[i]] << 2,
+                            (notePosX + 16) << 2, (msgCtx->ocarinaButtonsPosY[promptButtons->buttonIndex[i]] + 16) << 2,
                             G_TX_RENDERTILE, 0, 0, 1 << 10, 1 << 10);
                     }
                 }
@@ -4583,8 +4609,14 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                             4);
                         msgCtx->msgMode = MSGMODE_SONG_PROMPT;
                     } else {
-                        if ((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) &&
-                            (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_WIND_FISH_DEKU)) {
+                        if ((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_OOTMM_MINUET) &&
+                            (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_OOTMM_SARIA)) {
+                            // The message code owns cross-game verification; the engine only records
+                            // notes, and check mode with no checkable songs never advances the staff.
+                            AudioOcarina_StartDefault(0xC0000000);
+                            AudioOcarina_SetOotmmAvailSongs(0);
+                        } else if ((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) &&
+                                   (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_WIND_FISH_DEKU)) {
                             AudioOcarina_StartDefault(
                                 (1 << ((msgCtx->ocarinaAction - OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) +
                                        OCARINA_SONG_WIND_FISH_HUMAN)) |
@@ -4899,6 +4931,13 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                         gHorsePlayedEponasSong = true;
                     }
 
+                    // A pad prompt has no owning actor; it must resolve as a completed free-play
+                    // song, which sets both played-song fields together.
+                    if (OotmmSongEvents_IsPadPrompt(play)) {
+                        msgCtx->ocarinaAction = OCARINA_ACTION_FREE_PLAY_DONE;
+                        msgCtx->lastPlayedSong = msgCtx->songPlayed;
+                    }
+
                     if (OotmmSongs_Played() != OOTMM_SONG_NONE) {
                         // 2S2H [OoTMM] The out-of-range song id must not reach the ocarina-mode derivation.
                         if (msgCtx->ocarinaAction == OCARINA_ACTION_FREE_PLAY_DONE) {
@@ -5001,6 +5040,36 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                     sOcarinaButtonIndexBufPos++;
                 }
 
+                if ((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_OOTMM_MINUET) &&
+                    (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_OOTMM_SARIA)) {
+                    const s32 promptSong = msgCtx->ocarinaAction - OCARINA_ACTION_PROMPT_OOTMM_MINUET + 1;
+                    const OcarinaSongButtons* promptButtons = AudioOcarina_OotmmSongButtons(promptSong);
+                    s16 promptIdx;
+                    bool promptFailed = promptButtons == NULL;
+
+                    for (promptIdx = 0; !promptFailed && (promptIdx < sOcarinaButtonIndexBufPos) && (promptIdx < 8);
+                         promptIdx++) {
+                        if ((promptIdx >= promptButtons->numButtons) ||
+                            (sOcarinaButtonIndexBuf[promptIdx] != promptButtons->buttonIndex[promptIdx])) {
+                            promptFailed = true;
+                        }
+                    }
+                    if (promptFailed) {
+                        Audio_PlaySfx(NA_SE_SY_OCARINA_ERROR);
+                        msgCtx->stateTimer = 10;
+                        msgCtx->msgMode = MSGMODE_SONG_PROMPT_FAIL;
+                    } else if (sOcarinaButtonIndexBufPos >= promptButtons->numButtons) {
+                        OotmmSongs_NotePlayed(promptSong);
+                        msgCtx->songPlayed = OOTMM_SONG_STAFF_BASE + promptSong;
+                        msgCtx->lastPlayedSong = OOTMM_SONG_STAFF_BASE + promptSong;
+                        msgCtx->msgMode = MSGMODE_SONG_PROMPT_SUCCESS;
+                        msgCtx->stateTimer = 20;
+                        Audio_PlaySfx(NA_SE_SY_TRE_BOX_APPEAR);
+                    }
+                    Message_DrawText(play, &gfx);
+                    break;
+                }
+
                 if (msgCtx->ocarinaStaff->state <= OCARINA_SONG_SCARECROW_SPAWN) {
                     if ((msgCtx->ocarinaAction == OCARINA_ACTION_PROMPT_EVAN_PART1_SECOND_HALF) ||
                         (msgCtx->ocarinaAction == OCARINA_ACTION_PROMPT_EVAN_PART2_SECOND_HALF)) {
@@ -5009,13 +5078,16 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                     } else {
                         msgCtx->songPlayed = msgCtx->ocarinaStaff->state;
                         msgCtx->msgMode = MSGMODE_SONG_PROMPT_SUCCESS;
-                        if (msgCtx->ocarinaStaff->state == OCARINA_SONG_GORON_LULLABY_INTRO) {
-                            Item_Give(play, ITEM_SONG_LULLABY_INTRO);
-                        } else if (!((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) &&
-                                     (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_WIND_FISH_DEKU)) &&
-                                   (msgCtx->ocarinaStaff->state != OCARINA_SONG_NEW_WAVE)) {
-                            Item_Give(play,
-                                      (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
+                        // The seed's item pipeline owns songs, so prompts must not teach them.
+                        if (!OotmmSession_IsActive()) {
+                            if (msgCtx->ocarinaStaff->state == OCARINA_SONG_GORON_LULLABY_INTRO) {
+                                Item_Give(play, ITEM_SONG_LULLABY_INTRO);
+                            } else if (!((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) &&
+                                         (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_WIND_FISH_DEKU)) &&
+                                       (msgCtx->ocarinaStaff->state != OCARINA_SONG_NEW_WAVE)) {
+                                Item_Give(
+                                    play, (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
+                            }
                         }
                     }
                     msgCtx->stateTimer = 20;
@@ -5023,7 +5095,9 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                 } else if (msgCtx->ocarinaStaff->state == OCARINA_SONG_TERMINA_WALL) {
                     msgCtx->songPlayed = msgCtx->ocarinaStaff->state;
                     msgCtx->msgMode = MSGMODE_34;
-                    Item_Give(play, (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
+                    if (!OotmmSession_IsActive()) {
+                        Item_Give(play, (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
+                    }
                     msgCtx->stateTimer = 20;
                     AudioOcarina_SetOcarinaDisableTimer(0, 20);
                     Audio_PlaySfx(NA_SE_SY_TRE_BOX_APPEAR);
@@ -6155,6 +6229,17 @@ void Message_Update(PlayState* play) {
 
         case MSGMODE_OCARINA_PLAYING:
             if (CHECK_BTN_ALL(input->press.button, BTN_B)) {
+                AudioOcarina_SetInstrument(OCARINA_INSTRUMENT_OFF);
+                play->msgCtx.ocarinaMode = OCARINA_MODE_END;
+                Message_CloseTextbox(play);
+            } else {
+                msgCtx->ocarinaButtonIndex = OCARINA_BTN_INVALID;
+            }
+            break;
+
+        case MSGMODE_SONG_PROMPT:
+            // A pad prompt is voluntary, so B backs out where a teaching prompt would not.
+            if (OotmmSongEvents_IsPadPrompt(play) && CHECK_BTN_ALL(input->press.button, BTN_B)) {
                 AudioOcarina_SetInstrument(OCARINA_INSTRUMENT_OFF);
                 play->msgCtx.ocarinaMode = OCARINA_MODE_END;
                 Message_CloseTextbox(play);

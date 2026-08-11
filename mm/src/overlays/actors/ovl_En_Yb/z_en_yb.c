@@ -5,6 +5,7 @@
  */
 
 #include "z_en_yb.h"
+#include "2s2h/OotmmSongEvents.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -359,8 +360,10 @@ void EnYb_Idle(EnYb* this, PlayState* play) {
 
     EnYb_UpdateAnimation(this, play);
     if ((this->actor.xzDistToPlayer < 180.0f) && (fabsf(this->actor.playerHeightRel) < 50.0f) &&
-        (play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) && (play->msgCtx.lastPlayedSong == OCARINA_SONG_HEALING) &&
+        (play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
+        OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_HEALING_KAMARO, play->msgCtx.lastPlayedSong) &&
         (GET_PLAYER_FORM == PLAYER_FORM_HUMAN)) {
+        OotmmSongEvents_ClearPlayed(play);
         this->actionFunc = EnYb_TeachingDance;
         this->teachingCutsceneTimer = 200;
         EnYb_ChangeCutscene(this, 0);

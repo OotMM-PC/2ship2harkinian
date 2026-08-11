@@ -5,6 +5,7 @@
  */
 
 #include "z_en_gb2.h"
+#include "2s2h/OotmmSongEvents.h"
 
 #define FLAGS                                                                                  \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -377,7 +378,9 @@ void func_80B0FE7C(PlayState* play) {
 }
 
 void func_80B0FEBC(EnGb2* this, PlayState* play) {
-    if ((play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) && (play->msgCtx.lastPlayedSong == OCARINA_SONG_HEALING)) {
+    if ((play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
+        OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_HEALING_POE_HUT, play->msgCtx.lastPlayedSong)) {
+        OotmmSongEvents_ClearPlayed(play);
         play->msgCtx.ocarinaMode = OCARINA_MODE_END;
         SET_EVENTINF(EVENTINF_47);
         this->unk_26E = 0x14D1;

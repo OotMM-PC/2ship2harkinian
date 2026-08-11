@@ -5,6 +5,7 @@
  */
 
 #include "z_en_bsb.h"
+#include "2s2h/OotmmSongEvents.h"
 #include "z64rumble.h"
 #include "z64shrink_window.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -562,7 +563,9 @@ void func_80C0BFE8(EnBsb* this, PlayState* play) {
             this->playedSfx = false;
         }
 
-        if ((play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) && (play->msgCtx.lastPlayedSong == OCARINA_SONG_SONATA)) {
+        if ((play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
+            OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_AWAKENING_KEETA, play->msgCtx.lastPlayedSong)) {
+            OotmmSongEvents_ClearPlayed(play);
             play->msgCtx.ocarinaMode = OCARINA_MODE_END;
             Actor_ChangeCategory(play, &play->actorCtx, &this->actor, ACTORCAT_BOSS);
             func_80C0C0F4(this, play);

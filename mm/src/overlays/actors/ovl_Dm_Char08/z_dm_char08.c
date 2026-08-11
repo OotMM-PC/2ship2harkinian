@@ -5,6 +5,7 @@
  */
 
 #include "z_dm_char08.h"
+#include "2s2h/OotmmSongEvents.h"
 #include "objects/object_kamejima/object_kamejima.h"
 #include "2s2h/BenPort.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -310,7 +311,8 @@ void DmChar08_WaitForSong(DmChar08* this, PlayState* play) {
     if (GameInteractor_Should(VB_OPEN_GREAT_BAY_FROM_SONG,
                               (player->transformation == PLAYER_FORM_ZORA) &&
                                   (play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
-                                  (play->msgCtx.lastPlayedSong == OCARINA_SONG_NEW_WAVE),
+                                  OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_TEMPLE_GREAT_BAY,
+                                                          play->msgCtx.lastPlayedSong),
                               this)) {
         if ((player2->actor.world.pos.x > -5780.0f) && (player2->actor.world.pos.x < -5385.0f)) {
             if ((player2->actor.world.pos.z > 1120.0f) && (player2->actor.world.pos.z < 2100.0f)) {

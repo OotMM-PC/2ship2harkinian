@@ -5,6 +5,7 @@
  */
 
 #include "z_en_gg.h"
+#include "2s2h/OotmmSongEvents.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -429,7 +430,8 @@ void func_80B359DC(EnGg* this, PlayState* play) {
         }
 
         if ((player->transformation == PLAYER_FORM_HUMAN) && (play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
-            (play->msgCtx.lastPlayedSong == OCARINA_SONG_HEALING)) {
+            OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_HEALING_DARMANI, play->msgCtx.lastPlayedSong)) {
+            OotmmSongEvents_ClearPlayed(play);
             if (!CHECK_WEEKEVENTREG(WEEKEVENTREG_19_80)) {
                 SET_WEEKEVENTREG(WEEKEVENTREG_19_80);
             }

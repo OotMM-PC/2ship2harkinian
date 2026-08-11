@@ -5,6 +5,7 @@
  */
 
 #include "z_en_hg.h"
+#include "2s2h/OotmmSongEvents.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
 #define FLAGS                                                                                  \
@@ -398,7 +399,9 @@ void EnHg_WaitForPlayerAction(EnHg* this, PlayState* play) {
     }
 
     if (play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) {
-        if ((play->msgCtx.lastPlayedSong == OCARINA_SONG_HEALING) && (GET_PLAYER_FORM == PLAYER_FORM_HUMAN)) {
+        if (OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_HEALING_PAMELA_FATHER, play->msgCtx.lastPlayedSong) &&
+            (GET_PLAYER_FORM == PLAYER_FORM_HUMAN)) {
+            OotmmSongEvents_ClearPlayed(play);
             if (GameInteractor_Should(VB_HAVE_HEALED_PAMELAS_FATHER, INV_CONTENT(ITEM_MASK_GIBDO) == ITEM_MASK_GIBDO)) {
                 this->csIdIndex = HG_CS_SONG_OF_HEALING;
             } else {
