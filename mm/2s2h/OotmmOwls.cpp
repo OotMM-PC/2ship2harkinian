@@ -3,6 +3,7 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
 #include "OotmmIpc.h"
+#include "OotmmNpcChecks.h"
 #include "OotmmSession.h"
 
 #include <array>
@@ -44,13 +45,21 @@ RegisterShipInitFunc sInit([]() {
     if (!ShuffleActive()) {
         return;
     }
-    // Striking a statue no longer grants its warp; the owl item does.
-    // TODO: striking a statue should complete its check; the check system does not exist yet,
-    // so an unowned statue can only be lit by receiving its item.
-    REGISTER_VB_SHOULD(VB_OWL_STATUE_ACTIVATE, { *should = false; });
+    REGISTER_VB_SHOULD(VB_OWL_STATUE_ACTIVATE, {
+        const int owlId = va_arg(args, int);
+        if (owlId >= 0 && owlId < static_cast<int>(kOwls.size()) &&
+            OotmmNpcChecks_Collect(kOwls[owlId].ItemId)) {
+            *should = false;
+        }
+    });
     REGISTER_VB_SHOULD(VB_OWL_STATUE_BE_ACTIVE, {
         const int owlId = va_arg(args, int);
-        *should = *should || ((OotmmOwls_ActivatedMask() >> owlId) & 1);
+        if (owlId >= 0 && owlId < static_cast<int>(kOwls.size())) {
+            const char* nativeId = kOwls[owlId].ItemId;
+            *should = OotmmNpcChecks_IsShuffled(nativeId)
+                          ? OotmmNpcChecks_IsCollected(nativeId)
+                          : (*should || ((OotmmOwls_ActivatedMask() >> owlId) & 1));
+        }
     });
 });
 

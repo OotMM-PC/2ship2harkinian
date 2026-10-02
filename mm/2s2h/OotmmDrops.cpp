@@ -1,9 +1,9 @@
 #include "OotmmDrops.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "OotmmCheckLedger.h"
 #include "OotmmIpc.h"
 #include "OotmmItemModels.h"
-#include "OotmmItemPresentation.h"
 #include "OotmmSession.h"
 
 #include <random>
@@ -30,7 +30,6 @@ struct Drop {
     std::string DrawItemName;
 };
 
-// A trap must not advertise itself: disguise it as a random major item from the seed.
 void PickDisguise(std::string& drawItemId, std::string& drawItemName) {
     std::vector<const Ship::OotmmPlacement*> majors;
     for (const auto& placement : OotmmSession_GetState().GetPlacements()) {
@@ -56,17 +55,13 @@ constexpr s16 kDespawnRefresh = 220;
 constexpr float kWorldScale = 0.25f;
 
 void Present(const Drop& drop) {
-    Ship::GameIpcItemPresentation presentation;
-    presentation.ItemId = drop.ItemId;
-    presentation.ItemName = drop.ItemName;
-    presentation.ItemGame = drop.ItemGame;
-    presentation.DestinationGame = drop.ItemGame;
-    const uint32_t self = OotmmSession_GetState().GetPlayerId();
-    presentation.SourcePlayer = self;
-    presentation.RecipientPlayer = self;
-    presentation.ViewerPlayer = self;
-    presentation.Debug = drop.CheckId.empty();
-    OotmmItemPresentation_Queue(std::move(presentation));
+    if (drop.CheckId.empty()) {
+        OotmmIpc_RequestDebugItemPresentation(drop.ItemId, OotmmSession_GetState().GetPlayerId());
+        return;
+    }
+    const bool collected = OotmmCheckLedger_Contains(drop.CheckId) || OotmmIpc_IsCheckCompleted(drop.CheckId);
+    OotmmIpc_SendCheckCollected(drop.CheckId, !collected);
+    OotmmCheckLedger_Record(drop.CheckId);
 }
 
 } // namespace
@@ -116,9 +111,6 @@ void OotmmDrops_Init() {
         const auto it = sDrops.find(&item->actor);
         if (it != sDrops.end()) {
             Present(it->second);
-            if (!it->second.CheckId.empty() && !OotmmIpc_IsCheckCompleted(it->second.CheckId)) {
-                OotmmIpc_SendCheckCollected(it->second.CheckId);
-            }
             Actor_Kill(&item->actor);
             sDrops.erase(it);
             *should = false;

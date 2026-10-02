@@ -7,6 +7,7 @@
 #include "z_en_fsn.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmShops.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
@@ -1070,7 +1071,7 @@ void EnFsn_GiveItem(EnFsn* this, PlayState* play) {
         }
         this->actionFunc = EnFsn_SetupResumeInteraction;
     } else if (this->isSelling == true) {
-        Actor_OfferGetItem(&this->actor, play, this->items[this->cursorIndex]->getItemId, 300.0f, 300.0f);
+        OotmmShops_OfferGetItem(&this->actor, play, this->items[this->cursorIndex], 300.0f, 300.0f);
     } else {
         Actor_OfferGetItem(&this->actor, play, this->getItemId, 300.0f, 300.0f);
     }
@@ -1224,7 +1225,7 @@ void EnFsn_HandleCanPlayerBuyItem(EnFsn* this, PlayState* play) {
             Audio_PlaySfx_MessageDecide();
             item = this->items[this->cursorIndex];
             item->buyFanfareFunc(play, item);
-            Actor_OfferGetItem(&this->actor, play, this->items[this->cursorIndex]->getItemId, 300.0f, 300.0f);
+            OotmmShops_OfferGetItem(&this->actor, play, this->items[this->cursorIndex], 300.0f, 300.0f);
             play->msgCtx.msgMode = MSGMODE_TEXT_CLOSING;
             play->msgCtx.stateTimer = 4;
             Interface_SetHudVisibility(HUD_VISIBILITY_ALL);

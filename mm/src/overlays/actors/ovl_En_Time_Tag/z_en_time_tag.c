@@ -9,6 +9,7 @@
  */
 
 #include "z_en_time_tag.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include "2s2h/OotmmSongEvents.h"
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -73,7 +74,7 @@ void EnTimeTag_Init(Actor* thisx, PlayState* play) {
         case TIMETAG_SOARING_ENGRAVING:
             this->actionFunc = EnTimeTag_SoaringEngraving_Wait;
             this->actor.flags |= ACTOR_FLAG_UPDATE_DURING_OCARINA;
-            if (CHECK_QUEST_ITEM(QUEST_SONG_SOARING)) {
+            if (OotmmNpcChecks_Done("MM_SONG_SOARING", CHECK_QUEST_ITEM(QUEST_SONG_SOARING))) {
                 this->actor.textId = 0xC02;
             } else {
                 this->actor.textId = 0;
@@ -134,7 +135,9 @@ void EnTimeTag_SoaringEngraving_GetSong(EnTimeTag* this, PlayState* play) {
     if (CutsceneManager_GetCurrentCsId() != this->actor.csId) {
         this->actionFunc = EnTimeTag_SoaringEngraving_Wait;
         this->actor.textId = 0xC02;
-        Item_Give(play, ITEM_SONG_SOARING);
+        if (!OotmmNpcChecks_Collect("MM_SONG_SOARING")) {
+            Item_Give(play, ITEM_SONG_SOARING);
+        }
     }
 }
 
@@ -166,7 +169,7 @@ void EnTimeTag_SoaringEngraving_Wait(EnTimeTag* this, PlayState* play) {
         }
     } else if ((this->actor.xzDistToPlayer < 100.0f) && Player_IsFacingActor(&this->actor, 0x3000, play) &&
                (Flags_GetSwitch(play, TIMETAG_SOARING_GET_SWITCH_FLAG(&this->actor)) ||
-                CHECK_QUEST_ITEM(QUEST_SONG_SOARING))) {
+                OotmmNpcChecks_Done("MM_SONG_SOARING", CHECK_QUEST_ITEM(QUEST_SONG_SOARING)))) {
         this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED;
         Actor_OfferTalk(&this->actor, play, 110.0f);
     }

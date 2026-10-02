@@ -1,5 +1,6 @@
 #include <libultraship/bridge/OotmmAppliedLedger.h>
 #include <libultraship/bridge/OotmmSaveRecovery.h>
+#include <libultraship/bridge/OotmmSavePair.h>
 #include "SaveManager.h"
 
 #include <fstream>
@@ -46,6 +47,12 @@ extern FileSelectState* gFileSelectState;
      (GET_NEWF(save, 3) == 'D') && (GET_NEWF(save, 4) == 'A') && (GET_NEWF(save, 5) == '3'))
 
 namespace {
+
+bool IsOotmmCycleSave() {
+    return OotmmSession_IsActive() && gPlayState != nullptr &&
+        (gPlayState->msgCtx.msgMode == MSGMODE_NEW_CYCLE_0 ||
+         gPlayState->msgCtx.msgMode == MSGMODE_NEW_CYCLE_1);
+}
 
 std::atomic<bool> sCopyActive{false};
 std::atomic<bool> sCopyFailed{false};
@@ -314,9 +321,11 @@ bool SaveManager_ValidateOotmmRecovery(const std::string& contents, const std::s
 
 
 extern "C" void SaveManager_RunValidationCommand(int argc, char** argv) {
-    if (argc < 2 || std::string_view(argv[1]) != "--ootmm-validate-save") {
+    if (argc < 2 || (std::string_view(argv[1]) != "--ootmm-validate-save" &&
+                     std::string_view(argv[1]) != "--ootmm-recover-save-pair")) {
         return;
     }
+    const bool recoverPair = std::string_view(argv[1]) == "--ootmm-recover-save-pair";
     spdlog::set_level(spdlog::level::off);
     bool valid = false;
     std::string error = "Invalid MM validation request.";
@@ -349,16 +358,30 @@ extern "C" void SaveManager_RunValidationCommand(int argc, char** argv) {
             !request.at("version").is_number_unsigned() || request.at("version") != 1 ||
             !request.contains("saveId") || !request.at("saveId").is_string() ||
             !request.contains("slot") || !request.at("slot").is_number_unsigned() || request.at("slot") > 2 ||
-            !request.contains("contents") || !request.at("contents").is_string()) {
+            !request.contains(recoverPair ? "primary" : "contents") ||
+            !request.at(recoverPair ? "primary" : "contents").is_string()) {
             throw std::runtime_error(error);
         }
         const auto saveId = request.at("saveId").get<std::string>();
         if (saveId.size() != 32 || saveId.find_first_not_of("0123456789abcdef") != std::string::npos) {
             throw std::runtime_error(error);
         }
-        nlohmann::json validated;
-        valid = SaveManager_ValidateOotmmRecovery(request.at("contents").get<std::string>(), saveId,
-                                                request.at("slot").get<uint32_t>(), validated, error);
+        const auto slot = request.at("slot").get<uint32_t>();
+        if (recoverPair) {
+            const std::filesystem::path primary(request.at("primary").get<std::string>());
+            if (!primary.is_absolute()) {
+                throw std::runtime_error("MM save pair recovery requires an absolute primary path.");
+            }
+            valid = Ship::RecoverSavePair(primary, primary.parent_path() / SaveManager_GetFileName(slot + 1, true),
+                saveId, slot, error, [&](const std::string& contents, std::string& reason) {
+                    nlohmann::json validated;
+                    return SaveManager_ValidateOotmmRecovery(contents, saveId, slot, validated, reason);
+                });
+        } else {
+            nlohmann::json validated;
+            valid = SaveManager_ValidateOotmmRecovery(request.at("contents").get<std::string>(), saveId,
+                                                    slot, validated, error);
+        }
     } catch (const std::exception& exception) {
         error = exception.what();
     }
@@ -374,6 +397,14 @@ bool SaveManager_ValidateCurrentOotmmSave(std::string& error) {
     const auto& boot = OotmmSession_GetState().GetBootConfig();
     if (!boot.LogicalSlot.has_value()) {
         return true;
+    }
+    const auto primary = SavesFolderPath() / SaveManager_GetFileName(*boot.LogicalSlot + 1);
+    if (!Ship::RecoverSavePair(primary, SavesFolderPath() / SaveManager_GetFileName(*boot.LogicalSlot + 1, true),
+        boot.SaveId, *boot.LogicalSlot, error, [&](const std::string& contents, std::string& reason) {
+            nlohmann::json validated;
+            return SaveManager_ValidateOotmmRecovery(contents, boot.SaveId, *boot.LogicalSlot, validated, reason);
+        })) {
+        return false;
     }
     std::optional<std::string> contents;
     if (!Ship::ReadRecoveryBytes(SavesFolderPath() / SaveManager_GetFileName(*boot.LogicalSlot + 1), contents, error)) {
@@ -404,13 +435,28 @@ bool SaveManager_RecoverOotmmBackup(const std::optional<std::string>& expectedPr
 }
 
 bool SaveManager_WriteSaveFile(const std::filesystem::path& fileName, nlohmann::json j) {
-    static bool failureNotified = false;
+    static std::set<std::string> notifiedFailures;
     const std::filesystem::path folder = SavesFolderPath();
     const std::filesystem::path filePath = folder / fileName;
 
     try {
         std::error_code error;
         std::filesystem::create_directories(folder, error);
+        const auto& boot = OotmmSession_GetState().GetBootConfig();
+        if (!error && OotmmSession_IsActive() && boot.LogicalSlot &&
+            (fileName == SaveManager_GetFileName(*boot.LogicalSlot + 1) ||
+             fileName == SaveManager_GetFileName(*boot.LogicalSlot + 1, true))) {
+            std::string recoveryError;
+            if (!Ship::RecoverSavePair(folder / SaveManager_GetFileName(*boot.LogicalSlot + 1),
+                folder / SaveManager_GetFileName(*boot.LogicalSlot + 1, true), boot.SaveId, *boot.LogicalSlot,
+                recoveryError, [&](const std::string& contents, std::string& reason) {
+                    nlohmann::json validated;
+                    return SaveManager_ValidateOotmmRecovery(contents, boot.SaveId, *boot.LogicalSlot, validated, reason);
+                })) {
+                SPDLOG_ERROR("[OoTMM] Save pair recovery must finish before writing: {}", recoveryError);
+                return false;
+            }
+        }
         const bool copyDestination = sCopyActive.load() && gFileSelectState != nullptr &&
             (fileName == SaveManager_GetFileName(gFileSelectState->copyDestFileIndex + 1) ||
              fileName == SaveManager_GetFileName(gFileSelectState->copyDestFileIndex + 1, true));
@@ -420,18 +466,25 @@ bool SaveManager_WriteSaveFile(const std::filesystem::path& fileName, nlohmann::
         if (error || !Ship::WriteFileAtomically(filePath, j.dump(4) + "\n", error)) {
             SPDLOG_ERROR("Failed to write save file {}: {}. Previous save preserved.",
                          filePath.string(), error.message());
-            if (!failureNotified) {
+            if (notifiedFailures.insert(filePath.string()).second) {
                 auto gui = Ship::Context::GetInstance()->GetWindow()->GetGui();
-                gui->GetGameOverlay()->TextDrawNotification(30.0f, true,
-                    "Save failed. The previous save has been preserved. See the log for details.");
-                failureNotified = true;
+                if (IsOotmmCycleSave()) {
+                    gui->GetGameOverlay()->TextDrawStatus("ootmm-cycle-save",
+                        "Cycle save failed. Retrying...\nClose programs using the save files.");
+                } else {
+                    gui->GetGameOverlay()->TextDrawNotification(30.0f, true,
+                        "Save failed. The previous save has been preserved. See the log for details.");
+                }
             }
             return false;
         }
         if (copyDestination) {
             sCopyOriginals.at(filePath.string()).written = true;
         }
-        failureNotified = false;
+        notifiedFailures.erase(filePath.string());
+        if (IsOotmmCycleSave() && fileName == SaveManager_GetFileName(gSaveContext.fileNum + 1)) {
+            Ship::Context::GetInstance()->GetWindow()->GetGui()->GetGameOverlay()->TextDrawStatus("ootmm-cycle-save", "");
+        }
         return true;
     } catch (const std::exception& error) {
         SPDLOG_ERROR("Failed to write save file {}: {}", filePath.string(), error.what());
@@ -648,6 +701,10 @@ static s32 WriteSaveData(u8* saveBuffer, u32 pageNum, u32 pageCount, bool initia
          gFileSelectState->configMode == CM_COPY_WAIT_FOR_FLASH_SAVE) &&
         (fileName == SaveManager_GetFileName(gFileSelectState->copyDestFileIndex + 1) ||
          fileName == SaveManager_GetFileName(gFileSelectState->copyDestFileIndex + 1, true));
+    const bool pairedCycle = !copying && IsOotmmCycleSave() &&
+        (flashSave == FLASH_SAVE_FILE_1_NEW_CYCLE_SAVE || flashSave == FLASH_SAVE_FILE_2_NEW_CYCLE_SAVE ||
+         flashSave == FLASH_SAVE_FILE_3_NEW_CYCLE_SAVE) &&
+        pageCount == (u32)gFlashSpecialSaveNumPages[flashSave];
     nlohmann::json copySource;
     if (copying && SaveManager_ReadSaveFile(
             SaveManager_GetFileName(gFileSelectState->selectedFileIndex + 1), copySource) != 0) {
@@ -734,9 +791,12 @@ static s32 WriteSaveData(u8* saveBuffer, u32 pageNum, u32 pageCount, bool initia
     // If we ever feel like we want a global save backup, then we just need to add it to this condition.
     if ((flashSave == FLASH_SAVE_FILE_1_NEW_CYCLE_SAVE || flashSave == FLASH_SAVE_FILE_2_NEW_CYCLE_SAVE ||
          flashSave == FLASH_SAVE_FILE_3_NEW_CYCLE_SAVE) &&
-        pageCount == (u32)gFlashSpecialSaveNumPages[flashSave] && !copying) {
-        SaveManager_SysFlashrom_WriteData(saveBuffer, gFlashSaveStartPages[flashSave + 1],
-                                          gFlashSaveNumPages[flashSave + 1]);
+        pageCount == (u32)gFlashSpecialSaveNumPages[flashSave] && !copying && !pairedCycle) {
+        const s32 backupResult = WriteSaveData(saveBuffer, gFlashSaveStartPages[flashSave + 1],
+                                               gFlashSaveNumPages[flashSave + 1], initialOotmmSave);
+        if (backupResult != 0) {
+            return backupResult;
+        }
     }
 
     switch (flashSave) {
@@ -772,12 +832,45 @@ static s32 WriteSaveData(u8* saveBuffer, u32 pageNum, u32 pageCount, bool initia
                 if (copying) {
                     j = copySource;
                 }
+                if (!copying && IsOotmmCycleSave()) {
+                    j.erase("owlSave");
+                }
                 j["newCycleSave"]["save"] = save;
                 if (!embedMetadata(j, "newCycleSave")) {
                     return -1;
                 }
                 j["version"] = CURRENT_SAVE_VERSION;
                 j["type"] = "2S2H_SAVE";
+
+                if (pairedCycle) {
+                    static std::set<std::string> notifiedPairs;
+                    const auto& boot = OotmmSession_GetState().GetBootConfig();
+                    if (!boot.LogicalSlot || fileName != SaveManager_GetFileName(*boot.LogicalSlot + 1)) {
+                        SPDLOG_ERROR("[OoTMM] Cycle save pair does not match the active logical slot");
+                        return -1;
+                    }
+                    const auto folder = SavesFolderPath();
+                    std::string error;
+                    const auto bytes = j.dump(4) + "\n";
+                    const bool written = Ship::WriteSavePairAtomically(folder / fileName,
+                        folder / SaveManager_GetFileName(*boot.LogicalSlot + 1, true), bytes, bytes,
+                        boot.SaveId, *boot.LogicalSlot, error, [](Ship::SavePairStage) {}, [&](const std::string& contents, std::string& reason) {
+                            nlohmann::json validated;
+                            return SaveManager_ValidateOotmmRecovery(contents, boot.SaveId, *boot.LogicalSlot, validated, reason);
+                        });
+                    const auto key = (folder / fileName).string();
+                    if (!written) {
+                        SPDLOG_ERROR("[OoTMM] Cycle save pair is pending: {}", error);
+                        if (notifiedPairs.insert(key).second) {
+                            Ship::Context::GetInstance()->GetWindow()->GetGui()->GetGameOverlay()->TextDrawStatus(
+                                "ootmm-cycle-save", "Cycle save failed. Retrying...\nClose programs using the save files.");
+                        }
+                        return -1;
+                    }
+                    notifiedPairs.erase(key);
+                    Ship::Context::GetInstance()->GetWindow()->GetGui()->GetGameOverlay()->TextDrawStatus("ootmm-cycle-save", "");
+                    return 0;
+                }
 
                 if (!SaveManager_WriteSaveFile(fileName, j)) {
                     return -1;

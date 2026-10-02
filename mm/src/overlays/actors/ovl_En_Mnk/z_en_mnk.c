@@ -6,6 +6,7 @@
 
 #include "z_en_mnk.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmNpcChecks.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -494,7 +495,9 @@ void EnMnk_Destroy(Actor* thisx, PlayState* play) {
 
     Collider_DestroyCylinder(play, &this->collider);
     if ((MONKEY_GET_TYPE(&this->picto.actor) == MONKEY_TIED_UP) && (this->flags & MONKEY_FLAGS_2000)) {
-        Item_Give(play, ITEM_SONG_SONATA);
+        if (!OotmmNpcChecks_Collect("MM_SONG_AWAKENING")) {
+            Item_Give(play, ITEM_SONG_SONATA);
+        }
         CLEAR_EVENTINF(EVENTINF_24);
     }
 }

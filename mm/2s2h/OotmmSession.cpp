@@ -1,13 +1,13 @@
 #include "OotmmSession.h"
 #include "SaveManager/SaveManager.h"
 #include "BenGui/Notification.h"
-#include "OotmmCheckLedger.h"
-#include <array>
-#include <chrono>
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
+#include "OotmmCheckLedger.h"
 #include "OotmmChecks.h"
+#include "OotmmNpcChecks.h"
+#include "OotmmShops.h"
 #include "OotmmCsmc.h"
 #include "OotmmDrops.h"
 #include "OotmmDebugChecks.h"
@@ -20,6 +20,8 @@
 #include "OotmmPresence.h"
 
 #include <cstddef>
+#include <array>
+#include <chrono>
 #include <cstring>
 #include <fstream>
 #include <libultraship/bridge/consolevariablebridge.h>
@@ -427,6 +429,9 @@ bool RestoreSave(SaveContext& target, const uint8_t* data, bool owlSave) {
     } else {
         std::memcpy(&target.save, &source, sizeof(source));
         std::memset(target.eventInf, 0, sizeof(target.eventInf));
+        target.save.playerForm = PLAYER_FORM_HUMAN;
+        target.save.equippedMask = 0;
+        target.save.entrance = ENTRANCE(SOUTH_CLOCK_TOWN, 0);
     }
     return true;
 }
@@ -656,6 +661,8 @@ void OotmmSession_Init() {
         ApplyEnhancements();
         OotmmCheckLedger_Init();
         OotmmChecks_Init();
+        OotmmNpcChecks_Init();
+        OotmmShops_Init();
         OotmmCsmc_Init();
         OotmmDrops_Init();
         OotmmDebugChecks_Init();
@@ -822,6 +829,44 @@ extern "C" int32_t OotmmSession_ApplyResolvedMmEntrance(uint32_t entrance) {
     }
     sLastResolvedEntrance = *resolved;
     return *resolved;
+}
+
+extern "C" int32_t OotmmSession_RedirectBossWarp(uint32_t bossId) {
+    constexpr uint32_t kForeignEntrance = 0x80000000;
+    if (!OotmmSession_IsActive() || gPlayState == nullptr) {
+        return 0;
+    }
+    const bool woodfallTempleRaised = CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE) &&
+                                      CHECK_WEEKEVENTREG(WEEKEVENTREG_20_01);
+    const auto destination = sGameState.ResolveBossWarp(bossId, woodfallTempleRaised);
+    if (!destination.has_value()) {
+        return 0;
+    }
+
+    gSaveContext.nextCutsceneIndex = 0;
+    gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
+    gSaveContext.save.equippedMask = PLAYER_MASK_NONE;
+    if ((*destination & kForeignEntrance) != 0) {
+        const auto resolved = ResolveMmEntrance(*destination & ~kForeignEntrance);
+        if (!resolved.has_value()) {
+            SPDLOG_ERROR("[OoTMM] Unsupported MM boss-warp target 0x{:X}", *destination);
+            return 0;
+        }
+        gPlayState->nextEntrance = *resolved;
+        sLastResolvedEntrance = *resolved;
+        return 1;
+    }
+
+    Ship::OotmmEntranceMapping mapping;
+    mapping.FromGame = Ship::OotmmGame::Mm;
+    mapping.From = "MM boss warp";
+    mapping.ToGame = Ship::OotmmGame::Oot;
+    mapping.To = "OoT dungeon exit";
+    mapping.ToNativeId = *destination;
+    if (!OotmmSession_BeginCrossGameTransition(mapping)) {
+        gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
+    }
+    return 1;
 }
 
 bool OotmmSession_BeginCrossGameTransition(const Ship::OotmmEntranceMapping& mapping) {

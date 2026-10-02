@@ -5,6 +5,7 @@
  */
 
 #include "z_en_col_man.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include "overlays/actors/ovl_En_Bom/z_en_bom.h"
 #include "overlays/actors/ovl_En_Clear_Tag/z_en_clear_tag.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
@@ -232,6 +233,10 @@ void EnColMan_Update(Actor* thisx, PlayState* play) {
 
 void func_80AFE414(Actor* thisx, PlayState* play) {
     EnColMan* this = (EnColMan*)thisx;
+
+    if (OotmmNpcChecks_DrawReward(thisx, play, "MM_LAB_FISH_HEART_PIECE")) {
+        return;
+    }
 
     OPEN_DISPS(play->state.gfxCtx);
 

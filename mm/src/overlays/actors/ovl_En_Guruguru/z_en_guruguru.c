@@ -5,6 +5,7 @@
  */
 
 #include "z_en_guruguru.h"
+#include "2s2h/OotmmNpcChecks.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -255,7 +256,8 @@ void func_80BC7068(EnGuruguru* this, PlayState* play) {
             return;
         }
         if (this->textIdIndex >= 3) {
-            if ((this->textIdIndex == 0xA) && (INV_CONTENT(ITEM_MASK_BREMEN) == ITEM_MASK_BREMEN)) {
+            if ((this->textIdIndex == 0xA) && (INV_CONTENT(ITEM_MASK_BREMEN) == ITEM_MASK_BREMEN) &&
+                !OotmmNpcChecks_IsShuffled("MM_MASK_BREMEN")) {
                 this->textIdIndex = 0xC;
                 this->unk268 = 0;
             } else {

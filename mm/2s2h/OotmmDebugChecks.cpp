@@ -5,10 +5,12 @@
 #include "OotmmChecks.h"
 #include "OotmmCsmc.h"
 #include "OotmmDrops.h"
+#include "OotmmNpcChecks.h"
 #include "OotmmSession.h"
 
 #include <algorithm>
 #include <cctype>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -18,8 +20,8 @@ extern "C" {
 #include "macros.h"
 #include "variables.h"
 #include "src/overlays/actors/ovl_En_Box/z_en_box.h"
-
 #include "src/overlays/gamestates/ovl_file_choose/z_file_select.h"
+
 extern PlayState* gPlayState;
 }
 
@@ -135,14 +137,15 @@ void BuildDropOptions() {
               [](const DropOption& a, const DropOption& b) { return a.ItemName < b.ItemName; });
 }
 
-bool MatchesFilter(const std::string& name) {
-    if (sDropFilter[0] == '\0') {
+bool MatchesFilter(const std::string& name, const char* filter) {
+    if (filter[0] == '\0') {
         return true;
     }
     std::string lowerName = name;
-    std::string lowerFilter = sDropFilter;
-    std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
-    std::transform(lowerFilter.begin(), lowerFilter.end(), lowerFilter.begin(), ::tolower);
+    std::string lowerFilter = filter;
+    const auto lower = [](unsigned char character) { return static_cast<char>(std::tolower(character)); };
+    std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), lower);
+    std::transform(lowerFilter.begin(), lowerFilter.end(), lowerFilter.begin(), lower);
     return lowerName.find(lowerFilter) != std::string::npos;
 }
 
@@ -175,7 +178,7 @@ void DrawDropSection() {
     ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12.0f);
     if (ImGui::BeginCombo("Item", sDropOptions[sDropSelection].ItemName.c_str())) {
         for (int i = 0; i < static_cast<int>(sDropOptions.size()); i++) {
-            if (!MatchesFilter(sDropOptions[i].ItemName)) {
+            if (!MatchesFilter(sDropOptions[i].ItemName, sDropFilter)) {
                 continue;
             }
             if (ImGui::Selectable(sDropOptions[i].ItemName.c_str(), i == sDropSelection)) {
@@ -190,6 +193,103 @@ void DrawDropSection() {
         DropSelectedItem();
     }
     ImGui::EndDisabled();
+}
+
+struct NpcOption {
+    std::string NativeId;
+    std::string Label;
+    std::string ItemLabel;
+    int32_t Entrance = -1;
+};
+
+std::vector<NpcOption> sNpcOptions;
+int sNpcSelection = 0;
+char sNpcFilter[64] = {};
+
+constexpr int32_t kGossipGrottoEntrance = 0x1400;
+constexpr int32_t kScrubGrottoEntrance = 0x1490;
+
+int32_t EntranceForNpc(const std::string& nativeId, int32_t scene) {
+    if (nativeId == "MM_SCRUB_TELESCOPE") {
+        return kScrubGrottoEntrance;
+    }
+    if (nativeId == "MM_GOSSIP_HEART_PIECE") {
+        return kGossipGrottoEntrance;
+    }
+    return scene >= 0 ? Entrance_Create(scene, 0, 0) : -1;
+}
+
+void BuildNpcOptions() {
+    if (!sNpcOptions.empty()) {
+        return;
+    }
+    for (const auto& placement : OotmmSession_GetState().GetPlacements()) {
+        if (placement.CheckGame != Ship::OotmmGame::Mm || placement.CheckType != "npc" ||
+            placement.CheckNativeId.empty()) {
+            continue;
+        }
+        const int32_t scene = placement.CheckScene.has_value() ? static_cast<int32_t>(*placement.CheckScene) : -1;
+        sNpcOptions.push_back({ placement.CheckNativeId,
+                                placement.CheckName.empty() ? placement.CheckNativeId : placement.CheckName,
+                                placement.ItemName.empty() ? placement.ItemId : placement.ItemName,
+                                EntranceForNpc(placement.CheckNativeId, scene) });
+    }
+    std::sort(sNpcOptions.begin(), sNpcOptions.end(),
+              [](const NpcOption& a, const NpcOption& b) { return a.Label < b.Label; });
+}
+
+void DrawNpcSection() {
+    ImGui::SeparatorText("NPC interactions");
+    ImGui::TextWrapped("Go loads the NPC's scene. Complete the interaction in-game so the actor owns "
+                       "the grant, dialogue, and state transition.");
+    BuildNpcOptions();
+    if (sNpcOptions.empty()) {
+        ImGui::TextDisabled("No npc checks in the seed.");
+        return;
+    }
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12.0f);
+    ImGui::InputTextWithHint("##NpcFilter", "Filter", sNpcFilter, sizeof(sNpcFilter));
+    if (sNpcSelection >= static_cast<int>(sNpcOptions.size())) {
+        sNpcSelection = 0;
+    }
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12.0f);
+    if (ImGui::BeginCombo("Check", sNpcOptions[sNpcSelection].Label.c_str())) {
+        for (int i = 0; i < static_cast<int>(sNpcOptions.size()); i++) {
+            if (!MatchesFilter(sNpcOptions[i].Label, sNpcFilter) &&
+                !MatchesFilter(sNpcOptions[i].ItemLabel, sNpcFilter) &&
+                !MatchesFilter(sNpcOptions[i].NativeId, sNpcFilter)) {
+                continue;
+            }
+            const bool collected = OotmmNpcChecks_IsCollected(sNpcOptions[i].NativeId.c_str()) != 0;
+            const std::string label = collected ? sNpcOptions[i].Label + " (collected)" : sNpcOptions[i].Label;
+            if (ImGui::Selectable(label.c_str(), i == sNpcSelection)) {
+                sNpcSelection = i;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    const NpcOption& selected = sNpcOptions[sNpcSelection];
+    ImGui::BeginDisabled(gPlayState == nullptr || selected.Entrance < 0);
+    if (ImGui::Button("Go")) {
+        const int32_t entrance = OotmmSession_ApplyResolvedMmEntrance(selected.Entrance);
+        if (entrance >= 0) {
+            gPlayState->nextEntrance = entrance;
+            gPlayState->transitionTrigger = TRANS_TRIGGER_START;
+            gPlayState->transitionType = TRANS_TYPE_INSTANT;
+            gSaveContext.nextTransitionType = TRANS_TYPE_INSTANT;
+        }
+    }
+    ImGui::EndDisabled();
+    const bool collected = OotmmNpcChecks_IsCollected(selected.NativeId.c_str()) != 0;
+    if (collected) {
+        ImGui::SameLine();
+        ImGui::TextDisabled("Collected");
+    }
+    ImGui::TextDisabled("Contains: %s", selected.ItemLabel.c_str());
+    if (selected.Entrance < 0) {
+        ImGui::TextDisabled("This check has no routable scene in the seed.");
+    }
 }
 
 } // namespace
@@ -216,9 +316,17 @@ void OotmmDebugChecks_DrawTab() {
         ImGui::TextDisabled("%d debug chest(s) in this scene.", static_cast<int>(sDebugChests.size()));
     }
     DrawDropSection();
+    DrawNpcSection();
 }
 
 void OotmmDebugChecks_Init() {
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>([](s16) {
+        sDropOptions.clear();
+        sDropSelection = 0;
+        sNpcOptions.clear();
+        sNpcSelection = 0;
+    });
+
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSceneInit>([](s8, s8) {
         sDebugChests.clear();
         OotmmCsmc_ClearChestOverrides();

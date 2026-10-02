@@ -6,6 +6,7 @@
 
 #include "z_item_b_heart.h"
 #include "objects/object_gi_hearts/object_gi_hearts.h"
+#include "2s2h/OotmmChecks.h"
 
 #define FLAGS 0x00000000
 
@@ -38,7 +39,7 @@ static InitChainEntry sInitChain[] = {
 void ItemBHeart_Init(Actor* thisx, PlayState* play) {
     ItemBHeart* this = (ItemBHeart*)thisx;
 
-    if (Flags_GetCollectible(play, 0x1F)) {
+    if (OotmmChecks_BossContainerDone(play, Flags_GetCollectible(play, 0x1F))) {
         Actor_Kill(&this->actor);
         return;
     }
@@ -64,6 +65,13 @@ void ItemBHeart_Update(Actor* thisx, PlayState* play) {
     ItemBHeart_UpdateModel(this, play);
 
     if (!(this->baseScale < BHEART_SCALE_MIN_COLLECTIBLE)) {
+        if (OotmmChecks_BossContainerIsShuffled(play)) {
+            if (OotmmChecks_TryCollectBossContainer(&this->actor, play)) {
+                Flags_SetCollectible(play, 0x1F);
+                Actor_Kill(&this->actor);
+            }
+            return;
+        }
         if (Actor_HasParent(&this->actor, play)) {
             Flags_SetCollectible(play, 0x1F);
             Actor_Kill(&this->actor);
@@ -89,6 +97,11 @@ void ItemBHeart_Draw(Actor* thisx, PlayState* play) {
     ItemBHeart* this = (ItemBHeart*)thisx;
     Actor* actorIt;
     u8 drawTranslucent = false;
+
+    if (!(this->baseScale < BHEART_SCALE_MIN_COLLECTIBLE) &&
+        OotmmChecks_DrawBossContainer(&this->actor, play)) {
+        return;
+    }
 
     OPEN_DISPS(play->state.gfxCtx);
 

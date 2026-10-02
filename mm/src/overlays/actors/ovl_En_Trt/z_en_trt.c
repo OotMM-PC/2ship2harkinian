@@ -8,6 +8,7 @@
 #include "objects/object_trt/object_trt.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmShops.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
@@ -671,7 +672,7 @@ void EnTrt_BrowseShelf(EnTrt* this, PlayState* play) {
 void EnTrt_SetupBuyItemWithFanfare(PlayState* play, EnTrt* this) {
     Player* player = GET_PLAYER(play);
 
-    Actor_OfferGetItem(&this->actor, play, this->items[this->cursorIndex]->getItemId, 300.0f, 300.0f);
+    OotmmShops_OfferGetItem(&this->actor, play, this->items[this->cursorIndex], 300.0f, 300.0f);
     play->msgCtx.msgMode = MSGMODE_TEXT_CLOSING;
     play->msgCtx.stateTimer = 4;
     player->stateFlags2 &= ~PLAYER_STATE2_20000000;
@@ -1128,7 +1129,7 @@ void EnTrt_BuyItemWithFanfare(EnTrt* this, PlayState* play) {
         this->actor.parent = NULL;
         this->actionFunc = EnTrt_SetupItemGiven;
     } else {
-        Actor_OfferGetItem(&this->actor, play, this->items[this->cursorIndex]->getItemId, 300.0f, 300.0f);
+        OotmmShops_OfferGetItem(&this->actor, play, this->items[this->cursorIndex], 300.0f, 300.0f);
     }
 }
 

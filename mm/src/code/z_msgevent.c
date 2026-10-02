@@ -1,6 +1,7 @@
 #include "global.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmNpcChecks.h"
 
 /**
  * Branch forward if the provided weekEventReg flag is set
@@ -312,6 +313,9 @@ s32 MsgEvent_AwaitTextJump(Actor* actor, PlayState* play, u8** script, MsgScript
  * Command size: 1
  */
 s32 MsgEvent_AwaitText(Actor* actor, PlayState* play, u8** script, MsgScriptCallback callback, s32* endScript) {
+    if (OotmmNpcChecks_CanFinishMessageOffer(actor)) {
+        return false;
+    }
     switch (Message_GetState(&play->msgCtx)) {
         case TEXT_STATE_CHOICE:
         case TEXT_STATE_EVENT:
@@ -393,6 +397,7 @@ s32 MsgEvent_ContinueText(Actor* actor, PlayState* play, u8** script, MsgScriptC
  * Command size: 1
  */
 s32 MsgEvent_Done(Actor* actor, PlayState* play, u8** script, MsgScriptCallback callback, s32* endScript) {
+    OotmmNpcChecks_FinishMessageOffer(actor);
     *endScript = true;
     return true;
 }
@@ -972,6 +977,9 @@ s32 MsgEvent_NotebookEvent(Actor* actor, PlayState* play, u8** script, MsgScript
  * Command size: 1
  */
 s32 MsgEvent_AwaitTextDone(Actor* actor, PlayState* play, u8** script, MsgScriptCallback callback, s32* endScript) {
+    if (OotmmNpcChecks_CanFinishMessageOffer(actor)) {
+        return false;
+    }
     switch (Message_GetState(&play->msgCtx)) {
         case TEXT_STATE_CLOSING:
             break;

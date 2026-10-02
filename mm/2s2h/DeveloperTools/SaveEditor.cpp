@@ -2263,7 +2263,9 @@ void DrawOotmmItemsTab() {
         return item->Id == selectedPresentation;
     });
     const char* preview = selected != presentationItems.end() ? (*selected)->Name.c_str() : "No items";
-    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 22.0f);
+    ImGui::SetNextItemWidth(std::max(ImGui::GetFontSize() * 5.0f,
+        std::min(ImGui::GetFontSize() * 22.0f, ImGui::GetContentRegionAvail().x -
+            ImGui::CalcTextSize("Fake item prompt").x - ImGui::GetStyle().ItemInnerSpacing.x)));
     if (ImGui::BeginCombo("Fake item prompt", preview)) {
         for (const auto* item : presentationItems) {
             const bool isSelected = item->Id == selectedPresentation;
@@ -2276,7 +2278,6 @@ void DrawOotmmItemsTab() {
         }
         ImGui::EndCombo();
     }
-    ImGui::SameLine();
     ImGui::SetNextItemWidth(ImGui::GetFontSize() * 5.0f);
     ImGui::InputInt("Player", &recipientPlayer);
     recipientPlayer = std::clamp(recipientPlayer, 1, playerCount);

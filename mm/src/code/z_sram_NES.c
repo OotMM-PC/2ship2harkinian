@@ -7,6 +7,7 @@
 
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 void Sram_SyncWriteToFlash(SramContext* sramCtx, s32 curPage, s32 numPages);
@@ -2075,14 +2076,24 @@ void Sram_StartWriteToFlashDefault(SramContext* sramCtx) {
 }
 
 void Sram_UpdateWriteToFlashDefault(SramContext* sramCtx) {
-    if (sramCtx->status == 2) {
+    if (sramCtx->status == 5) {
+        if (OSTIME_TO_TIMER(osGetTime() - sramCtx->startWriteOsTime) >= SECONDS_TO_TIMER(2)) {
+            Sram_StartWriteToFlashDefault(sramCtx);
+        }
+    } else if (sramCtx->status == 2) {
         if (SysFlashrom_IsBusy() != 0) {          // if task running
             if (SysFlashrom_AwaitResult() == 0) { // wait for task done
                 // task success
                 sramCtx->status = 4;
             } else {
                 // task failure
-                sramCtx->status = 4;
+                if (OotmmSession_IsActive() && gPlayState != NULL &&
+                    gPlayState->msgCtx.msgMode == MSGMODE_NEW_CYCLE_1) {
+                    sramCtx->status = 5;
+                    sramCtx->startWriteOsTime = osGetTime();
+                } else {
+                    sramCtx->status = 4;
+                }
             }
         }
     } else if (GameInteractor_Should(VB_SAVE_DELAY,

@@ -41,7 +41,7 @@ void LoadFromFile(s16 fileNum) {
     }
 }
 
-}
+} // namespace
 
 void OotmmCheckLedger_Record(const std::string& checkId) {
     if (!checkId.empty()) {

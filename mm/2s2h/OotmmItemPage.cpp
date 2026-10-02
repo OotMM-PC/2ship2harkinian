@@ -1,6 +1,7 @@
 #include "OotmmItemPage.h"
 
 #include "OotmmCustomItems.h"
+#include "OotmmItemApply.h"
 #include "OotmmSession.h"
 
 #include <libultraship/bridge/consolevariablebridge.h>
@@ -103,6 +104,14 @@ extern "C" int OotmmItemPage_ConsumePageToggle(PlayState* play) {
     const size_t pages = TotalPages();
     if (sPage >= pages) {
         sPage = 0;
+    }
+
+    if (sPage == 0 && pauseCtx->cursorSpecialPos == 0 &&
+        CHECK_BTN_ANY(CONTROLLER1(&play->state)->press.button, BTN_L | BTN_CUP) &&
+        OotmmItemApply_ToggleTradeItem(pauseCtx->cursorSlot[PAUSE_ITEM])) {
+        pauseCtx->cursorItem[PAUSE_ITEM] = gSaveContext.save.saveInfo.inventory.items[pauseCtx->cursorSlot[PAUSE_ITEM]];
+        Audio_PlaySfx(NA_SE_SY_CURSOR);
+        return 1;
     }
 
     if (pages > 1 && CHECK_BTN_ALL(CONTROLLER1(&play->state)->press.button, BTN_L)) {

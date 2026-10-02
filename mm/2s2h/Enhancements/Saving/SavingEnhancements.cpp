@@ -3,6 +3,7 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
 #include "2s2h/CustomMessage/CustomMessage.h"
+#include "2s2h/OotmmSession.h"
 
 extern "C" {
 #include <variables.h>
@@ -221,7 +222,11 @@ static RegisterShipInitFunc registerSavingEnhancements(
         // into the new cycle or lose their progress on moon crash.
         COND_HOOK(BeforeEndOfCycleSave, true, []() {
             SavingEnhancements_AdvancePlaytime();
-            DeleteOwlSave();
+            if (OotmmSession_IsActive() && gPlayState->msgCtx.msgMode == MSGMODE_NEW_CYCLE_0) {
+                gSaveContext.save.isOwlSave = false;
+            } else {
+                DeleteOwlSave();
+            }
         });
         COND_HOOK(BeforeMoonCrash, true, []() { DeleteOwlSave(); });
 

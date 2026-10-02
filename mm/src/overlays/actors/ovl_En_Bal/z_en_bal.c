@@ -5,6 +5,7 @@
  */
 
 #include "z_en_bal.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include "overlays/actors/ovl_En_Clear_Tag/z_en_clear_tag.h"
 #include "GameInteractor/GameInteractor.h"
 
@@ -740,6 +741,9 @@ static TexturePtr sEyeTextures[] = { gTingleEyeOpenTex, gTingleEyeClosedTex };
 
 s32 EnBal_CheckIfMapUnlocked(EnBal* this, PlayState* play) {
     this->purchaseMapId = sBuyMapOptions[this->locationMapId][play->msgCtx.choiceIndex];
+    if (OotmmNpcChecks_IsShuffled(OotmmNpcChecks_TingleSite(this->purchaseMapId))) {
+        return !OotmmNpcChecks_CanPurchase(OotmmNpcChecks_TingleSite(this->purchaseMapId));
+    }
     switch (this->purchaseMapId) {
         case TINGLE_MAP_CLOCK_TOWN:
             if (CHECK_WEEKEVENTREG(WEEKEVENTREG_TINGLE_MAP_BOUGHT_CLOCK_TOWN)) {
@@ -784,7 +788,9 @@ s32 EnBal_CheckIfMapUnlocked(EnBal* this, PlayState* play) {
 }
 
 void EnBal_UnlockSelectedAreaMap(EnBal* this) {
-    Inventory_SetWorldMapCloudVisibility(this->purchaseMapId);
+    if (!OotmmNpcChecks_IsShuffled(OotmmNpcChecks_TingleSite(this->purchaseMapId))) {
+        Inventory_SetWorldMapCloudVisibility(this->purchaseMapId);
+    }
     switch (this->purchaseMapId) {
         case TINGLE_MAP_CLOCK_TOWN:
             SET_WEEKEVENTREG(WEEKEVENTREG_TINGLE_MAP_BOUGHT_CLOCK_TOWN);
@@ -850,7 +856,9 @@ void EnBal_TryPurchaseMap(EnBal* this, PlayState* play) {
                 if (GameInteractor_Should(VB_TINGLE_GIVE_MAP_UNLOCK, true, this)) {
                     Message_StartTextbox(play, 0x1D0B, &this->picto.actor);
                     this->textId = 0x1D0B;
-                    EnBal_UnlockSelectedAreaMap(this);
+                    if (!OotmmNpcChecks_IsShuffled(OotmmNpcChecks_TingleSite(this->purchaseMapId))) {
+                        EnBal_UnlockSelectedAreaMap(this);
+                    }
                     player->stateFlags1 |= PLAYER_STATE1_20;
                     EnBal_SetupOfferGetItem(this);
                 }
@@ -986,12 +994,31 @@ void EnBal_SetupOfferGetItem(EnBal* this) {
     this->actionFunc = EnBal_OfferGetItem;
 }
 
+void EnBal_WaitForRandomizedReward(EnBal* this, PlayState* play) {
+    if (OotmmNpcChecks_CanFinishSilentOffer(OotmmNpcChecks_TingleSite(this->purchaseMapId))) {
+        this->picto.actor.flags |= ACTOR_FLAG_TALK_OFFER_AUTO_ACCEPTED;
+        EnBal_SetupThankYou(this);
+    }
+}
+
 void EnBal_OfferGetItem(EnBal* this, PlayState* play) {
     GetItemId mapGetItemId;
 
     if ((Message_GetState(&play->msgCtx) == TEXT_STATE_EVENT) && Message_ShouldAdvance(play)) {
         Message_CloseTextbox(play);
         sGetItemPending = true;
+    }
+
+    if (OotmmNpcChecks_IsShuffled(OotmmNpcChecks_TingleSite(this->purchaseMapId))) {
+        if (sGetItemPending) {
+            if (!OotmmNpcChecks_CollectPurchased(OotmmNpcChecks_TingleSite(this->purchaseMapId))) {
+                return;
+            }
+            EnBal_UnlockSelectedAreaMap(this);
+            sGetItemPending = false;
+            this->actionFunc = EnBal_WaitForRandomizedReward;
+        }
+        return;
     }
 
     if ((sGetItemPending == true) && Actor_HasParent(&this->picto.actor, play)) {

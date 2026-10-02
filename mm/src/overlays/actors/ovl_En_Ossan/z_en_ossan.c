@@ -7,6 +7,7 @@
 #include "z_en_ossan.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmShops.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
@@ -1001,7 +1002,7 @@ void EnOssan_LookToShopkeeperFromShelf(EnOssan* this, PlayState* play) {
 void EnOssan_SetupBuyItemWithFanfare(PlayState* play, EnOssan* this) {
     Player* player = GET_PLAYER(play);
 
-    Actor_OfferGetItem(&this->actor, play, this->items[this->cursorIndex]->getItemId, 300.0f, 300.0f);
+    OotmmShops_OfferGetItem(&this->actor, play, this->items[this->cursorIndex], 300.0f, 300.0f);
     play->msgCtx.msgMode = MSGMODE_TEXT_CLOSING;
     play->msgCtx.stateTimer = 4;
     player->stateFlags2 &= ~PLAYER_STATE2_20000000;
@@ -1126,7 +1127,7 @@ void EnOssan_BuyItemWithFanfare(EnOssan* this, PlayState* play) {
         this->actor.parent = NULL;
         EnOssan_SetupAction(this, EnOssan_SetupItemPurchased);
     } else {
-        Actor_OfferGetItem(&this->actor, play, this->items[this->cursorIndex]->getItemId, 300.0f, 300.0f);
+        OotmmShops_OfferGetItem(&this->actor, play, this->items[this->cursorIndex], 300.0f, 300.0f);
     }
 }
 

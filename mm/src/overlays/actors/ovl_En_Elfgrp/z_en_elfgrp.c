@@ -31,6 +31,7 @@
  */
 
 #include "z_en_elfgrp.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include "overlays/actors/ovl_En_Elforg/z_en_elforg.h"
 #include "overlays/actors/ovl_Demo_Effect/z_demo_effect.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -132,7 +133,8 @@ void EnElfgrp_Init(Actor* thisx, PlayState* play) {
 
                 switch (this->type) {
                     case ENELFGRP_TYPE_POWER:
-                        if (CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_GREAT_SPIN_ATTACK)) {
+                        if (OotmmNpcChecks_Done("MM_GREAT_FAIRY_SWAMP",
+                                                CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_GREAT_SPIN_ATTACK))) {
                             EnElfgrp_SetCutscene(this, 1);
                         } else {
                             this->stateFlags |= ELFGRP_STATE_2;
@@ -140,19 +142,22 @@ void EnElfgrp_Init(Actor* thisx, PlayState* play) {
                         break;
 
                     case ENELFGRP_TYPE_WISDOM:
-                        if (gSaveContext.save.saveInfo.playerData.isDoubleMagicAcquired == true) {
+                        if (OotmmNpcChecks_Done("MM_GREAT_FAIRY_MOUNTAIN",
+                                                gSaveContext.save.saveInfo.playerData.isDoubleMagicAcquired == true)) {
                             EnElfgrp_SetCutscene(this, 1);
                         }
                         break;
 
                     case ENELFGRP_TYPE_COURAGE:
-                        if (gSaveContext.save.saveInfo.playerData.doubleDefense) {
+                        if (OotmmNpcChecks_Done("MM_GREAT_FAIRY_OCEAN",
+                                                gSaveContext.save.saveInfo.playerData.doubleDefense)) {
                             EnElfgrp_SetCutscene(this, 1);
                         }
                         break;
 
                     case ENELFGRP_TYPE_KINDNESS:
-                        if (INV_CONTENT(ITEM_SWORD_GREAT_FAIRY) == ITEM_SWORD_GREAT_FAIRY) {
+                        if (OotmmNpcChecks_Done("MM_GREAT_FAIRY_VALLEY",
+                                                INV_CONTENT(ITEM_SWORD_GREAT_FAIRY) == ITEM_SWORD_GREAT_FAIRY)) {
                             EnElfgrp_SetCutscene(this, 1);
                         } else {
                             this->stateFlags |= ELFGRP_STATE_4;
@@ -186,9 +191,10 @@ void EnElfgrp_Init(Actor* thisx, PlayState* play) {
                 if ((ENELFGRP_GET_SWITCHFLAG_ROT(&this->actor) != 0) &&
                     Flags_GetSwitch(play, ENELFGRP_GET_SWITCHFLAG_ROT(&this->actor))) {
                     this->actionFunc = EnElfgrp_DoNothing;
-                } else if (INV_CONTENT(ITEM_MASK_GREAT_FAIRY) == ITEM_MASK_GREAT_FAIRY) {
+                } else if (OotmmNpcChecks_Done("MM_GREAT_FAIRY_TOWN",
+                                               INV_CONTENT(ITEM_MASK_GREAT_FAIRY) == ITEM_MASK_GREAT_FAIRY)) {
                     EnElfgrp_SetCutscene(this, 4);
-                } else if (INV_CONTENT(ITEM_MASK_DEKU) != ITEM_MASK_DEKU) {
+                } else if (!OotmmNpcChecks_GreatFairyHuman(INV_CONTENT(ITEM_MASK_DEKU) == ITEM_MASK_DEKU)) {
                     EnElfgrp_SetCutscene(this, 5);
                 } else {
                     this->stateFlags |= ELFGRP_STATE_1;
@@ -198,14 +204,16 @@ void EnElfgrp_Init(Actor* thisx, PlayState* play) {
                 EnElfgrp_SpawnStrayFairies(this, play, STRAY_FAIRY_TOTAL - 1, SPAWNED_STRAY_FAIRY_TYPE_PRESENT);
                 this->actionFunc = func_80A3A398;
 
-                if (INV_CONTENT(ITEM_MASK_DEKU) == ITEM_MASK_DEKU) {
-                    if (INV_CONTENT(ITEM_MASK_GREAT_FAIRY) == ITEM_MASK_GREAT_FAIRY) {
+                if (OotmmNpcChecks_GreatFairyHuman(INV_CONTENT(ITEM_MASK_DEKU) == ITEM_MASK_DEKU)) {
+                    if (OotmmNpcChecks_Done("MM_GREAT_FAIRY_TOWN",
+                                            INV_CONTENT(ITEM_MASK_GREAT_FAIRY) == ITEM_MASK_GREAT_FAIRY)) {
                         EnElfgrp_SetCutscene(this, 2);
                     } else {
                         EnElfgrp_SetCutscene(this, 3);
                         this->stateFlags |= ELFGRP_STATE_1;
                     }
-                } else if (gSaveContext.save.saveInfo.playerData.isMagicAcquired == true) {
+                } else if (OotmmNpcChecks_Done("MM_GREAT_FAIRY_TOWN_ALT",
+                                               gSaveContext.save.saveInfo.playerData.isMagicAcquired == true)) {
                     EnElfgrp_SetCutscene(this, 1);
                 }
             } else {

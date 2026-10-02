@@ -1041,9 +1041,9 @@ void KaleidoScope_DrawPages(PlayState* play, GraphicsContext* gfxCtx) {
 
                 POLY_OPA_DISP = Gfx_DrawTexQuadIA8(POLY_OPA_DISP, gPauseNoENGTex, 48, 16, 16);
 
-            } else if (((pauseCtx->state == PAUSE_STATE_SAVEPROMPT) &&
-                        (pauseCtx->savePromptState >= PAUSE_SAVEPROMPT_STATE_5)) ||
-                       (pauseCtx->state == PAUSE_STATE_GAMEOVER_8)) {
+            } else if ((((pauseCtx->state == PAUSE_STATE_SAVEPROMPT) &&
+                         (pauseCtx->savePromptState >= PAUSE_SAVEPROMPT_STATE_5)) ||
+                        (pauseCtx->state == PAUSE_STATE_GAMEOVER_8)) && !OotmmSaveMenu_Active()) {
                 POLY_OPA_DISP = Gfx_DrawTexQuadIA8(POLY_OPA_DISP, gPauseSaveConfirmationENGTex, 152, 16, 0);
             } else if ((pauseCtx->state == PAUSE_STATE_GAMEOVER_CONTINUE_PROMPT) ||
                        (pauseCtx->state == PAUSE_STATE_GAMEOVER_10)) {

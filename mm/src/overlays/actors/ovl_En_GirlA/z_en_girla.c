@@ -5,6 +5,7 @@
  */
 
 #include "z_en_girla.h"
+#include "2s2h/OotmmShops.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -595,6 +596,7 @@ void EnGirlA_InitialUpdate(EnGirlA* this, PlayState* play) {
         this->isSelected = false;
         this->rotY = 0;
         this->initialRotY = this->actor.shape.rot.y;
+        OotmmShops_SetupItem(this, play);
     }
 }
 
@@ -623,6 +625,9 @@ void EnGirlA_Draw(Actor* thisx, PlayState* play) {
     EnGirlA* this = (EnGirlA*)thisx;
 
     Matrix_RotateYS(this->rotY, MTXMODE_APPLY);
+    if (OotmmShops_Draw(this, play)) {
+        return;
+    }
     if (this->drawFunc != NULL) {
         this->drawFunc(&this->actor, play, 0);
     }

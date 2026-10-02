@@ -9,6 +9,7 @@
 #include "objects/object_masterzoora/object_masterzoora.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmShops.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
@@ -971,7 +972,7 @@ void EnSob1_BrowseShelf(EnSob1* this, PlayState* play) {
 void EnSob1_SetupBuyItemWithFanfare(PlayState* play, EnSob1* this) {
     Player* player = GET_PLAYER(play);
 
-    Actor_OfferGetItem(&this->actor, play, this->items[this->cursorIndex]->getItemId, 300.0f, 300.0f);
+    OotmmShops_OfferGetItem(&this->actor, play, this->items[this->cursorIndex], 300.0f, 300.0f);
     play->msgCtx.msgMode = MSGMODE_TEXT_CLOSING;
     play->msgCtx.stateTimer = 4;
     player->stateFlags2 &= ~PLAYER_STATE2_20000000;
@@ -1119,7 +1120,7 @@ void EnSob1_BuyItemWithFanfare(EnSob1* this, PlayState* play) {
         this->actor.parent = NULL;
         EnSob1_SetupAction(this, EnSob1_SetupItemPurchased);
     } else {
-        Actor_OfferGetItem(&this->actor, play, this->items[this->cursorIndex]->getItemId, 300.0f, 300.0f);
+        OotmmShops_OfferGetItem(&this->actor, play, this->items[this->cursorIndex], 300.0f, 300.0f);
     }
 }
 

@@ -16,6 +16,7 @@ typedef struct DmChar02 {
     /* 0x2E0 */ s16 animIndex;
     /* 0x2E2 */ UNK_TYPE1 pad_2E2[0xE];
     /* 0x2F0 */ u32 unk_2F0;
+    u8 ootmmDropped;
 } DmChar02; // size = 0x2F4
 
 #endif // Z_DM_CHAR02_H

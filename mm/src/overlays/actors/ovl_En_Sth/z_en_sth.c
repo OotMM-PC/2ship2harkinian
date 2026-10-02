@@ -392,7 +392,7 @@ void EnSth_HandleOceansideSpiderHouseConversation(EnSth* this, PlayState* play) 
                                             STH_GI_ID(&this->actor) = GI_WALLET_ADULT;
                                             break;
 
-                                        case 1:
+                                        default:
                                             STH_GI_ID(&this->actor) = GI_WALLET_GIANT;
                                             break;
                                     }

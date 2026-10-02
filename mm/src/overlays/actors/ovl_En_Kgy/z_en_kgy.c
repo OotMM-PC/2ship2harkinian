@@ -7,6 +7,7 @@
 #include "z_en_kgy.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmNpcChecks.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
 
@@ -387,6 +388,10 @@ void func_80B413C8(EnKgy* this) {
 }
 
 s32 func_80B41460(void) {
+    if (OotmmNpcChecks_SmithyStage() >= 0) {
+        return (GET_PLAYER_FORM != PLAYER_FORM_HUMAN) ? 0xC38 : 0xC3A;
+    }
+
     if ((GET_PLAYER_FORM != PLAYER_FORM_HUMAN) ||
         GameInteractor_Should(VB_SMITHY_CHECK_FOR_SWORD, ((CUR_FORM_EQUIP(EQUIP_SLOT_B) != ITEM_SWORD_KOKIRI) &&
                                                           (CUR_FORM_EQUIP(EQUIP_SLOT_B) != ITEM_SWORD_RAZOR) &&
@@ -402,6 +407,20 @@ s32 func_80B41460(void) {
 }
 
 s32 func_80B41528(PlayState* play) {
+    switch (OotmmNpcChecks_SmithyStage()) {
+        case 0:
+            return 0xC3B;
+
+        case 1:
+            return 0xC45;
+
+        case 2:
+            return 0xC4C;
+
+        default:
+            break;
+    }
+
     if (GameInteractor_Should(VB_SMITHY_CHECK_FOR_GILDED_SWORD, CUR_FORM_EQUIP(EQUIP_SLOT_B) == ITEM_SWORD_GILDED)) {
         return 0xC4C;
     }
@@ -754,7 +773,7 @@ void func_80B41E18(EnKgy* this, PlayState* play) {
                         case 0xC42:
                             play->msgCtx.msgLength = 0;
                             func_80B41368(this, play, 0);
-                            this->actor.textId = 0xC43;
+                            this->actor.textId = (OotmmNpcChecks_SmithyStage() >= 0) ? 0xC50 : 0xC43;
                             if (GameInteractor_Should(VB_SMITHY_START_UPGRADING_SWORD, true, this)) {
                                 CUR_FORM_EQUIP(EQUIP_SLOT_B) = ITEM_NONE;
                                 SET_EQUIP_VALUE(EQUIP_TYPE_SWORD, EQUIP_VALUE_SWORD_NONE);
@@ -830,12 +849,16 @@ void func_80B41E18(EnKgy* this, PlayState* play) {
                             break;
 
                         case 0xC50:
-                            if (func_80B40D8C(play)) {
+                            if ((OotmmNpcChecks_SmithyStage() >= 0) ? (OotmmNpcChecks_SmithyStage() == 1)
+                                                                    : func_80B40D8C(play)) {
                                 this->getItemId = GI_SWORD_GILDED;
                                 this->actor.textId = 0xC53;
                             } else {
                                 this->getItemId = GI_SWORD_RAZOR;
                                 this->actor.textId = 0xC51;
+                            }
+                            if (OotmmNpcChecks_SmithyStage() >= 0) {
+                                this->actor.textId = 0xC52;
                             }
                             Message_CloseTextbox(play);
                             this->actionFunc = func_80B41D64;

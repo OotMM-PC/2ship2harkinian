@@ -9,6 +9,7 @@
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include <string.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include <libultraship/log/luslog.h>
 
 s16 sCutsceneQuakeIndex;
@@ -1055,7 +1056,7 @@ void CutsceneCmd_Text(PlayState* play, CutsceneContext* csCtx, CsCmdText* cmd) {
                 } else {
                     Message_StartTextbox(play, cmd->textId, NULL);
                 }
-            } else {
+            } else if (!OotmmNpcChecks_SuppressCutsceneText(cmd->textId)) {
                 Message_StartTextbox(play, cmd->textId, NULL);
             }
             //! FAKE: return;

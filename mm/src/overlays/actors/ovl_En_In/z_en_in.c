@@ -8,6 +8,7 @@
 #include "z64horse.h"
 #include "overlays/actors/ovl_En_Horse_Game_Check/z_en_horse_game_check.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmNpcChecks.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -800,7 +801,7 @@ s32 func_808F4414(PlayState* play, EnIn* this, s32 arg2) {
                     if (msgCtx->choiceIndex == 0) {
                         Audio_PlaySfx_MessageDecide();
                         if (gSaveContext.save.saveInfo.playerData.rupees >= play->msgCtx.unk1206C) {
-                            if (Inventory_HasEmptyBottle()) {
+                            if (OotmmNpcChecks_PurchaseAllowed(&this->actor, GI_MILK, Inventory_HasEmptyBottle())) {
                                 this->actionFunc = func_808F3C40;
                                 Actor_OfferGetItem(&this->actor, play, GI_MILK, 500.0f, 100.0f);
                                 Rupees_ChangeBy(-play->msgCtx.unk1206C);
@@ -972,7 +973,7 @@ s32 func_808F4414(PlayState* play, EnIn* this, s32 arg2) {
 
                 case 0x347E:
                     func_808F35D8(this, play);
-                    if (Inventory_HasEmptyBottle()) {
+                    if (OotmmNpcChecks_PurchaseAllowed(&this->actor, GI_MILK, Inventory_HasEmptyBottle())) {
                         this->actionFunc = func_808F3B40;
                         Actor_OfferGetItem(&this->actor, play, GI_MILK, 500.0f, 100.0f);
                         ret = true;
@@ -1106,7 +1107,7 @@ s32 func_808F4414(PlayState* play, EnIn* this, s32 arg2) {
                     if (msgCtx->choiceIndex == 0) {
                         Audio_PlaySfx_MessageDecide();
                         if (gSaveContext.save.saveInfo.playerData.rupees >= play->msgCtx.unk1206C) {
-                            if (Inventory_HasEmptyBottle()) {
+                            if (OotmmNpcChecks_PurchaseAllowed(&this->actor, GI_MILK, Inventory_HasEmptyBottle())) {
                                 this->actionFunc = func_808F3C40;
                                 Actor_OfferGetItem(&this->actor, play, GI_MILK, 500.0f, 100.0f);
                                 Rupees_ChangeBy(-play->msgCtx.unk1206C);
@@ -1218,7 +1219,7 @@ s32 func_808F4414(PlayState* play, EnIn* this, s32 arg2) {
 
                 case 0x34A1:
                     func_808F35D8(this, play);
-                    if (Inventory_HasEmptyBottle()) {
+                    if (OotmmNpcChecks_PurchaseAllowed(&this->actor, GI_MILK, Inventory_HasEmptyBottle())) {
                         this->actionFunc = func_808F3B40;
                         Actor_OfferGetItem(&this->actor, play, GI_MILK, 500.0f, 100.0f);
                         ret = true;

@@ -10,6 +10,7 @@
 #include <libultraship/bridge/OotmmAppliedLedger.h>
 #include <libultraship/bridge/OotmmItemGrant.h>
 #include <libultraship/bridge/OotmmHealth.h>
+#include <libultraship/bridge/OotmmMagic.h>
 #include <libultraship/bridge/OotmmBombchu.h>
 #include <spdlog/spdlog.h>
 
@@ -131,6 +132,7 @@ bool LoadSharedResources(const nlohmann::json& saved) {
 }
 std::map<std::string, std::string> sUnhandled;
 uint64_t sAppliedRevision = 0;
+bool sRetryMagicApplication = false;
 bool sLedgerLoaded = false;
 bool sLedgerValid = true;
 std::chrono::steady_clock::time_point sLedgerRetryAt{};
@@ -298,6 +300,10 @@ std::string NativeTradeKey(uint8_t item) {
     return "MM_TRADE_NATIVE:" + std::to_string(item);
 }
 
+std::string ConsumedTradeKey(uint8_t item) {
+    return "MM_TRADE_CONSUMED:" + std::to_string(item);
+}
+
 bool IsTradeGrantOp(const Ship::OotmmGrantOp& op) {
     switch (op.Kind) {
         case Ship::OotmmGrantKind::Equipment:
@@ -347,16 +353,22 @@ std::vector<uint8_t> OwnedTradeItems(uint8_t slot) {
         return {};
     }
     EnsureLedger();
+    if (!sLedgerValid) {
+        return {};
+    }
     const uint8_t current = gSaveContext.save.saveInfo.inventory.items[slot];
     // Grants overwrite the slot, so remember natively obtained occupants before they vanish.
     if (std::find(candidates->begin(), candidates->end(), current) != candidates->end() &&
-        !sLedger.Has(NativeTradeKey(current))) {
+        !sLedger.Has(NativeTradeKey(current)) && !sLedger.Has(ConsumedTradeKey(current))) {
         sLedger.SetApplied(NativeTradeKey(current), 1);
         sLedger.Save(LedgerPath());
     }
 
     std::vector<uint8_t> owned;
     for (const uint8_t item : *candidates) {
+        if (sLedger.Has(ConsumedTradeKey(item))) {
+            continue;
+        }
         bool granted = false;
         for (const auto& [itemId, count] : OotmmIpc_GetInventory().GetValues()) {
             if (IsGrantedTradeItem(itemId, count, item)) {
@@ -369,6 +381,38 @@ std::vector<uint8_t> OwnedTradeItems(uint8_t slot) {
         }
     }
     return owned;
+}
+
+void RefreshTradeButtons(uint8_t slot, uint8_t removed = ITEM_NONE) {
+    const auto item = gSaveContext.save.saveInfo.inventory.items[slot];
+    auto& equips = gSaveContext.save.saveInfo.equips;
+    auto& dpad = gSaveContext.save.shipSaveInfo.dpadEquips;
+    for (int form = 0; form < 4; ++form) {
+        for (int button = EQUIP_SLOT_C_LEFT; button <= EQUIP_SLOT_C_RIGHT; ++button) {
+            if (removed != ITEM_NONE && equips.buttonItems[form][button] == removed) {
+                equips.buttonItems[form][button] = ITEM_NONE;
+                equips.cButtonSlots[form][button] = SLOT_NONE;
+            } else if (equips.cButtonSlots[form][button] == slot) {
+                equips.buttonItems[form][button] = item;
+            }
+        }
+        for (int button = 0; button < 4; ++button) {
+            if (removed != ITEM_NONE && dpad.dpadItems[form][button] == removed) {
+                dpad.dpadItems[form][button] = ITEM_NONE;
+                dpad.dpadSlots[form][button] = SLOT_NONE;
+            } else if (dpad.dpadSlots[form][button] == slot) {
+                dpad.dpadItems[form][button] = item;
+            }
+        }
+    }
+    if (gPlayState != nullptr) {
+        for (int button = EQUIP_SLOT_C_LEFT; button <= EQUIP_SLOT_C_RIGHT; ++button) {
+            Interface_LoadItemIconImpl(gPlayState, button);
+        }
+        for (int button = EQUIP_SLOT_D_RIGHT; button <= EQUIP_SLOT_D_UP; ++button) {
+            Interface_Dpad_LoadItemIconImpl(gPlayState, button);
+        }
+    }
 }
 
 uint32_t BombchuBagTier() {
@@ -510,6 +554,15 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                         if (already == 0) {
                             sUnhandled[itemId] = op.Slot + " (no native item)";
                         }
+                    } else if (found->second >= ITEM_MOONS_TEAR && found->second <= ITEM_PENDANT_OF_MEMORIES) {
+                        if (count > already) {
+                            OotmmItemApply_RecordTradeGrant(found->second);
+                            auto& current = gSaveContext.save.saveInfo.inventory.items[SLOT(found->second)];
+                            if (current == ITEM_NONE) {
+                                current = found->second;
+                            }
+                            sLedger.SetApplied(itemId, count);
+                        }
                     } else if (already == 0 || EquipmentMissing(found->second)) {
                         ApplyOnce(play, itemId, found->second);
                     }
@@ -572,18 +625,42 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                 break;
             }
             case Ship::OotmmGrantKind::Magic: {
+                if (op.Slot == "MAGIC_UPGRADE") {
+                    const auto& inventory = OotmmIpc_GetInventory();
+                    auto& playerData = gSaveContext.save.saveInfo.playerData;
+                    const auto upgrade = Ship::ResolveOotmmMagicUpgrade(
+                        inventory.Count("MM_MAGIC_UPGRADE"), inventory.Count("SHARED_MAGIC_UPGRADE"),
+                        count, already, playerData.isMagicAcquired, playerData.isDoubleMagicAcquired);
+                    if (upgrade.Refill) {
+                        playerData.isMagicAcquired = true;
+                        playerData.isDoubleMagicAcquired = upgrade.Tier >= 2;
+                        playerData.magicLevel = 0;
+                        playerData.magic = upgrade.Tier * MAGIC_NORMAL_METER;
+                        gSaveContext.magicFillTarget = playerData.magic;
+                        sLedger.SetApplied(itemId, count);
+                    }
+                    break;
+                }
                 if (count <= already) {
                     break;
                 }
-                if (op.Slot.rfind("MAGIC_UPGRADE", 0) == 0) {
-                    gSaveContext.save.saveInfo.playerData.isMagicAcquired = true;
-                    if (count >= 2) {
-                        gSaveContext.save.saveInfo.playerData.isDoubleMagicAcquired = true;
-                    }
-                    gSaveContext.save.saveInfo.playerData.magicLevel = 0;
-                } else {
-                    Magic_Add(play, static_cast<s16>(MAGIC_NORMAL_METER));
+                const auto& inventory = OotmmIpc_GetInventory();
+                const auto& playerData = gSaveContext.save.saveInfo.playerData;
+                const bool ownsMagic = inventory.Count("MM_MAGIC_UPGRADE") != 0 ||
+                                       inventory.Count("SHARED_MAGIC_UPGRADE") != 0;
+                if ((!playerData.isMagicAcquired && ownsMagic) ||
+                    (playerData.isMagicAcquired &&
+                     (playerData.magicLevel == 0 ||
+                      gSaveContext.magicCapacity != (playerData.isDoubleMagicAcquired ?
+                                                         MAGIC_DOUBLE_METER : MAGIC_NORMAL_METER) ||
+                      gSaveContext.magicState == MAGIC_STATE_STEP_CAPACITY ||
+                      gSaveContext.magicState == MAGIC_STATE_FILL))) {
+                    sRetryMagicApplication = true;
+                    break;
                 }
+                Magic_Add(play, Ship::ResolveOotmmMagicJarAmount(
+                    Ship::OotmmGrantGame::Mm, OotmmSession_GetState().GetBoolSetting("sharedMagic", false),
+                    op.Slot == "MAGIC_JAR_LARGE", count - already));
                 sLedger.SetApplied(itemId, count);
                 break;
             }
@@ -777,7 +854,7 @@ void OotmmItemApply_Reconcile() {
     if (!RestoreSharedResources()) {
         return;
     }
-    sAppliedRevision = inventory.GetRevision();
+    sRetryMagicApplication = false;
     for (const auto& [itemId, count] : inventory.GetValues()) {
         const auto suffix = Ship::OotmmItemGrant::SuffixOf(itemId);
         if (suffix == "BOMBCHU_BAG") {
@@ -790,6 +867,9 @@ void OotmmItemApply_Reconcile() {
             owned++;
         }
         ApplyOne(gPlayState, itemId, count);
+    }
+    if (!sRetryMagicApplication) {
+        sAppliedRevision = inventory.GetRevision();
     }
     // Sun's Song is the one native quest song with note-shuffle pieces (6 notes).
     if (inventory.Count("MM_SONG_NOTE_SUN") + inventory.Count("SHARED_SONG_NOTE_SUN") >= 6) {
@@ -853,6 +933,7 @@ extern "C" void OotmmItemApply_SetTradeItemOwned(uint8_t slot, uint8_t item, int
     }
     EnsureLedger();
     if (owned) {
+        sLedger.Erase(ConsumedTradeKey(item));
         sLedger.SetApplied(NativeTradeKey(item), 1);
         sLedger.Save(LedgerPath());
         const uint8_t current = gSaveContext.save.saveInfo.inventory.items[slot];
@@ -879,6 +960,90 @@ extern "C" void OotmmItemApply_SetTradeItemOwned(uint8_t slot, uint8_t item, int
             }
         }
     }
+}
+
+extern "C" void OotmmItemApply_RecordTradeGrant(uint8_t item) {
+    if (!OotmmSession_IsActive()) {
+        return;
+    }
+    for (const uint8_t slot : { SLOT_TRADE_DEED, SLOT_TRADE_KEY_MAMA, SLOT_TRADE_COUPLE }) {
+        const auto* candidates = TradeItemsForSlot(slot);
+        if (std::find(candidates->begin(), candidates->end(), item) == candidates->end()) {
+            continue;
+        }
+        OwnedTradeItems(slot);
+        if (sLedgerValid) {
+            sLedger.SetApplied(NativeTradeKey(item), 1);
+            sLedger.Erase(ConsumedTradeKey(item));
+            sLedger.Save(LedgerPath());
+        }
+        return;
+    }
+}
+
+extern "C" int32_t OotmmItemApply_ConsumeTradeItem(uint8_t item, uint8_t slot) {
+    if (!OotmmSession_IsActive()) {
+        return 0;
+    }
+    const auto* candidates = TradeItemsForSlot(slot);
+    if (candidates == nullptr || std::find(candidates->begin(), candidates->end(), item) == candidates->end()) {
+        return 0;
+    }
+    const auto owned = OwnedTradeItems(slot);
+    if (!sLedgerValid || std::find(owned.begin(), owned.end(), item) == owned.end()) {
+        return 1;
+    }
+    sLedger.SetApplied(ConsumedTradeKey(item), 1);
+    const auto remaining = OwnedTradeItems(slot);
+    auto& current = gSaveContext.save.saveInfo.inventory.items[slot];
+    if (current == item) {
+        current = remaining.empty() ? ITEM_NONE : remaining.front();
+    }
+    RefreshTradeButtons(slot, item);
+    sLedger.Save(LedgerPath());
+    return 1;
+}
+
+extern "C" int32_t OotmmItemApply_ToggleTradeItem(uint8_t slot) {
+    if (!OotmmSession_IsActive()) {
+        return 0;
+    }
+    const auto owned = OwnedTradeItems(slot);
+    if (owned.size() < 2) {
+        return 0;
+    }
+    auto& current = gSaveContext.save.saveInfo.inventory.items[slot];
+    const auto found = std::find(owned.begin(), owned.end(), current);
+    current = found == owned.end() || found + 1 == owned.end() ? owned.front() : *(found + 1);
+    RefreshTradeButtons(slot);
+    return 1;
+}
+
+extern "C" void OotmmItemApply_RememberTradeItems(void) {
+    if (OotmmSession_IsActive()) {
+        for (const uint8_t slot : { SLOT_TRADE_DEED, SLOT_TRADE_KEY_MAMA, SLOT_TRADE_COUPLE }) {
+            OwnedTradeItems(slot);
+        }
+    }
+}
+
+extern "C" void OotmmItemApply_ResetTradeCycle(void) {
+    if (!OotmmSession_IsActive()) {
+        return;
+    }
+    EnsureLedger();
+    if (!sLedgerValid) {
+        return;
+    }
+    for (const uint8_t slot : { SLOT_TRADE_DEED, SLOT_TRADE_KEY_MAMA, SLOT_TRADE_COUPLE }) {
+        for (const uint8_t item : *TradeItemsForSlot(slot)) {
+            sLedger.Erase(ConsumedTradeKey(item));
+        }
+        const auto owned = OwnedTradeItems(slot);
+        gSaveContext.save.saveInfo.inventory.items[slot] = owned.empty() ? ITEM_NONE : owned.front();
+        RefreshTradeButtons(slot);
+    }
+    sLedger.Save(LedgerPath());
 }
 
 void OotmmItemApply_RefreshSaveSnapshot() {
@@ -939,6 +1104,20 @@ bool OotmmItemApply_Embed(nlohmann::json& save) {
         }
         if (!shared.is_null()) {
             save["ootmmSharedResources"] = std::move(shared);
+        }
+        const auto& playerData = gSaveContext.save.saveInfo.playerData;
+        auto& magic = save.at("save").at("saveInfo").at("playerData").at("magic");
+        if (gSaveContext.magicState == MAGIC_STATE_STEP_CAPACITY ||
+            gSaveContext.magicState == MAGIC_STATE_FILL) {
+            magic = Ship::ResolveOotmmMagicSaveValue(magic.get<int16_t>(),
+                gSaveContext.magicFillTarget, playerData.isMagicAcquired,
+                playerData.isDoubleMagicAcquired, true);
+        } else if (gSaveContext.isMagicRequested && gSaveContext.magicToAdd > 0 &&
+            gSaveContext.magicCapacity == (playerData.isDoubleMagicAcquired ?
+                                              MAGIC_DOUBLE_METER : MAGIC_NORMAL_METER)) {
+            magic = Ship::ResolveOotmmMagicSaveValue(magic.get<int16_t>(),
+                magic.get<int16_t>() + gSaveContext.magicToAdd, playerData.isMagicAcquired,
+                playerData.isDoubleMagicAcquired, true);
         }
         save["ootmmApplied"] = sLedger.GetValues();
     }

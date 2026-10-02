@@ -5,6 +5,8 @@
  */
 
 #include "z_en_akindonuts.h"
+#include "2s2h/OotmmItemApply.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include "objects/object_dnt/object_dnt.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -250,12 +252,15 @@ s16 func_80BECF6C(Path* path) {
 s32 func_80BECFBC(EnAkindonuts* this) {
     switch (ENAKINDONUTS_GET_3(&this->actor)) {
         case 0:
+            OotmmItemApply_ConsumeTradeItem(ITEM_DEED_LAND, SLOT_TRADE_DEED);
             return GI_DEED_SWAMP;
 
         case 1:
+            OotmmItemApply_ConsumeTradeItem(ITEM_DEED_SWAMP, SLOT_TRADE_DEED);
             return GI_DEED_MOUNTAIN;
 
         case 2:
+            OotmmItemApply_ConsumeTradeItem(ITEM_DEED_MOUNTAIN, SLOT_TRADE_DEED);
             return GI_DEED_OCEAN;
 
         case 3:
@@ -328,7 +333,28 @@ s32 func_80BED140(PlayState* play) {
     return false;
 }
 
+static s32 EnAkindonuts_OotmmPrecond(EnAkindonuts* this, s16 price) {
+    s32 allowed = OotmmNpcChecks_PurchaseAllowed(&this->actor, func_80BED034(this), -1);
+
+    if (allowed < 0) {
+        return -1;
+    }
+    if (!allowed) {
+        return 2;
+    }
+    if (gSaveContext.save.saveInfo.playerData.rupees < price) {
+        return 1;
+    }
+    this->unk_364 = -price;
+    return 3;
+}
+
 s32 func_80BED208(EnAkindonuts* this) {
+    s32 ootmm = EnAkindonuts_OotmmPrecond(this, 10);
+
+    if (ootmm >= 0) {
+        return ootmm;
+    }
     if (!GameInteractor_Should(VB_AKINDONUTS_CONSIDER_ELIGIBLE_FOR_BEAN_REFILL,
                                !((u32)INV_CONTENT(ITEM_MAGIC_BEANS) != ITEM_MAGIC_BEANS), this)) {
         return 0;
@@ -348,6 +374,11 @@ s32 func_80BED208(EnAkindonuts* this) {
 }
 
 s32 func_80BED27C(EnAkindonuts* this) {
+    s32 ootmm = EnAkindonuts_OotmmPrecond(this, 200);
+
+    if (ootmm >= 0) {
+        return ootmm;
+    }
     if (GameInteractor_Should(VB_AKINDONUTS_CONSIDER_BOMB_BAG_PURCHASED, GET_CUR_UPG_VALUE(UPG_BOMB_BAG) == 3, this)) {
         return 2;
     }
@@ -367,6 +398,11 @@ s32 func_80BED27C(EnAkindonuts* this) {
 }
 
 s32 func_80BED2FC(EnAkindonuts* this) {
+    s32 ootmm = EnAkindonuts_OotmmPrecond(this, 40);
+
+    if (ootmm >= 0) {
+        return ootmm;
+    }
     if (!GameInteractor_Should(VB_AKINDONUTS_CONSIDER_ELIGIBLE_FOR_POTION_REFILL, Inventory_HasEmptyBottle(), this)) {
         return 2;
     }
@@ -381,6 +417,11 @@ s32 func_80BED2FC(EnAkindonuts* this) {
 }
 
 s32 func_80BED35C(EnAkindonuts* this) {
+    s32 ootmm = EnAkindonuts_OotmmPrecond(this, 100);
+
+    if (ootmm >= 0) {
+        return ootmm;
+    }
     if (!GameInteractor_Should(VB_AKINDONUTS_CONSIDER_ELIGIBLE_FOR_POTION_REFILL, Inventory_HasEmptyBottle(), this)) {
         return 2;
     }
@@ -1436,7 +1477,9 @@ void func_80BEF360(EnAkindonuts* this, PlayState* play) {
 }
 
 void func_80BEF450(EnAkindonuts* this, PlayState* play) {
-    if ((Message_GetState(&play->msgCtx) == TEXT_STATE_DONE) && Message_ShouldAdvance(play)) {
+    if (((Message_GetState(&play->msgCtx) == TEXT_STATE_DONE) && Message_ShouldAdvance(play)) ||
+        OotmmNpcChecks_CanFinishMessageOffer(&this->actor)) {
+        OotmmNpcChecks_FinishMessageOffer(&this->actor);
         Actor_OfferTalkExchangeEquiCylinder(&this->actor, play, 400.0f, PLAYER_IA_MINUS1);
         this->actionFunc = func_80BEF4B8;
     }

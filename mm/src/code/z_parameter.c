@@ -4635,6 +4635,7 @@ u8 Item_Give(PlayState* play, u8 item) {
         return ITEM_NONE;
     }
 
+    OotmmItemApply_RecordTradeGrant(item);
     u8 result = Item_GiveImpl(play, item);
     GameInteractor_ExecuteOnItemGive(item);
 
@@ -4806,6 +4807,10 @@ u8 Item_CheckObtainability(u8 item) {
 
 void Inventory_DeleteItem(s16 item, s16 slot) {
     s16 btn;
+
+    if (OotmmItemApply_ConsumeTradeItem(item, slot)) {
+        return;
+    }
 
     gSaveContext.save.saveInfo.inventory.items[slot] = ITEM_NONE;
 

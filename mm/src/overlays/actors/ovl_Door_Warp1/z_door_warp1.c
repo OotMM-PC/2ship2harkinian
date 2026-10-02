@@ -8,6 +8,8 @@
 #include "z_door_warp1.h"
 #include "objects/object_warp1/object_warp1.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmNpcChecks.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS 0x00000000
 
@@ -42,6 +44,21 @@ void func_808B9ED8(DoorWarp1* this, PlayState* play);
 void func_808B9F10(DoorWarp1* this, PlayState* play);
 void func_808B9FD0(DoorWarp1* this, PlayState* play);
 void func_808BA10C(DoorWarp1* this, PlayState* play);
+
+static s32 DoorWarp1_GetOotmmBossId(PlayState* play) {
+    switch (play->sceneId) {
+        case SCENE_MITURIN_BS:
+            return 8;
+        case SCENE_HAKUGIN_BS:
+            return 9;
+        case SCENE_SEA_BS:
+            return 10;
+        case SCENE_INISIE_BS:
+            return 11;
+        default:
+            return -1;
+    }
+}
 void func_808BA550(DoorWarp1* this, PlayState* play);
 void func_808BAAF4(DoorWarp1* this, PlayState* play);
 void func_808BABF4(DoorWarp1* this, PlayState* play);
@@ -510,7 +527,7 @@ void func_808B98A8(DoorWarp1* this, PlayState* play) {
 
 void func_808B9B30(DoorWarp1* this, PlayState* play) {
     if (fabsf(this->dyna.actor.xzDistToPlayer) >= 60.0f) {
-        if (func_808B849C(this, play)) {
+        if (!OotmmNpcChecks_RemainsIsShuffled(play->sceneId) && func_808B849C(this, play)) {
             this->unk_1A0 = (DmHina*)Actor_SpawnAsChild(
                 &play->actorCtx, &this->dyna.actor, play, ACTOR_DM_HINA, this->dyna.actor.world.pos.x,
                 this->dyna.actor.world.pos.y, this->dyna.actor.world.pos.z, 0, 0, 0, func_808B849C(this, play) - 1);
@@ -546,6 +563,13 @@ void func_808B9BE8(DoorWarp1* this, PlayState* play) {
 }
 
 void func_808B9CE8(DoorWarp1* this, PlayState* play) {
+    if (OotmmNpcChecks_RemainsIsShuffled(play->sceneId)) {
+        if (OotmmNpcChecks_RemainsReady(play)) {
+            this->unk_1CE = 110;
+            DoorWarp1_SetupAction(this, func_808B9ED8);
+        }
+        return;
+    }
     if (this->unk_203 != 0) {
         if (1) {}
         return;
@@ -583,7 +607,9 @@ void func_808B9CE8(DoorWarp1* this, PlayState* play) {
 
     gSaveContext.save.saveInfo.unk_EA8[1] = (gSaveContext.save.saveInfo.unk_EA8[1] & 0xFFFFFF00) |
                                             ((((u8)gSaveContext.save.saveInfo.unk_EA8[1]) + 1) & 0xFF);
-    Item_Give(play, func_808B849C(this, play) + (ITEM_REMAINS_ODOLWA - 1));
+    if (!OotmmNpcChecks_CollectRemains(play->sceneId)) {
+        Item_Give(play, func_808B849C(this, play) + (ITEM_REMAINS_ODOLWA - 1));
+    }
     DoorWarp1_SetupAction(this, func_808B9E94);
 }
 
@@ -769,6 +795,7 @@ void func_808BA10C(DoorWarp1* this, PlayState* play) {
                     break;
             }
         }
+        OotmmSession_RedirectBossWarp(DoorWarp1_GetOotmmBossId(play));
     } else if (DOORWARP1_GET_FF00_1(&this->dyna.actor) != 0xFF) {
         if (DOORWARP1_GET_FF(&this->dyna.actor) == ENDOORWARP1_FF_6) {
             gSaveContext.respawnFlag = -2;
@@ -1118,6 +1145,7 @@ void DoorWarp1_Draw(Actor* thisx, PlayState* play) {
             func_808BB4F4(this, play);
             break;
     }
+    OotmmNpcChecks_DrawRemainsReward(&this->dyna.actor, play);
 }
 
 void func_808BB8D4(DoorWarp1* this, PlayState* play, s32 arg2) {

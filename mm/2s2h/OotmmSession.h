@@ -23,6 +23,7 @@ int32_t OotmmSession_ReturnToSpawn(void);
 void OotmmSession_RedirectMoonCrashRespawn(void);
 /// Marks the result so the seed's entrance remap does not translate it twice. -1 when unresolvable.
 int32_t OotmmSession_ApplyResolvedMmEntrance(uint32_t entrance);
+int32_t OotmmSession_RedirectBossWarp(uint32_t bossId);
 
 #ifdef __cplusplus
 }

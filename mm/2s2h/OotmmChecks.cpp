@@ -4,7 +4,10 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "OotmmIpc.h"
 #include "OotmmItemPresentation.h"
+#include "OotmmItemModels.h"
 #include "OotmmSession.h"
+
+#include <cmath>
 
 extern "C" {
 #include "functions.h"
@@ -29,21 +32,42 @@ const Ship::OotmmPlacement* FindChest(uint32_t scene, uint32_t flag) {
     return OotmmSession_GetState().FindCheck(Ship::OotmmGame::Mm, scene, "chest", flag);
 }
 
-void Report(const Ship::OotmmPlacement& placement) {
-    OotmmIpc_SendCheckCollected(placement.CheckId);
+bool IsBossScene(uint32_t scene) {
+    return scene == SCENE_MITURIN_BS || scene == SCENE_HAKUGIN_BS ||
+           scene == SCENE_SEA_BS || scene == SCENE_INISIE_BS;
+}
+
+const Ship::OotmmPlacement* FindBossContainer(uint32_t scene) {
+    return IsBossScene(scene)
+               ? OotmmSession_GetState().FindCheck(Ship::OotmmGame::Mm, scene, "collectible", 0x1F)
+               : nullptr;
+}
+
+bool IsCollected(const Ship::OotmmPlacement& placement) {
+    return OotmmCheckLedger_Contains(placement.CheckId) || OotmmIpc_IsCheckCompleted(placement.CheckId);
+}
+
+void Report(const Ship::OotmmPlacement& placement, bool present = false) {
+    OotmmIpc_SendCheckCollected(placement.CheckId, present && !IsCollected(placement));
     OotmmCheckLedger_Record(placement.CheckId);
 }
 
-Ship::GameIpcItemPresentation MakePresentation(const Ship::OotmmPlacement& placement) {
-    Ship::GameIpcItemPresentation presentation;
-    presentation.ItemId = placement.ItemId;
-    presentation.ItemName = placement.ItemName;
-    presentation.ItemGame = placement.ItemGame;
-    presentation.DestinationGame = placement.ItemGame;
-    presentation.SourcePlayer = OotmmSession_GetState().GetPlayerId();
-    presentation.RecipientPlayer = placement.OwnerPlayer;
-    presentation.ViewerPlayer = presentation.SourcePlayer;
-    return presentation;
+void SweepSavedBossContainers() {
+    for (const auto& placement : OotmmSession_GetState().GetPlacements()) {
+        if (placement.CheckGame != Ship::OotmmGame::Mm || placement.CheckType != "collectible" ||
+            !placement.CheckScene.has_value() || !placement.CheckFlag.has_value() ||
+            *placement.CheckFlag != 0x1F || !IsBossScene(*placement.CheckScene)) {
+            continue;
+        }
+        const uint32_t scene = *placement.CheckScene;
+        uint32_t flags = gSaveContext.cycleSceneFlags[scene].collectible;
+        if (gPlayState != nullptr && static_cast<uint32_t>(Play_GetOriginalSceneId(gPlayState->sceneId)) == scene) {
+            flags |= gPlayState->actorCtx.sceneFlags.collectible[0];
+        }
+        if ((flags & (1u << 0x1F)) != 0 && !OotmmIpc_IsCheckCompleted(placement.CheckId)) {
+            Report(placement);
+        }
+    }
 }
 
 // Chest-open continuation without the vanilla give: the open animation plays to its
@@ -60,8 +84,6 @@ void ChestOpenAfterPutAway(PlayState* play, Player* player) {
     player->stateFlags1 |= (PLAYER_STATE1_400 | PLAYER_STATE1_20000000);
 }
 
-// Chests already opened in this cycle whose checks never reached the launcher —
-// a crash between the flag landing and the acknowledgement — are reported here.
 void SweepSavedChests() {
     for (const auto& placement : OotmmSession_GetState().GetPlacements()) {
         if (placement.CheckGame != Ship::OotmmGame::Mm || placement.CheckType != "chest" ||
@@ -86,6 +108,64 @@ void SweepSavedChests() {
 
 } // namespace
 
+extern "C" int OotmmChecks_BossContainerDone(PlayState* play, int vanillaDone) {
+    const auto* placement = play != nullptr ? FindBossContainer(Play_GetOriginalSceneId(play->sceneId)) : nullptr;
+    return placement == nullptr ? vanillaDone : IsCollected(*placement);
+}
+
+extern "C" int OotmmChecks_BossContainerIsShuffled(PlayState* play) {
+    return play != nullptr && FindBossContainer(Play_GetOriginalSceneId(play->sceneId)) != nullptr;
+}
+
+extern "C" int OotmmChecks_TryCollectBossContainer(Actor* actor, PlayState* play) {
+    if (actor == nullptr || play == nullptr) {
+        return 0;
+    }
+    const auto* placement = FindBossContainer(Play_GetOriginalSceneId(play->sceneId));
+    if (placement == nullptr) {
+        return 0;
+    }
+    if (IsCollected(*placement)) {
+        return 1;
+    }
+    Player* player = GET_PLAYER(play);
+    if (player == nullptr || actor->xzDistToPlayer >= 30.0f || std::fabs(actor->playerHeightRel) >= 80.0f ||
+        OotmmItemPresentation_IsPending() || Message_GetState(&play->msgCtx) != TEXT_STATE_NONE ||
+        play->transitionTrigger != TRANS_TRIGGER_OFF || Player_InBlockingCsMode(play, player) ||
+        (player->stateFlags1 &
+         (PLAYER_STATE1_DEAD | PLAYER_STATE1_400 | PLAYER_STATE1_TALKING | PLAYER_STATE1_20000000)) ||
+        player->getItemId > GI_NONE) {
+        return 0;
+    }
+    Report(*placement, true);
+    return 1;
+}
+
+extern "C" int OotmmChecks_DrawBossContainer(Actor* actor, PlayState* play) {
+    if (actor == nullptr || play == nullptr) {
+        return 0;
+    }
+    const auto* placement = FindBossContainer(Play_GetOriginalSceneId(play->sceneId));
+    if (placement == nullptr) {
+        return 0;
+    }
+    if (IsCollected(*placement)) {
+        return 1;
+    }
+    const std::string& itemId = placement->CloakItemId.empty() ? placement->ItemId : placement->CloakItemId;
+    const std::string& itemName = placement->CloakItemId.empty() ? placement->ItemName : placement->CloakItemName;
+    Matrix_Push();
+    if (actor->scale.x > 0.0001f) {
+        const float scale = 0.35f / actor->scale.x;
+        Matrix_Scale(scale, scale, scale, MTXMODE_APPLY);
+    }
+    if (!OotmmItemModel_DrawById(play, itemId, itemName)) {
+        GetItem_Draw(play, GID_RUPEE_GREEN);
+    }
+    Matrix_Pop();
+    return 1;
+}
+
 void OotmmChecks_OpenChestSilently(PlayState* play, Player* player) {
     Player_SetupWaitForPutAway(play, player, ChestOpenAfterPutAway);
 }
@@ -97,7 +177,9 @@ void OotmmChecks_Init() {
                 return;
             }
             if (const auto* placement = FindChest(Play_GetOriginalSceneId(sceneId), flag)) {
-                Report(*placement);
+                if (!OotmmCheckLedger_Contains(placement->CheckId)) {
+                    Report(*placement);
+                }
             }
         });
 
@@ -106,13 +188,17 @@ void OotmmChecks_Init() {
         Player* player = GET_PLAYER(gPlayState);
         sActiveChest = FindChest(Play_GetOriginalSceneId(gPlayState->sceneId),
                                  ENBOX_GET_CHEST_FLAG(&chest->dyna.actor));
+        if (sActiveChest == nullptr && gPlayState->sceneId == SCENE_TAKARAYA && chest->getItemId == GI_HEART_PIECE) {
+            sActiveChest = OotmmSession_GetState().FindCheck(Ship::OotmmGame::Mm, "npc", "MM_CHEST_GAME");
+            if (sActiveChest != nullptr && IsCollected(*sActiveChest) && player != nullptr) {
+                player->getItemId = -GI_RECOVERY_HEART;
+                sActiveChest = nullptr;
+                return;
+            }
+        }
         if (sActiveChest != nullptr && player != nullptr) {
             OotmmChecks_OpenChestSilently(gPlayState, player);
-            // The Song of Time recloses chests; a check the launcher already holds
-            // opens empty instead of presenting its item again.
-            if (!OotmmIpc_IsCheckCompleted(sActiveChest->CheckId)) {
-                OotmmItemPresentation_Queue(MakePresentation(*sActiveChest));
-            }
+            Report(*sActiveChest, true);
             *should = false;
         }
     });
@@ -124,13 +210,17 @@ void OotmmChecks_Init() {
     });
 
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(
-        [](s16) { SweepSavedChests(); });
+        [](s16) {
+            SweepSavedChests();
+            SweepSavedBossContainers();
+        });
 
     // A reconnect replays anything the launcher never acknowledged.
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>([]() {
         const bool connected = OotmmIpc_IsConnected();
         if (connected && !sWasConnected) {
             SweepSavedChests();
+            SweepSavedBossContainers();
         }
         sWasConnected = connected;
     });

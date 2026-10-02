@@ -1401,6 +1401,9 @@ bool OotmmItemModel_Draw(PlayState* play, const Ship::OotmmItemDefinition& item)
 }
 
 bool OotmmItemModel_DrawById(PlayState* play, const std::string& itemId, const std::string& itemName) {
+    if (Ship::OotmmItemCatalog::IsNothing(itemId)) {
+        return true;
+    }
     const auto item = Ship::OotmmItemCatalog::DescribeModel(itemId, itemName);
     const bool customFirst = itemId.find("_SOUL_") != std::string::npos ||
                              itemId.find("_COIN_") != std::string::npos ||

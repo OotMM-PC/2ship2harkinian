@@ -9,6 +9,7 @@
 #include "z64save.h"
 #include "BenPort.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include "2s2h/OotmmOwls.h"
 #include "2s2h/OotmmSession.h"
 #include "2s2h/OotmmSongEvents.h"
@@ -5088,6 +5089,13 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                                 Item_Give(
                                     play, (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
                             }
+                        } else if (msgCtx->ocarinaStaff->state == OCARINA_SONG_GORON_LULLABY_INTRO) {
+                            OotmmNpcChecks_SongTaught(ITEM_SONG_LULLABY_INTRO);
+                        } else if (!((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) &&
+                                     (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_WIND_FISH_DEKU)) &&
+                                   (msgCtx->ocarinaStaff->state != OCARINA_SONG_NEW_WAVE)) {
+                            OotmmNpcChecks_SongTaught(
+                                (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
                         }
                     }
                     msgCtx->stateTimer = 20;
@@ -5097,6 +5105,9 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                     msgCtx->msgMode = MSGMODE_34;
                     if (!OotmmSession_IsActive()) {
                         Item_Give(play, (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
+                    } else {
+                        OotmmNpcChecks_SongTaught(
+                            (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
                     }
                     msgCtx->stateTimer = 20;
                     AudioOcarina_SetOcarinaDisableTimer(0, 20);
@@ -5293,7 +5304,13 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                 if (msgCtx->ocarinaStaff->state <= OCARINA_SONG_SCARECROW_SPAWN) {
                     msgCtx->songPlayed = msgCtx->ocarinaStaff->state;
                     msgCtx->msgMode = MSGMODE_37;
-                    Item_Give(play, (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
+                    // The seed's item pipeline owns songs, so prompts must not teach them.
+                    if (!OotmmSession_IsActive()) {
+                        Item_Give(play, (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
+                    } else {
+                        OotmmNpcChecks_SongTaught(
+                            (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
+                    }
                     msgCtx->stateTimer = 20;
                     Audio_PlaySfx(NA_SE_SY_TRE_BOX_APPEAR);
                 } else if (msgCtx->ocarinaStaff->state == 0xFF) {

@@ -5,6 +5,8 @@
  */
 
 #include "z_en_sellnuts.h"
+#include "2s2h/OotmmItemApply.h"
+#include "2s2h/OotmmNpcChecks.h"
 
 #define FLAGS                                                                                  \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -520,6 +522,7 @@ void func_80ADBBEC(EnSellnuts* this, PlayState* play) {
         SET_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_LAND_TITLE_DEED);
         this->actionFunc = func_80ADBCE4;
     } else {
+        OotmmItemApply_ConsumeTradeItem(ITEM_MOONS_TEAR, SLOT_TRADE_DEED);
         Actor_OfferGetItem(&this->actor, play, GI_DEED_LAND, 300.0f, 300.0f);
     }
 }
@@ -535,7 +538,8 @@ void func_80ADBC60(EnSellnuts* this, PlayState* play) {
 }
 
 void func_80ADBCE4(EnSellnuts* this, PlayState* play) {
-    if ((Message_GetState(&play->msgCtx) == TEXT_STATE_DONE) && Message_ShouldAdvance(play)) {
+    if (((Message_GetState(&play->msgCtx) == TEXT_STATE_DONE) && Message_ShouldAdvance(play)) ||
+        OotmmNpcChecks_CanFinishSilentOffer("MM_SCRUB_LAND")) {
         Actor_OfferTalkExchangeEquiCylinder(&this->actor, play, 400.0f, PLAYER_IA_MINUS1);
         this->unk_340 = D_80ADD930[this->unk_33A];
         this->actionFunc = func_80ADBC60;

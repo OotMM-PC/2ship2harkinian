@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_moon_stone.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include "objects/object_gi_reserve00/object_gi_reserve00.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -145,6 +146,10 @@ void ObjMoonStone_Update(Actor* thisx, PlayState* play) {
 
 void ObjMoonStone_Draw(Actor* thisx, PlayState* play) {
     GraphicsContext* gfxCtx = play->state.gfxCtx;
+
+    if (OotmmNpcChecks_DrawReward(thisx, play, "MM_MOON_TEAR")) {
+        return;
+    }
 
     OPEN_DISPS(play->state.gfxCtx);
 
