@@ -4,6 +4,8 @@
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
 #include "OotmmChecks.h"
 #include "OotmmCsmc.h"
+#include "OotmmDrops.h"
+#include "OotmmDebugChecks.h"
 #include "OotmmIpc.h"
 #include "OotmmItemApply.h"
 #include "OotmmAdultLink.h"
@@ -579,6 +581,8 @@ void OotmmSession_Init() {
         ApplyEnhancements();
         OotmmChecks_Init();
         OotmmCsmc_Init();
+        OotmmDrops_Init();
+        OotmmDebugChecks_Init();
         OotmmItemProbe_Init();
         OotmmItemApply_Init();
         OotmmScales_Init();

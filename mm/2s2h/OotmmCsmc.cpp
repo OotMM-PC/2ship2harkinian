@@ -9,6 +9,8 @@
 
 #include <libultraship/bridge/OotmmCsmc.h>
 
+#include <unordered_map>
+
 extern "C" {
 #include "functions.h"
 #include "macros.h"
@@ -26,6 +28,9 @@ uint8_t ResourceMgr_FileExists(const char* resName);
 }
 
 namespace {
+
+// Test chests placed by the debug menu, shown as a fixed class.
+std::unordered_map<Actor*, Ship::OotmmCsmcClass> sChestOverrides;
 
 bool HasAgonyStone() {
     return Ship::OotmmCsmc_MmHasAgony(OotmmSession_GetState(), OotmmIpc_GetInventory());
@@ -78,9 +83,14 @@ const char* BakedName(Ship::OotmmCsmcClass itemClass, bool lid) {
 }
 
 void DrawChestPart(PlayState* play, EnBox* chest, bool lid, Gfx** gfx) {
-    const auto* placement = ChestPlacement(play, chest);
-    const auto itemClass =
-        placement != nullptr ? ClassFor(*placement) : Ship::OotmmCsmcClass::Normal;
+    Ship::OotmmCsmcClass itemClass;
+    if (const auto override = sChestOverrides.find(&chest->dyna.actor);
+        override != sChestOverrides.end()) {
+        itemClass = override->second;
+    } else {
+        const auto* placement = ChestPlacement(play, chest);
+        itemClass = placement != nullptr ? ClassFor(*placement) : Ship::OotmmCsmcClass::Normal;
+    }
 
     MATRIX_FINALIZE_AND_LOAD((*gfx)++, play->state.gfxCtx);
     if (const char* baked = BakedName(itemClass, lid);
@@ -139,6 +149,19 @@ static void CsmcChestDraw(Actor* thisx, PlayState* play) {
     }
 
     CLOSE_DISPS(play->state.gfxCtx);
+}
+
+void OotmmCsmc_SetChestOverride(Actor* chest, Ship::OotmmCsmcClass itemClass) {
+    sChestOverrides[chest] = itemClass;
+    chest->draw = CsmcChestDraw;
+    const bool large = itemClass == Ship::OotmmCsmcClass::Major ||
+                       itemClass == Ship::OotmmCsmcClass::BossKey;
+    Actor_SetScale(chest, large ? 0.01f : 0.0075f);
+    Actor_SetFocus(chest, large ? 40.0f : 20.0f);
+}
+
+void OotmmCsmc_ClearChestOverrides() {
+    sChestOverrides.clear();
 }
 
 void OotmmCsmc_Init() {

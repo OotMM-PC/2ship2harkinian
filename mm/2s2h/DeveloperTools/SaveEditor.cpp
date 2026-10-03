@@ -5,6 +5,7 @@
 #include "2s2h/CustomItem/CustomItem.h"
 #include "2s2h/BenGui/Notification.h"
 #include "2s2h/ShipUtils.h"
+#include "2s2h/OotmmDebugChecks.h"
 #include "2s2h/OotmmIpc.h"
 #include "2s2h/OotmmItemApply.h"
 #include "2s2h/OotmmItemProbe.h"
@@ -2391,6 +2392,11 @@ void SaveEditorWindow::DrawElement() {
 
         if (OotmmSession_IsActive() && ImGui::BeginTabItem("OoTMM Custom Items")) {
             DrawOotmmItemsTab();
+            ImGui::EndTabItem();
+        }
+
+        if (OotmmSession_IsActive() && ImGui::BeginTabItem("OoTMM Debug Checks")) {
+            OotmmDebugChecks_DrawTab();
             ImGui::EndTabItem();
         }
 

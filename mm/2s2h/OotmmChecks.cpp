@@ -80,6 +80,10 @@ void SweepSavedChests() {
 
 } // namespace
 
+void OotmmChecks_OpenChestSilently(PlayState* play, Player* player) {
+    Player_SetupWaitForPutAway(play, player, ChestOpenAfterPutAway);
+}
+
 void OotmmChecks_Init() {
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSceneFlagSet>(
         [](s16 sceneId, FlagType flagType, u32 flag) {
@@ -97,7 +101,7 @@ void OotmmChecks_Init() {
         sActiveChest = FindChest(Play_GetOriginalSceneId(gPlayState->sceneId),
                                  ENBOX_GET_CHEST_FLAG(&chest->dyna.actor));
         if (sActiveChest != nullptr && player != nullptr) {
-            Player_SetupWaitForPutAway(gPlayState, player, ChestOpenAfterPutAway);
+            OotmmChecks_OpenChestSilently(gPlayState, player);
             // The Song of Time recloses chests; a check the launcher already holds
             // opens empty instead of presenting its item again.
             if (!OotmmIpc_IsCheckCompleted(sActiveChest->CheckId)) {
