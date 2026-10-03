@@ -8,6 +8,7 @@
 #include "overlays/actors/ovl_Demo_Effect/z_demo_effect.h"
 #include "objects/object_lightblock/object_lightblock.h"
 #include "code/actor/actor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS 0x00000000
 
@@ -136,7 +137,8 @@ void ObjLightblock_Wait(ObjLightblock* this, PlayState* play) {
         this->collisionCounter = 0;
     }
 
-    if (this->collisionCounter >= 8) {
+    if (this->collisionCounter >= 8 ||
+        (this->collisionCounter >= 1 && OotmmSession_BoolSetting("mmEasierLightblock"))) {
         CutsceneManager_Queue(this->dyna.actor.csId);
         ObjLightblock_SetupPlayCutscene(this);
     } else {
