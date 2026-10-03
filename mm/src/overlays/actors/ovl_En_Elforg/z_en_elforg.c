@@ -6,6 +6,7 @@
 
 #include "z_en_elforg.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmChecks.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -470,7 +471,9 @@ void EnElforg_FreeFloating(EnElforg* this, PlayState* play) {
     if (!Player_InCsMode(play)) {
         if ((this->actor.xzDistToPlayer < 30.0f) && (scaledYDistance < 12.0f) && (scaledYDistance > -68.0f)) {
             EnElforg_SetupFairyCollected(this, play);
-            Health_ChangeBy(play, 0x30);
+            if (!OotmmChecks_StrayFairyIsShuffled(&this->actor, play)) {
+                Health_ChangeBy(play, 0x30);
+            }
 
             switch (STRAY_FAIRY_TYPE(&this->actor)) {
                 case STRAY_FAIRY_TYPE_COLLECTIBLE:

@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_tree.h"
+#include "2s2h/OotmmXflags.h"
 #include "objects/object_tree/object_tree.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_DURING_OCARINA)
@@ -165,6 +166,8 @@ void ObjTree_UpdateCollision(ObjTree* this, PlayState* play) {
         CollisionCheck_SetAC(play, &play->colChkCtx, &this->collider.base);
         if (this->dyna.actor.home.rot.y == 1) {
             this->dyna.actor.home.rot.y = 0;
+            OotmmXflags_DropAt(&this->dyna.actor, play, GET_PLAYER(play)->actor.world.pos.x,
+                               GET_PLAYER(play)->actor.world.pos.y, GET_PLAYER(play)->actor.world.pos.z);
             ObjTree_SetupSway(this);
         }
     }

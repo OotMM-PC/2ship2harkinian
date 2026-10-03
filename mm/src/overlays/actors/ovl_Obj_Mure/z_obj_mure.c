@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_mure.h"
+#include "2s2h/OotmmXflags.h"
 #include "overlays/actors/ovl_En_Butte/z_en_butte.h"
 #include "overlays/actors/ovl_En_Fish/z_en_fish.h"
 #include "overlays/actors/ovl_En_Insect/z_en_insect.h"
@@ -154,6 +155,7 @@ void ObjMure_SpawnActors0(Actor* thisx, PlayState* play) {
                     if (this->type == 0x90) {
                         ((ObjMureChild*)this->children[i])->unk_197 = 1;
                     }
+                    OotmmXflags_TagChild(this->children[i], &this->actor, i);
                     this->children[i]->room = this->actor.room;
                 }
                 break;
@@ -165,6 +167,7 @@ void ObjMure_SpawnActors0(Actor* thisx, PlayState* play) {
                     this->actor.world.rot.y, this->actor.world.rot.z, sSpawnParams[this->type], this->actor.csId,
                     this->actor.halfDaysBits, NULL);
                 if (this->children[i] != NULL) {
+                    OotmmXflags_TagChild(this->children[i], &this->actor, i);
                     this->children[i]->room = this->actor.room;
                 }
                 break;
@@ -188,6 +191,7 @@ void ObjMure_SpawnActors1(ObjMure* this, PlayState* play2) {
             this->actor.halfDaysBits, NULL);
         if (this->children[i] != NULL) {
             this->childrenStates[i] = OBJMURE_CHILD_STATE_0;
+            OotmmXflags_TagChild(this->children[i], &this->actor, i);
             this->children[i]->room = actor->room;
         } else {
             this->childrenStates[i] = OBJMURE_CHILD_STATE_DEAD;

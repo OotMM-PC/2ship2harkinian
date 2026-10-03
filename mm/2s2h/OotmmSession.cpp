@@ -11,6 +11,7 @@
 #include "OotmmShops.h"
 #include "OotmmCsmc.h"
 #include "OotmmDrops.h"
+#include "OotmmXflags.h"
 #include "OotmmDebugChecks.h"
 #include "OotmmIpc.h"
 #include "OotmmSongEvents.h"
@@ -650,6 +651,7 @@ void OotmmSession_Init() {
         OotmmHints_Init();
         OotmmCsmc_Init();
         OotmmDrops_Init();
+        OotmmXflags_Init();
         OotmmDebugChecks_Init();
         OotmmSongEvents_Init();
         OotmmItemProbe_Init();

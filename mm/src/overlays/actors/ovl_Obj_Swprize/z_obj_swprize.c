@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_swprize.h"
+#include "2s2h/OotmmXflags.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -58,7 +59,13 @@ void func_80C253D0(ObjSwprize* this, PlayState* play) {
 
     if (type == 2) {
         for (i = 0; i < 3; i++) {
-            collectible = Item_DropCollectible(play, &thisx->world.pos, temp_s0);
+            s32 handled;
+
+            collectible = OotmmXflags_SpawnSlice(thisx, play, i, thisx->world.pos.x, thisx->world.pos.y,
+                                                 thisx->world.pos.z, &handled);
+            if (!handled) {
+                collectible = Item_DropCollectible(play, &thisx->world.pos, temp_s0);
+            }
             if (collectible != NULL) {
                 if (sp78.y < 0.98f) {
                     collectible->velocity.y = (sp78.y + 1.0f) * 4.0f;
@@ -70,7 +77,13 @@ void func_80C253D0(ObjSwprize* this, PlayState* play) {
             }
         }
     } else {
-        collectible = Item_DropCollectible(play, &thisx->world.pos, temp_s0);
+        s32 handled;
+
+        collectible = OotmmXflags_SpawnSlice(thisx, play, 0, thisx->world.pos.x, thisx->world.pos.y, thisx->world.pos.z,
+                                             &handled);
+        if (!handled) {
+            collectible = Item_DropCollectible(play, &thisx->world.pos, temp_s0);
+        }
         if ((collectible != NULL) && (sp78.y < 0.98f)) {
             collectible->velocity.y = (sp78.y + 1.0f) * 4.0f;
             collectible->speed = (2.0f * (1.0f - fabsf(sp78.y))) + 2.0f;

@@ -6,6 +6,7 @@
 
 #include "z_en_si.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmChecks.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOOKSHOT_PULLS_ACTOR)
 
@@ -98,12 +99,13 @@ void EnSi_UpdateCollision(EnSi* this, PlayState* play) {
 
 void EnSi_GiveToken(EnSi* this, PlayState* play) {
     s32 chestFlag = ENSI_GET_CHEST_FLAG(&this->actor);
+    bool give = GameInteractor_Should(VB_GIVE_ITEM_FROM_SI, true, this);
 
     if ((chestFlag < 0x20) && (chestFlag >= 0)) {
         Flags_SetTreasure(play, chestFlag);
     }
 
-    if (!GameInteractor_Should(VB_GIVE_ITEM_FROM_SI, true, this)) {
+    if (!give) {
         return;
     }
 
@@ -166,5 +168,7 @@ void EnSi_Draw(Actor* thisx, PlayState* play) {
 
     func_800B8118(&this->actor, play, 0);
     func_800B8050(&this->actor, play, 0);
-    GetItem_Draw(play, GID_SKULL_TOKEN_2);
+    if (!OotmmChecks_DrawToken(&this->actor, play)) {
+        GetItem_Draw(play, GID_SKULL_TOKEN_2);
+    }
 }

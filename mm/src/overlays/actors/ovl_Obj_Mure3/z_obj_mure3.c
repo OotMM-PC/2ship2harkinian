@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_mure3.h"
+#include "2s2h/OotmmXflags.h"
 #include "GameInteractor/GameInteractor.h"
 
 #define FLAGS 0x00000000
@@ -49,6 +50,7 @@ void func_8098F040(ObjMure3* this, PlayState* play) {
         if (!((this->unk164 >> i) & 1)) {
             this->unk148[i] = (EnItem00*)Item_DropCollectible2(play, &spawnPos, 0x10001);
             if (this->unk148[i] != NULL) {
+                OotmmXflags_TagChild(&this->unk148[i]->actor, &this->actor, i);
                 this->unk148[i]->actor.room = this->actor.room;
             }
         }
@@ -70,6 +72,7 @@ void func_8098F110(ObjMure3* this, PlayState* play) {
             spawnPos.z = this->actor.world.pos.z + (cos * dist);
             this->unk148[i] = (EnItem00*)Item_DropCollectible2(play, &spawnPos, 0x4000);
             if (this->unk148[i] != NULL) {
+                OotmmXflags_TagChild(&this->unk148[i]->actor, &this->actor, i);
                 this->unk148[i]->actor.room = this->actor.room;
             }
         }
@@ -90,6 +93,7 @@ void func_8098F220(ObjMure3* this, PlayState* play) {
             spawnPos.z = (Math_CosS(yRot) * 40.0f) + this->actor.world.pos.z;
             this->unk148[i] = (EnItem00*)Item_DropCollectible2(play, &spawnPos, 0x4000);
             if (this->unk148[i] != NULL) {
+                OotmmXflags_TagChild(&this->unk148[i]->actor, &this->actor, i);
                 this->unk148[i]->actor.room = this->actor.room;
             }
         }
@@ -101,6 +105,7 @@ void func_8098F220(ObjMure3* this, PlayState* play) {
         spawnPos.z = this->actor.world.pos.z;
         this->unk160 = Item_DropCollectible2(play, &spawnPos, 0x4002);
         if (this->unk160 != NULL) {
+            OotmmXflags_TagChild(this->unk160, &this->actor, 6);
             this->unk160->room = this->actor.room;
         }
     }
@@ -146,7 +151,8 @@ void func_8098F438(ObjMure3* this, PlayState* play) {
 void ObjMure3_Init(Actor* thisx, PlayState* play) {
     ObjMure3* this = (ObjMure3*)thisx;
 
-    if (Flags_GetSwitch(play, OBJMURE3_GET_SWITCH_FLAG(&this->actor))) {
+    if (!OotmmXflags_IsAnySliceShuffled(&this->actor, sRupeeCounts[OBJMURE3_PARAM_RUPEEINDEX(&this->actor)]) &&
+        Flags_GetSwitch(play, OBJMURE3_GET_SWITCH_FLAG(&this->actor))) {
         Actor_Kill(&this->actor);
         return;
     }

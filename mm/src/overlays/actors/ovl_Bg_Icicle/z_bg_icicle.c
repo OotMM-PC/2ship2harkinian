@@ -5,6 +5,7 @@
  */
 
 #include "z_bg_icicle.h"
+#include "2s2h/OotmmXflags.h"
 #include "objects/object_icicle/object_icicle.h"
 
 #define FLAGS 0x00000000
@@ -203,13 +204,15 @@ void BgIcicle_UpdateAttacked(BgIcicle* this, PlayState* play) {
         if (this->dyna.actor.params == ICICLE_STALAGMITE_RANDOM_DROP) {
             BgIcicle_Break(this, play, 50.0f);
 
-            if (this->unk_160 != 0xFF) {
+            if (!OotmmXflags_Drop(&this->dyna.actor, play) && this->unk_160 != 0xFF) {
                 Item_DropCollectibleRandom(play, NULL, &this->dyna.actor.world.pos, this->unk_160 << 4);
             }
         } else if (this->dyna.actor.params == ICICLE_STALAGMITE_FIXED_DROP) {
             dropItem00Id = func_800A8150(this->unk_160);
             BgIcicle_Break(this, play, 50.0f);
-            Item_DropCollectible(play, &this->dyna.actor.world.pos, (this->unk_161 << 8) | dropItem00Id);
+            if (!OotmmXflags_Drop(&this->dyna.actor, play)) {
+                Item_DropCollectible(play, &this->dyna.actor.world.pos, (this->unk_161 << 8) | dropItem00Id);
+            }
         } else {
             if (this->dyna.actor.params == ICICLE_STALACTITE_REGROW) {
                 BgIcicle_Break(this, play, 40.0f);

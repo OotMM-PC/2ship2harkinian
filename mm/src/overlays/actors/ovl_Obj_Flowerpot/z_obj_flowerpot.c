@@ -5,6 +5,7 @@
  */
 #include "prevent_bss_reordering.h"
 #include "z_obj_flowerpot.h"
+#include "2s2h/OotmmXflags.h"
 #include "objects/object_flowerpot/object_flowerpot.h"
 
 #define FLAGS 0x00000000
@@ -185,6 +186,9 @@ void func_80A1B840(MtxF* matrix) {
 }
 
 void func_80A1B914(ObjFlowerpot* this, PlayState* play) {
+    if (OotmmXflags_DropSlice(&this->actor, play, 1, this->actor.world.pos.x, this->actor.world.pos.y, this->actor.world.pos.z)) {
+        return;
+    }
     if (!(this->unk_1EA & 4)) {
         s32 temp_v0 = func_800A8150(ENOBJFLOWERPOT_GET_3F(&this->actor));
 
@@ -198,6 +202,7 @@ void func_80A1B914(ObjFlowerpot* this, PlayState* play) {
 }
 
 void func_80A1B994(ObjFlowerpot* this, PlayState* play) {
+    OotmmXflags_DropSlice(&this->actor, play, 0, this->actor.world.pos.x, this->actor.world.pos.y, this->actor.world.pos.z);
     SoundSource_PlaySfxAtFixedWorldPos(play, &this->actor.world.pos, 20, NA_SE_EV_POT_BROKEN);
 }
 

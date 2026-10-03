@@ -5,6 +5,7 @@
  */
 
 #include "z_en_hit_tag.h"
+#include "2s2h/OotmmXflags.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -54,6 +55,9 @@ void EnHitTag_Init(Actor* thisx, PlayState* play) {
     this->actionFunc = EnHitTag_WaitForHit;
     Collider_InitAndSetCylinder(play, &this->collider, &this->actor, &sCylinderInit);
     Collider_UpdateCylinder(&this->actor, &this->collider);
+    if (OotmmXflags_IsAnySliceShuffled(&this->actor, 3) && Flags_GetSwitch(play, ENHITTAG_GET_SWITCH_FLAG(thisx))) {
+        Flags_UnsetSwitch(play, ENHITTAG_GET_SWITCH_FLAG(thisx));
+    }
     if (Flags_GetSwitch(play, ENHITTAG_GET_SWITCH_FLAG(thisx))) {
         Actor_Kill(&this->actor);
     }
@@ -77,7 +81,9 @@ void EnHitTag_WaitForHit(EnHitTag* this, PlayState* play) {
         dropLocation.z = this->actor.world.pos.z;
 
         for (i = 0; i < 3; i++) {
-            Item_DropCollectible(play, &dropLocation, ITEM00_RUPEE_GREEN);
+            if (!OotmmXflags_DropSlice(&this->actor, play, i, dropLocation.x, dropLocation.y, dropLocation.z)) {
+                Item_DropCollectible(play, &dropLocation, ITEM00_RUPEE_GREEN);
+            }
         }
     } else {
         CollisionCheck_SetAC(play, &play->colChkCtx, &this->collider.base);

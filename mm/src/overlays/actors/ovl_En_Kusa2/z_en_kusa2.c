@@ -6,6 +6,7 @@
 
 #include "prevent_bss_reordering.h"
 #include "z_en_kusa2.h"
+#include "2s2h/OotmmXflags.h"
 #include "objects/gameplay_field_keep/gameplay_field_keep.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 
@@ -319,10 +320,14 @@ void func_80A5BD14(EnKusa2* this, PlayState* play, s32 arg2) {
     EnKusa2* kusa2 = this->unk_1C0;
 
     if (kusa2 != NULL) {
+        s32 slice = kusa2->unk_1BC;
+
         if (kusa2->unk_1BC > 8) {
             kusa2->unk_1BC = 8;
         }
-        Item_DropCollectible(play, &this->actor.world.pos, D_80A5EB24[kusa2->unk_1BC]);
+        if (!OotmmXflags_DropSlice(&kusa2->actor, play, slice, this->actor.world.pos.x, this->actor.world.pos.y, this->actor.world.pos.z)) {
+            Item_DropCollectible(play, &this->actor.world.pos, D_80A5EB24[kusa2->unk_1BC]);
+        }
         kusa2->unk_1BC += arg2;
     }
 }

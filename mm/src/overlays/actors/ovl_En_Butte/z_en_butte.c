@@ -5,6 +5,7 @@
  */
 
 #include "z_en_butte.h"
+#include "2s2h/OotmmXflags.h"
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "objects/gameplay_field_keep/gameplay_field_keep.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
@@ -285,7 +286,8 @@ void func_8091C794(EnButte* this, PlayState* play) {
         func_8091C0A0(this, &D_8091D324[this->unk_24E]);
     }
 
-    if ((BUTTERFLY_GET_1(&this->actor) == BUTTERFLY_1) && (player->heldItemAction == PLAYER_IA_DEKU_STICK) &&
+    if (((BUTTERFLY_GET_1(&this->actor) == BUTTERFLY_1) || OotmmXflags_IsShuffled(&this->actor)) &&
+        (player->heldItemAction == PLAYER_IA_DEKU_STICK) &&
         (this->unk_252 <= 0) &&
         ((Math3D_Dist2DSq(player->actor.world.pos.x, player->actor.world.pos.z, this->actor.home.pos.x,
                           this->actor.home.pos.z) < SQ(120.0f)) ||
@@ -379,8 +381,11 @@ void func_8091CFB4(EnButte* this, PlayState* play) {
     if (this->unk_24C == 5) {
         SoundSource_PlaySfxAtFixedWorldPos(play, &this->actor.world.pos, 60, NA_SE_EV_BUTTERFRY_TO_FAIRY);
     } else if (this->unk_24C == 4) {
-        Actor_Spawn(&play->actorCtx, play, ACTOR_EN_ELF, this->actor.focus.pos.x, this->actor.focus.pos.y,
-                    this->actor.focus.pos.z, 0, this->actor.shape.rot.y, 0, FAIRY_PARAMS(FAIRY_TYPE_2, false, 0));
+        if (OotmmXflags_PrepareFairy(&this->actor)) {
+            Actor_Spawn(&play->actorCtx, play, ACTOR_EN_ELF, this->actor.focus.pos.x, this->actor.focus.pos.y,
+                        this->actor.focus.pos.z, 0, this->actor.shape.rot.y, 0, FAIRY_PARAMS(FAIRY_TYPE_2, false, 0));
+        }
+        OotmmXflags_ClearSpawn();
         this->unk_250 = 0;
     } else if (this->unk_24C <= 0) {
         func_8091D070(this);

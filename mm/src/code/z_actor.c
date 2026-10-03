@@ -4,6 +4,7 @@
  */
 
 #include "z64actor.h"
+#include "2s2h/OotmmXflags.h"
 #include "z64door.h"
 
 #include "prevent_bss_reordering.h"
@@ -3750,6 +3751,7 @@ Actor* Actor_SpawnAsChildAndCutscene(ActorContext* actorCtx, PlayState* play, s1
     // #region 2S2H [ObjectExtension]
     SetActorListIndex(actor, currentActorListIndex);
     currentActorListIndex = -1;
+    OotmmXflags_ClaimSpawn(actor);
     // #endregion
 
     overlayEntry = &gActorOverlayTable[index];

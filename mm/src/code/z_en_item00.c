@@ -5,6 +5,7 @@
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "overlays/actors/ovl_En_Elforg/z_en_elforg.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmChecks.h"
 #include "2s2h/OotmmItemApply.h"
 #include "2s2h/OotmmSession.h"
 
@@ -87,7 +88,7 @@ void EnItem00_Init(Actor* thisx, PlayState* play) {
 
     thisx->params &= 0xFF;
 
-    if (Flags_GetCollectible(play, this->collectibleFlag)) {
+    if (OotmmChecks_HeartPieceDone(play, thisx, Flags_GetCollectible(play, this->collectibleFlag))) {
         if (thisx->params == ITEM00_HEART_PIECE) {
             sp30 = 0;
             this->collectibleFlag = 0;

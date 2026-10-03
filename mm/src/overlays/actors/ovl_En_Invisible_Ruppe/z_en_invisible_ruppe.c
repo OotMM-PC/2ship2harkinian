@@ -5,6 +5,7 @@
  */
 
 #include "z_en_invisible_ruppe.h"
+#include "2s2h/OotmmXflags.h"
 
 #define FLAGS 0x00000000
 
@@ -58,7 +59,7 @@ void func_80C258A0(EnInvisibleRuppe* this, PlayState* play) {
 
 void func_80C2590C(EnInvisibleRuppe* this, PlayState* play) {
     if (this->collider.base.ocFlags1 & OC1_HIT) {
-        switch (INVISIBLERUPPE_GET_3(&this->actor)) {
+        switch (OotmmXflags_Collect(&this->actor) ? -1 : INVISIBLERUPPE_GET_3(&this->actor)) {
             case 0:
                 Audio_PlaySfx(NA_SE_SY_GET_RUPY);
                 Item_DropCollectible(play, &this->actor.world.pos, 0x8000 | ITEM00_RUPEE_GREEN);
@@ -100,7 +101,8 @@ void EnInvisibleRuppe_Init(Actor* thisx, PlayState* play) {
         this->switchFlag = SWITCH_FLAG_NONE;
     }
 
-    if ((this->switchFlag > SWITCH_FLAG_NONE) && Flags_GetSwitch(play, this->switchFlag)) {
+    if ((this->switchFlag > SWITCH_FLAG_NONE) && Flags_GetSwitch(play, this->switchFlag) &&
+        !OotmmXflags_IsShuffled(&this->actor)) {
         Actor_Kill(&this->actor);
         return;
     }

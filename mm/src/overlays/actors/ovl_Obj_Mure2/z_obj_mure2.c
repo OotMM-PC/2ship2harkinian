@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_mure2.h"
+#include "2s2h/OotmmXflags.h"
 
 #include "2s2h/ShipUtils.h"
 #include "GameInteractor/GameInteractor.h"
@@ -143,6 +144,7 @@ void ObjMure2_SpawnChildren(ObjMure2* this, PlayState* play) {
             this->actors[i] = Actor_SpawnAsChildAndCutscene(
                 &play->actorCtx, play, sActorIds[childType], pos->x, pos->y, pos->z, this->actor.world.rot.x, 0,
                 this->actor.world.rot.z, childParams, this->actor.csId, this->actor.halfDaysBits, NULL);
+            OotmmXflags_TagChild(this->actors[i], &this->actor, i);
             if (GameInteractor_Should(VB_OBJ_MURE2_SET_CHILD_ROOM, this->actors[i] != NULL, this, i)) {
                 this->actors[i]->room = this->actor.room;
             }

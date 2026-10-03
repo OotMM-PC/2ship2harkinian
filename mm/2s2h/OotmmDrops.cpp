@@ -28,6 +28,7 @@ struct Drop {
     // What the drop draws as; differs from the item itself for disguised traps.
     std::string DrawItemId;
     std::string DrawItemName;
+    int CollectibleFlag = -1;
 };
 
 void PickDisguise(std::string& drawItemId, std::string& drawItemName) {
@@ -60,8 +61,7 @@ void Present(const Drop& drop) {
         return;
     }
     const bool collected = OotmmCheckLedger_Contains(drop.CheckId) || OotmmIpc_IsCheckCompleted(drop.CheckId);
-    OotmmIpc_SendCheckCollected(drop.CheckId, !collected);
-    OotmmCheckLedger_Record(drop.CheckId);
+    OotmmDrops_Report(drop.CheckId, drop.ItemId, !collected);
 }
 
 } // namespace
@@ -81,26 +81,74 @@ extern "C" void OotmmDrops_DrawActor(Actor* actor, PlayState* play) {
     GetItem_Draw(play, GID_RUPEE_GREEN);
 }
 
-bool OotmmDrops_Spawn(PlayState* play, float x, float y, float z, const std::string& itemId,
-                      const std::string& itemName, const std::string& itemGame,
-                      const std::string& checkId) {
+namespace {
+
+void Track(Actor* item, Drop drop) {
+    item->draw = OotmmDrops_DrawActor;
+    reinterpret_cast<EnItem00*>(item)->unk152 = kDespawnRefresh;
+    if (Ship::OotmmItemCatalog::IsTrap(drop.ItemId)) {
+        PickDisguise(drop.DrawItemId, drop.DrawItemName);
+    }
+    sDrops.insert_or_assign(item, std::move(drop));
+}
+
+Actor* Spawn(PlayState* play, float x, float y, float z, Drop drop) {
     if (play == nullptr) {
-        return false;
+        return nullptr;
     }
     Vec3f pos = { x, y, z };
     Actor* item = Item_DropCollectible(play, &pos, ITEM00_RUPEE_GREEN);
     if (item == nullptr) {
+        return nullptr;
+    }
+    Track(item, std::move(drop));
+    return item;
+}
+
+Drop PlacementDrop(const Ship::OotmmPlacement& placement, int collectibleFlag) {
+    const std::string& drawItemId = placement.CloakItemId.empty() ? placement.ItemId : placement.CloakItemId;
+    const std::string& drawItemName = placement.CloakItemId.empty() ? placement.ItemName : placement.CloakItemName;
+    return Drop{ placement.ItemId, placement.ItemName, placement.ItemGame, placement.CheckId,
+                 drawItemId,       drawItemName,       collectibleFlag };
+}
+
+} // namespace
+
+bool OotmmDrops_Spawn(PlayState* play, float x, float y, float z, const std::string& itemId,
+                      const std::string& itemName, const std::string& itemGame,
+                      const std::string& checkId) {
+    return Spawn(play, x, y, z, Drop{ itemId, itemName, itemGame, checkId, itemId, itemName, -1 }) != nullptr;
+}
+
+Actor* OotmmDrops_SpawnPlacement(PlayState* play, float x, float y, float z,
+                                 const Ship::OotmmPlacement& placement, int collectibleFlag) {
+    return Spawn(play, x, y, z, PlacementDrop(placement, collectibleFlag));
+}
+
+bool OotmmDrops_Adopt(Actor* actor, const Ship::OotmmPlacement& placement, int collectibleFlag) {
+    if (actor == nullptr || actor->id != ACTOR_EN_ITEM00) {
         return false;
     }
-    item->draw = OotmmDrops_DrawActor;
-    reinterpret_cast<EnItem00*>(item)->unk152 = kDespawnRefresh;
-    std::string drawItemId = itemId;
-    std::string drawItemName = itemName;
-    if (Ship::OotmmItemCatalog::IsTrap(itemId)) {
-        PickDisguise(drawItemId, drawItemName);
-    }
-    sDrops.emplace(item, Drop{ itemId, itemName, itemGame, checkId, drawItemId, drawItemName });
+    Track(actor, PlacementDrop(placement, collectibleFlag));
     return true;
+}
+
+void OotmmDrops_Report(const std::string& checkId, const std::string& itemId, bool present) {
+    const bool fast = Ship::OotmmItemCatalog::IsFast(itemId);
+    OotmmIpc_SendCheckCollected(checkId, present && !fast);
+    OotmmCheckLedger_Record(checkId);
+    if (fast) {
+        Audio_PlaySfx(itemId.find("_RUPEE_") != std::string::npos ? NA_SE_SY_GET_RUPY : NA_SE_SY_GET_BOXITEM);
+    }
+}
+
+bool OotmmDrops_HasCheck(const std::string& checkId) {
+    for (const auto& [actor, drop] : sDrops) {
+        if (drop.CheckId == checkId) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void OotmmDrops_Init() {
@@ -110,6 +158,9 @@ void OotmmDrops_Init() {
         EnItem00* item = va_arg(args, EnItem00*);
         const auto it = sDrops.find(&item->actor);
         if (it != sDrops.end()) {
+            if (it->second.CollectibleFlag >= 0 && gPlayState != nullptr) {
+                Flags_SetCollectible(gPlayState, it->second.CollectibleFlag);
+            }
             Present(it->second);
             Actor_Kill(&item->actor);
             sDrops.erase(it);

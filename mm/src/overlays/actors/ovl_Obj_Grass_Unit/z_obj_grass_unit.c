@@ -12,6 +12,7 @@
  */
 
 #include "z_obj_grass_unit.h"
+#include "2s2h/OotmmXflags.h"
 #include "overlays/actors/ovl_Obj_Grass/z_obj_grass.h"
 #include "overlays/actors/ovl_Obj_Grass_Carry/z_obj_grass_carry.h"
 
@@ -165,6 +166,7 @@ void ObjGrassUnit_Init(Actor* this, PlayState* play2) {
         }
     }
     if (grassGroup->count > 0) {
+        OotmmXflags_TagGrassGroup(&grassManager->actor, grassManager->activeGrassGroups, this);
         grassManager->activeGrassGroups++;
         grassGroup->homePos.x = this->home.pos.x;
         grassGroup->homePos.y = (homePosYSum / grassGroup->count);

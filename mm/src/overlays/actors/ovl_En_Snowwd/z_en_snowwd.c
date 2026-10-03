@@ -5,6 +5,7 @@
  */
 
 #include "z_en_snowwd.h"
+#include "2s2h/OotmmXflags.h"
 #include "objects/object_snowwd/object_snowwd.h"
 #include "GameInteractor/GameInteractor.h"
 
@@ -86,7 +87,8 @@ void EnSnowwd_Idle(EnSnowwd* this, PlayState* play) {
     if (thisx->home.rot.y != 0) {
         this->timer = 21;
         thisx->home.rot.y = 0;
-        if (GameInteractor_Should(VB_TREE_DROP_COLLECTIBLE, !SNOWWD_DROPPED_COLLECTIBLE(&this->actor), this->actor)) {
+        if (!OotmmXflags_Drop(thisx, play) &&
+            GameInteractor_Should(VB_TREE_DROP_COLLECTIBLE, !SNOWWD_DROPPED_COLLECTIBLE(&this->actor), this->actor)) {
             if (SNOWWD_GET_DROP_TABLE(&this->actor) < 16) {
                 pos = thisx->world.pos;
                 pos.y += 200.0f;

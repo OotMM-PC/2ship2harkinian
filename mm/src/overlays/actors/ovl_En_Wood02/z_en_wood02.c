@@ -5,6 +5,7 @@
  */
 
 #include "z_en_wood02.h"
+#include "2s2h/OotmmXflags.h"
 #include "objects/object_wood02/object_wood02.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
@@ -163,6 +164,7 @@ void EnWood02_SpawnOffspring(EnWood02* this, PlayState* play) {
                                                       childPos.y, childPos.z, this->actor.world.rot.x,
                                                       sWood02SpawnAngle[i], unk, childParams);
                 if (child != NULL) {
+                    OotmmXflags_TagChild(&child->actor, &this->actor, i + 1);
                     child->unk_14A[0] = i;
                     this->unk_14A[i] |= 1;
                     child->actor.projectedPos = this->actor.projectedPos;
@@ -345,6 +347,9 @@ void func_808C4458(EnWood02* this, PlayState* play, Vec3f* arg2, u16 arg3) {
     s32 pad[2];
     s32 sp24;
 
+    if (OotmmXflags_Drop(&this->actor, play)) {
+        return;
+    }
     if (this->unk_148 != 0) {
         if ((this->unk_144 == -1) || !Flags_GetCollectible(play, this->unk_144)) {
             if ((this->unk_148 < 0) && (this->unk_148 >= -0x10)) {

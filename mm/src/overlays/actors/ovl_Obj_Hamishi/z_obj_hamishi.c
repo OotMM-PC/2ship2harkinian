@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_hamishi.h"
+#include "2s2h/OotmmXflags.h"
 #include "objects/gameplay_field_keep/gameplay_field_keep.h"
 
 #include "2s2h/ShipUtils.h"
@@ -231,6 +232,7 @@ void ObjHamishi_Update(Actor* thisx, PlayState* play) {
                 this->unk_194 = 400.0f;
             } else {
                 func_809A10F4(this, play);
+                OotmmXflags_Drop(&this->actor, play);
                 SoundSource_PlaySfxAtFixedWorldPos(play, &this->actor.world.pos, 40, NA_SE_EV_WALL_BROKEN);
                 Flags_SetSwitch(play, OBJHAMISHI_GET_SWITCH_FLAG(&this->actor));
                 Actor_Kill(&this->actor);

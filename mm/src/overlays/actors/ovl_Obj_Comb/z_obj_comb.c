@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_comb.h"
+#include "2s2h/OotmmXflags.h"
 #include "objects/object_comb/object_comb.h"
 
 #define FLAGS 0x00000000
@@ -315,6 +316,9 @@ void func_8098D99C(ObjComb* this, PlayState* play) {
 void func_8098DA74(ObjComb* this, PlayState* play) {
     s32 temp_v0 = OBJCOMB_GET_8000(&this->actor) | OBJCOMB_GET_80(&this->actor);
 
+    if (OotmmXflags_DropStill(&this->actor, play)) {
+        return;
+    }
     if (temp_v0 == 0) {
         func_8098D870(this, play);
     } else if (temp_v0 == 1) {

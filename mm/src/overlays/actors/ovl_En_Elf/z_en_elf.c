@@ -5,6 +5,7 @@
  */
 
 #include "z_en_elf.h"
+#include "2s2h/OotmmXflags.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED | ACTOR_FLAG_UPDATE_DURING_OCARINA)
 
@@ -437,9 +438,11 @@ void EnElf_Init(Actor* thisx, PlayState* play2) {
                 s32 i;
 
                 for (i = 0; i < 8; i++) {
+                    OotmmXflags_PrepareSpawn(thisx, i);
                     Actor_Spawn(&play->actorCtx, play, ACTOR_EN_ELF, thisx->world.pos.x, thisx->world.pos.y - 30.0f,
                                 thisx->world.pos.z, 0, 0, 0, FAIRY_PARAMS(FAIRY_TYPE_6, false, 0));
                 }
+                OotmmXflags_ClearSpawn();
             }
             break;
 
@@ -676,11 +679,13 @@ void func_8088DD34(EnElf* this, PlayState* play) {
 
     if ((this->fairyFlags & 0x1000) && (heightDiff > 0.0f) && (heightDiff < 60.0f) &&
         !func_8088C804(&this->actor.world.pos, &playerActor->world.pos, 10.0f)) {
-        Health_ChangeBy(play, 0x80);
-        if (this->fairyFlags & 0x200) {
-            Magic_Add(play, MAGIC_FILL_TO_CAPACITY);
+        if (!OotmmXflags_Collect(&this->actor)) {
+            Health_ChangeBy(play, 0x80);
+            if (this->fairyFlags & 0x200) {
+                Magic_Add(play, MAGIC_FILL_TO_CAPACITY);
+            }
+            gSaveContext.jinxTimer = 0;
         }
-        gSaveContext.jinxTimer = 0;
         this->unk_254 = 50.0f;
         this->unk_248 = playerActor->shape.rot.y;
         this->unk_24C = -0x1000;

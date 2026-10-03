@@ -5,6 +5,7 @@
  */
 
 #include "z_en_tubo_trap.h"
+#include "2s2h/OotmmXflags.h"
 #include "objects/gameplay_dangeon_keep/gameplay_dangeon_keep.h"
 
 #define FLAGS 0x00000000
@@ -78,6 +79,9 @@ void EnTuboTrap_DropCollectible(EnTuboTrap* this, PlayState* play) {
     s32 itemParam = ((this->actor.params >> 8) & 0x3F);
     s32 dropItem00Id = func_800A8150(itemParam);
 
+    if (OotmmXflags_Drop(&this->actor, play)) {
+        return;
+    }
     if (dropItem00Id > ITEM00_NO_DROP) {
         Item_DropCollectible(play, &this->actor.world.pos, ((this->actor.params & 0x7F) << 8) | dropItem00Id);
     }

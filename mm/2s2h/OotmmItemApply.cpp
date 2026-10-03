@@ -259,6 +259,7 @@ int16_t RupeeValue(std::string_view suffix) {
     if (suffix.find("BLUE") != std::string_view::npos) return 5;
     if (suffix.find("RED") != std::string_view::npos) return 20;
     if (suffix.find("PURPLE") != std::string_view::npos) return 50;
+    if (suffix.find("SILVER") != std::string_view::npos) return 100;
     if (suffix.find("GOLD") != std::string_view::npos) return 200;
     if (suffix.find("HUGE") != std::string_view::npos) return 200;
     if (suffix.find("RAINBOW") != std::string_view::npos) return 999;
