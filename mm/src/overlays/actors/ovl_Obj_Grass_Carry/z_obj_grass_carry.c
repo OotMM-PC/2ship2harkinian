@@ -8,6 +8,7 @@
 #include "objects/gameplay_field_keep/gameplay_field_keep.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "overlays/actors/ovl_Obj_Grass/z_obj_grass.h"
+#include "2s2h/OotmmXflags.h"
 #include "GameInteractor/GameInteractor.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED | ACTOR_FLAG_THROW_ONLY)
@@ -361,5 +362,5 @@ void ObjGrassCarry_Update(Actor* thisx, PlayState* play) {
 }
 
 void ObjGrassCarry_Draw(Actor* this, PlayState* play) {
-    Gfx_DrawDListOpa(play, gKusaBushType1DL);
+    Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_GrassCarryCsmcDL(this, gKusaBushType1DL));
 }

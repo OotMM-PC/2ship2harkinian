@@ -798,7 +798,7 @@ void ObjSnowball_Update(Actor* thisx, PlayState* play) {
 void ObjSnowball_Draw(Actor* thisx, PlayState* play) {
     ObjSnowball* this = (ObjSnowball*)thisx;
 
-    Gfx_DrawDListOpa(play, object_goroiwa_DL_008B90);
+    Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(thisx, "Snowball", object_goroiwa_DL_008B90));
 }
 
 void func_80B04D34(Actor* thisx, PlayState* play) {

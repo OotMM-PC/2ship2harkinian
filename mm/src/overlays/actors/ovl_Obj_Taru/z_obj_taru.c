@@ -10,6 +10,7 @@
 #include "overlays/actors/ovl_Obj_Tsubo/z_obj_tsubo.h"
 #include "objects/object_taru/object_taru.h"
 #include "objects/object_kibako2/object_kibako2.h"
+#include "2s2h/OotmmXflags.h"
 #include "GameInteractor/GameInteractor.h"
 
 #define FLAGS 0x00000000
@@ -342,7 +343,7 @@ void ObjTaru_Draw(Actor* thisx, PlayState* play) {
     if (OBJ_TARU_GET_80(thisx)) {
         dList = gObjTaruBreakablePiratePanelDL;
     } else {
-        dList = gObjTaruBarrelDL;
+        dList = (Gfx*)OotmmXflags_CsmcDL(thisx, "Barrel", gObjTaruBarrelDL);
     }
     Gfx_DrawDListOpa(play, dList);
 }

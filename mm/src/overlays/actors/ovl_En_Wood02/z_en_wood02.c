@@ -501,6 +501,13 @@ void EnWood02_Draw(Actor* thisx, PlayState* play) {
         red = green = blue = 255;
     }
 
+    u8 csmcColor[3];
+    if (OotmmXflags_TreeColor(thisx, csmcColor)) {
+        red = csmcColor[0];
+        green = csmcColor[1];
+        blue = csmcColor[2];
+    }
+
     Gfx_SetupDL25_Xlu(gfxCtx);
 
     if ((thisx->params == WOOD_LEAF_GREEN) || (thisx->params == WOOD_LEAF_YELLOW)) {
@@ -514,12 +521,16 @@ void EnWood02_Draw(Actor* thisx, PlayState* play) {
 
         gDPSetEnvColor(POLY_XLU_DISP++, red, green, blue, 0);
         MATRIX_FINALIZE_AND_LOAD(POLY_XLU_DISP++, gfxCtx);
-        gSPDisplayList(POLY_XLU_DISP++, D_808C4D70[this->drawType & 0xF]);
+        gSPDisplayList(POLY_XLU_DISP++, (this->drawType & 0xF) == WOOD_DRAW_TREE_CONICAL
+                                            ? (Gfx*)OotmmXflags_CsmcDL(thisx, "Wood02", D_808C4D70[WOOD_DRAW_TREE_CONICAL])
+                                            : D_808C4D70[this->drawType & 0xF]);
     } else {
         Gfx_SetupDL25_Xlu(gfxCtx);
 
         MATRIX_FINALIZE_AND_LOAD(POLY_XLU_DISP++, gfxCtx);
-        gSPDisplayList(POLY_XLU_DISP++, D_808C4D54[this->drawType & 0xF]);
+        gSPDisplayList(POLY_XLU_DISP++, (this->drawType & 0xF) == WOOD_DRAW_BUSH_GREEN
+                                            ? (Gfx*)OotmmXflags_CsmcDL(thisx, "Wood02Bush", D_808C4D54[WOOD_DRAW_BUSH_GREEN])
+                                            : D_808C4D54[this->drawType & 0xF]);
     }
 
     CLOSE_DISPS(gfxCtx);

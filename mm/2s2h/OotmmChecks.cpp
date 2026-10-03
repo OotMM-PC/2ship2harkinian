@@ -1,5 +1,6 @@
 #include "OotmmChecks.h"
 #include "OotmmCheckLedger.h"
+#include "OotmmCsmc.h"
 #include "OotmmDrops.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -164,6 +165,22 @@ void SweepSavedChests() {
 
 } // namespace
 
+extern "C" void* OotmmChecks_SkulltulaDL(Actor* skulltula, const char* part, void* vanilla) {
+    if (gPlayState == nullptr || OotmmSession_GetState().GetStringSetting("housesSkulltulaTokens", "none") == "none") {
+        return vanilla;
+    }
+    void* dl = OotmmCsmc_SkulltulaDL(FindToken(skulltula, gPlayState), part);
+    return dl != nullptr ? dl : vanilla;
+}
+
+extern "C" void* OotmmChecks_CowRingDL(Actor* cow, void* vanilla) {
+    if (gPlayState == nullptr || !OotmmSession_GetState().GetBoolSetting("cowShuffleMm", false)) {
+        return nullptr;
+    }
+    const auto* placement = FindCow(cow, gPlayState);
+    return OotmmCsmc_CowRingDL(placement, placement != nullptr && IsCollected(*placement), vanilla);
+}
+
 extern "C" int OotmmChecks_HeartPieceDone(PlayState* play, Actor* actor, int vanillaDone) {
     if (play == nullptr || actor->params != ITEM00_HEART_PIECE) {
         return vanillaDone;
@@ -200,7 +217,7 @@ extern "C" int OotmmChecks_TryCollectBossContainer(Actor* actor, PlayState* play
         play->transitionTrigger != TRANS_TRIGGER_OFF || Player_InBlockingCsMode(play, player) ||
         (player->stateFlags1 &
          (PLAYER_STATE1_DEAD | PLAYER_STATE1_400 | PLAYER_STATE1_TALKING | PLAYER_STATE1_20000000)) ||
-        player->getItemId > GI_NONE) {
+        OotmmItemPresentation_PlayerReceiving(player)) {
         return 0;
     }
     Report(*placement, true);

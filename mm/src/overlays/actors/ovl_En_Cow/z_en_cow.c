@@ -9,6 +9,7 @@
 #include "z64voice.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmChecks.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
 
@@ -413,7 +414,7 @@ s32 EnCow_OverrideLimbDraw(PlayState* play, s32 limbIndex, Gfx** dList, Vec3f* p
         rot->x += this->headTilt.x;
     }
     if (limbIndex == COW_LIMB_NOSE_RING) {
-        *dList = NULL;
+        *dList = (Gfx*)OotmmChecks_CowRingDL(&this->actor, gCowNoseRingDL);
     }
 
     return false;

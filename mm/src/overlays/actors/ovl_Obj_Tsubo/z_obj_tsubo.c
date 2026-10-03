@@ -9,6 +9,7 @@
 #include "objects/gameplay_dangeon_keep/gameplay_dangeon_keep.h"
 #include "objects/object_tsubo/object_tsubo.h"
 #include "objects/object_racetsubo/object_racetsubo.h"
+#include "2s2h/OotmmXflags.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -706,5 +707,5 @@ void ObjTsubo_Update(Actor* thisx, PlayState* play) {
 void ObjTsubo_Draw(Actor* thisx, PlayState* play2) {
     PlayState* play = play2;
 
-    Gfx_DrawDListOpa(play, sPotTypeData[OBJ_TSUBO_GET_TYPE(thisx)].modelDL);
+    Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(thisx, "Pot", sPotTypeData[OBJ_TSUBO_GET_TYPE(thisx)].modelDL));
 }

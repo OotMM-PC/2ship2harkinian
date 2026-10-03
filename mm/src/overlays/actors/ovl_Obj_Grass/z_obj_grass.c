@@ -14,6 +14,7 @@
 #include "2s2h/ShipUtils.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include <libultraship/bridge/consolevariablebridge.h>
+#include "2s2h/OotmmXflags.h"
 #include "GameInteractor/GameInteractor.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED)
@@ -499,7 +500,13 @@ void ObjGrass_DrawOpa(Actor* thisx, PlayState* play2) {
                         }
 
                         MATRIX_FINALIZE_AND_LOAD(POLY_OPA_DISP++, play->state.gfxCtx);
-                        gSPDisplayList(POLY_OPA_DISP++, gObjGrass_D_809AAAE0);
+                        Gfx* csmc = OotmmXflags_GrassCsmcDL(thisx, i, j, NULL);
+                        if (csmc != NULL) {
+                            gSPDisplayList(POLY_OPA_DISP++, csmc);
+                            gSPDisplayList(POLY_OPA_DISP++, gObjGrass_D_809AA9F0);
+                        } else {
+                            gSPDisplayList(POLY_OPA_DISP++, gObjGrass_D_809AAAE0);
+                        }
                     }
                     FrameInterpolation_RecordCloseChild();
                 }

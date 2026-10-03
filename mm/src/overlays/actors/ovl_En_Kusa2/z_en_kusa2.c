@@ -1386,7 +1386,7 @@ void EnKusa2_Draw(Actor* thisx, PlayState* play) {
             (this->actor.projectedPos.z < 400.0f)) {
             func_80A5B954(&D_80A60908[this->unk_1CE], 0.0015f);
         }
-        Gfx_DrawDListOpa(play, gKusaBushType1DL);
+        Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(thisx, "Bush", gKusaBushType1DL));
     } else if (this->actor.projectedPos.z < 1300.0f) {
         func_80A5E80C(play, (1300.0f - this->actor.projectedPos.z) * 2.55f);
     }

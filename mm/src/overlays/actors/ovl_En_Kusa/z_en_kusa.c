@@ -12,6 +12,7 @@
 #include "overlays/actors/ovl_En_Insect/z_en_insect.h"
 
 #include "2s2h/ShipUtils.h"
+#include "2s2h/OotmmXflags.h"
 #include "GameInteractor/GameInteractor.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_THROW_ONLY)
@@ -720,7 +721,7 @@ void EnKusa_DrawBush(Actor* thisx, PlayState* play2) {
             EnKusa_ApplySway(&D_80936AD8[this->kusaMtxIdx]);
         }
 
-        Gfx_DrawDListOpa(play, gKusaBushType1DL);
+        Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(thisx, "Bush", gKusaBushType1DL));
 
     } else if (this->actor.projectedPos.z < 1300.0f) {
         s32 alpha;
@@ -751,6 +752,6 @@ void EnKusa_DrawGrass(Actor* thisx, PlayState* play) {
                 EnKusa_ApplySway(&D_80936AD8[this->kusaMtxIdx]);
             }
         }
-        Gfx_DrawDListOpa(play, gKusaSproutDL);
+        Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(thisx, "Grass", gKusaSproutDL));
     }
 }

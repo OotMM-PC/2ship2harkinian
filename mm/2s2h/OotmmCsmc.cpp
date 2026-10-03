@@ -9,6 +9,7 @@
 
 #include <libultraship/bridge/OotmmCsmc.h>
 
+#include <string>
 #include <unordered_map>
 
 extern "C" {
@@ -113,7 +114,109 @@ void CsmcPostLimbDraw(PlayState* play, s32 limbIndex, Gfx** dList, Vec3s* rot, A
     }
 }
 
+bool Revealing() {
+    const auto mode = Ship::OotmmCsmc_Mode(OotmmSession_GetState());
+    return mode == Ship::OotmmCsmcMode::Always || (mode == Ship::OotmmCsmcMode::Agony && HasAgonyStone());
+}
+
+Ship::OotmmCsmcClass RevealedClass(const Ship::OotmmPlacement& placement) {
+    return Ship::OotmmCsmc_Classify(OotmmSession_GetState(), Ship::OotmmGame::Mm, placement, true);
+}
+
+Ship::OotmmCsmcClass ContainerClass(const Ship::OotmmPlacement& placement) {
+    return Revealing() ? RevealedClass(placement) : Ship::OotmmCsmcClass::Major;
+}
+
+void* LoadCsmcDL(const char* family, const char* category) {
+    const std::string path = std::string("__OTR__objects/ootmm_csmc/gCsmc") + family + category + "DL";
+    return ResourceMgr_LoadGfxByName(path.c_str());
+}
+
+const char* ContainerCategory(Ship::OotmmCsmcClass itemClass) {
+    switch (itemClass) {
+        case Ship::OotmmCsmcClass::BossKey:
+            return "BossKey";
+        case Ship::OotmmCsmcClass::Major:
+            return "Major";
+        case Ship::OotmmCsmcClass::Key:
+            return "Key";
+        case Ship::OotmmCsmcClass::Spider:
+            return "Spider";
+        case Ship::OotmmCsmcClass::Fairy:
+            return "Fairy";
+        case Ship::OotmmCsmcClass::Heart:
+            return "Heart";
+        case Ship::OotmmCsmcClass::Soul:
+            return "Soul";
+        case Ship::OotmmCsmcClass::MapCompass:
+            return "Map";
+        default:
+            return nullptr;
+    }
+}
+
 } // namespace
+
+void* OotmmCsmc_ContainerDL(const Ship::OotmmPlacement& placement, const char* family) {
+    const char* category = ContainerCategory(ContainerClass(placement));
+    return category != nullptr ? LoadCsmcDL(family, category) : nullptr;
+}
+
+void* OotmmCsmc_SkulltulaDL(const Ship::OotmmPlacement* placement, const char* part) {
+    if (placement == nullptr || !Revealing() || !OotmmSession_GetState().GetBoolSetting("csmcSkulltula", false)) {
+        return nullptr;
+    }
+    const auto itemClass = RevealedClass(*placement);
+    if (itemClass == Ship::OotmmCsmcClass::Major) {
+        return nullptr;
+    }
+    const char* category = itemClass == Ship::OotmmCsmcClass::Normal ? "Normal" : ContainerCategory(itemClass);
+    return category != nullptr ? LoadCsmcDL(part, category) : nullptr;
+}
+
+void* OotmmCsmc_CowRingDL(const Ship::OotmmPlacement* placement, bool collected, void* vanilla) {
+    if (placement == nullptr) {
+        return nullptr;
+    }
+    const bool renewable = Ship::OotmmCsmc_IsRenewable(placement->ItemId);
+    if (collected && !renewable) {
+        return nullptr;
+    }
+    if (!Revealing() || !OotmmSession_GetState().GetBoolSetting("csmcCow", false)) {
+        return vanilla;
+    }
+    const auto itemClass = RevealedClass(*placement);
+    const char* category = itemClass == Ship::OotmmCsmcClass::Normal ? (renewable ? "Renewable" : "Normal")
+                                                                      : ContainerCategory(itemClass);
+    void* dl = category != nullptr ? LoadCsmcDL("CowRing", category) : nullptr;
+    return dl != nullptr ? dl : vanilla;
+}
+
+uint32_t OotmmCsmc_TreeColor(const Ship::OotmmPlacement* placement) {
+    if (placement == nullptr) {
+        return 0x32AA46;
+    }
+    switch (ContainerClass(*placement)) {
+        case Ship::OotmmCsmcClass::BossKey:
+            return 0x0000FF;
+        case Ship::OotmmCsmcClass::Major:
+            return 0xFFFF00;
+        case Ship::OotmmCsmcClass::Key:
+            return 0x444444;
+        case Ship::OotmmCsmcClass::Spider:
+            return 0xFFFFFF;
+        case Ship::OotmmCsmcClass::Fairy:
+            return 0xFF7AFB;
+        case Ship::OotmmCsmcClass::Heart:
+            return 0xFF0000;
+        case Ship::OotmmCsmcClass::Soul:
+            return 0x340B9C;
+        case Ship::OotmmCsmcClass::MapCompass:
+            return 0xC75000;
+        default:
+            return 0x32AA46;
+    }
+}
 
 // At global scope so OPEN_DISPS's block-scope FrameInterpolation declarations
 // redeclare the extern "C" functions instead of minting namespace-local ones.
@@ -185,4 +288,57 @@ void OotmmCsmc_Init() {
             Actor_SetScale(actor, large ? 0.01f : 0.0075f);
             Actor_SetFocus(actor, large ? 40.0f : 20.0f);
         });
+}
+
+void OotmmCsmc_DrawGlitter(PlayState* play, Actor* actor, const Ship::OotmmPlacement& placement) {
+    static Vtx sVtx[] = {
+        VTX(-10, -10, 0, 0, 0, 0xFF, 0xFF, 0xFF, 0xFF),
+        VTX(10, -10, 0, 0x400, 0, 0xFF, 0xFF, 0xFF, 0xFF),
+        VTX(10, 10, 0, 0x400, 0x400, 0xFF, 0xFF, 0xFF, 0xFF),
+        VTX(-10, 10, 0, 0, 0x400, 0xFF, 0xFF, 0xFF, 0xFF),
+    };
+    const float distance = actor->xzDistToPlayer;
+    if (distance > 1000.0f) {
+        return;
+    }
+    const float alpha = distance <= 300.0f ? 1.0f : (1000.0f - distance) / 700.0f;
+    const float alphaNoZ = distance > 600.0f ? 0.0f : distance <= 300.0f ? 1.0f : (600.0f - distance) / 300.0f;
+
+    const auto& state = OotmmSession_GetState();
+    const auto mode = Ship::OotmmCsmc_Mode(state);
+    const bool enabled = mode == Ship::OotmmCsmcMode::Always ||
+                         (mode == Ship::OotmmCsmcMode::Agony && HasAgonyStone());
+    const uint32_t color = Ship::OotmmCsmc_GlitterColor(
+        Ship::OotmmCsmc_Classify(state, Ship::OotmmGame::Mm, placement, true), enabled);
+    const u8 r = (color >> 16) & 0xFF;
+    const u8 g = (color >> 8) & 0xFF;
+    const u8 b = color & 0xFF;
+
+    Matrix_Translate(actor->world.pos.x, actor->world.pos.y, actor->world.pos.z, MTXMODE_NEW);
+    Matrix_ReplaceRotation(&play->billboardMtxF);
+    Matrix_Translate(0.0f, 20.0f, 0.0f, MTXMODE_APPLY);
+
+    OPEN_DISPS(play->state.gfxCtx);
+    MATRIX_FINALIZE_AND_LOAD(POLY_XLU_DISP++, play->state.gfxCtx);
+    gDPPipeSync(POLY_XLU_DISP++);
+    gDPSetCycleType(POLY_XLU_DISP++, G_CYC_2CYCLE);
+    gDPSetTextureLUT(POLY_XLU_DISP++, G_TT_NONE);
+    gSPTexture(POLY_XLU_DISP++, 0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+    gDPLoadTextureBlock_4b(POLY_XLU_DISP++, Ship::OotmmCsmc_GlitterFrame(play->gameplayFrames), G_IM_FMT_I, 32, 32, 0,
+                           G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMIRROR | G_TX_CLAMP, G_TX_NOMASK, G_TX_NOMASK,
+                           G_TX_NOLOD, G_TX_NOLOD);
+    gDPSetCombineLERP(POLY_XLU_DISP++, 0, 0, 0, PRIMITIVE, TEXEL0, 0, PRIMITIVE, 0, 0, 0, 0, COMBINED, 0, 0, 0,
+                      COMBINED);
+    gDPSetRenderMode(POLY_XLU_DISP++, G_RM_PASS, G_RM_AA_ZB_XLU_SURF2);
+    gSPClearGeometryMode(POLY_XLU_DISP++, G_CULL_BACK | G_FOG | G_LIGHTING | G_TEXTURE_GEN | G_TEXTURE_GEN_LINEAR);
+    gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, r, g, b, static_cast<u8>(alpha * 0.9f * 255));
+    gSPVertex(POLY_XLU_DISP++, reinterpret_cast<uintptr_t>(sVtx), 4, 0);
+    gSP2Triangles(POLY_XLU_DISP++, 0, 2, 1, 0, 0, 3, 2, 0);
+    if (alphaNoZ > 0.0f) {
+        gSPClearGeometryMode(POLY_XLU_DISP++, G_ZBUFFER);
+        gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, r, g, b, static_cast<u8>(alphaNoZ * 0.25f * 255));
+        gSP2Triangles(POLY_XLU_DISP++, 0, 2, 1, 0, 0, 3, 2, 0);
+        gSPSetGeometryMode(POLY_XLU_DISP++, G_ZBUFFER);
+    }
+    CLOSE_DISPS(play->state.gfxCtx);
 }

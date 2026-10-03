@@ -7,6 +7,7 @@
 #include "z_obj_kibako.h"
 #include "objects/gameplay_dangeon_keep/gameplay_dangeon_keep.h"
 #include "objects/object_kibako/object_kibako.h"
+#include "2s2h/OotmmXflags.h"
 #include "GameInteractor/GameInteractor.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_CAN_PRESS_SWITCHES)
@@ -431,5 +432,5 @@ void ObjKibako_Update(Actor* thisx, PlayState* play) {
 }
 
 void ObjKibako_Draw(Actor* thisx, PlayState* play) {
-    Gfx_DrawDListOpa(play, sDisplayLists[KIBAKO_BANK_INDEX(thisx)]);
+    Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(thisx, "SmallCrate", sDisplayLists[KIBAKO_BANK_INDEX(thisx)]));
 }

@@ -4,6 +4,7 @@
 #include "2s2h/ObjectExtension/ActorListIndex.h"
 #include "2s2h/ObjectExtension/ObjectExtension.h"
 #include "OotmmCheckLedger.h"
+#include "OotmmCsmc.h"
 #include "OotmmDrops.h"
 #include "OotmmIpc.h"
 #include "OotmmItemModels.h"
@@ -22,6 +23,7 @@ extern "C" {
 #include "overlays/actors/ovl_Obj_Grass_Carry/z_obj_grass_carry.h"
 
 extern PlayState* gPlayState;
+Gfx* ResourceMgr_LoadGfxByName(const char* path);
 }
 
 namespace {
@@ -415,6 +417,7 @@ std::optional<Xflag> Resolve(Actor* actor) {
     if (!Alias(actor, xf)) {
         return std::nullopt;
     }
+    ObjectExtension::GetInstance().Set<XflagTag>(actor, XflagTag{ xf });
     return xf;
 }
 
@@ -543,6 +546,37 @@ void DrawFairy(Actor* actor, PlayState* play) {
                             cloaked ? placement->CloakItemName : placement->ItemName);
 }
 
+void DrawGlitter(Actor* actor, PlayState* play) {
+    constexpr int kHitTagSlices = 3;
+    std::array<const Ship::OotmmPlacement*, kHitTagSlices> pending{};
+    int count = 0;
+    if (actor->id == ACTOR_EN_HIT_TAG) {
+        for (int slice = 0; slice < kHitTagSlices; slice++) {
+            if (const auto* placement = Pending(Sliced(actor, slice))) {
+                pending[count++] = placement;
+            }
+        }
+    } else if (const auto* placement = Pending(Resolve(actor))) {
+        pending[count++] = placement;
+    }
+    if (count == 0) {
+        actor->draw = nullptr;
+        return;
+    }
+    const int index = count == 1 ? 0 : static_cast<int>(play->gameplayFrames % 12) / (12 / count);
+    OotmmCsmc_DrawGlitter(play, actor, *pending[index]);
+}
+
+void AdoptGlitter(Actor* actor) {
+    if (actor->draw != nullptr) {
+        return;
+    }
+    if ((actor->id == ACTOR_EN_INVISIBLE_RUPPE && Pending(Resolve(actor)) != nullptr) ||
+        (actor->id == ACTOR_EN_HIT_TAG && OotmmXflags_IsAnySliceShuffled(actor, 3))) {
+        actor->draw = DrawGlitter;
+    }
+}
+
 void AdoptFairy(Actor* actor) {
     if (actor == nullptr || actor->id != ACTOR_EN_ELF) {
         return;
@@ -561,6 +595,63 @@ bool DropActor(Actor* actor, PlayState* play) {
 }
 
 } // namespace
+
+extern "C" void* OotmmXflags_CsmcDL(Actor* actor, const char* family, void* vanilla) {
+    const auto* placement = Pending(Resolve(actor));
+    void* dl = placement != nullptr ? OotmmCsmc_ContainerDL(*placement, family) : nullptr;
+    return dl != nullptr ? dl : vanilla;
+}
+
+extern "C" void* OotmmXflags_CsmcSliceDL(Actor* actor, int slice, const char* family, void* vanilla) {
+    const auto* placement = Pending(Sliced(actor, slice));
+    void* dl = placement != nullptr ? OotmmCsmc_ContainerDL(*placement, family) : nullptr;
+    return dl != nullptr ? dl : vanilla;
+}
+
+extern "C" void* OotmmXflags_PalmTreeDL(Actor* actor, void* vanilla) {
+    if (Pending(Resolve(actor)) == nullptr) {
+        return vanilla;
+    }
+    void* dl = ResourceMgr_LoadGfxByName("__OTR__objects/ootmm_yasi/gPalmTreeShuffledDL");
+    return dl != nullptr ? dl : vanilla;
+}
+
+extern "C" int OotmmXflags_DrawItem(Actor* actor, PlayState* play) {
+    const auto* placement = Pending(Resolve(actor));
+    if (placement == nullptr) {
+        return 0;
+    }
+    const bool cloaked = !placement->CloakItemId.empty();
+    OotmmItemModel_DrawById(play, cloaked ? placement->CloakItemId : placement->ItemId,
+                            cloaked ? placement->CloakItemName : placement->ItemName);
+    return 1;
+}
+
+extern "C" void* OotmmXflags_GrassCsmcDL(Actor* manager, int group, int element, void* vanilla) {
+    auto* grass = reinterpret_cast<ObjGrass*>(manager);
+    const auto* placement = Pending(GrassElementXflag(grass, &grass->grassGroups[group].elements[element]));
+    void* dl = placement != nullptr ? OotmmCsmc_ContainerDL(*placement, "Bush") : nullptr;
+    return dl != nullptr ? dl : vanilla;
+}
+
+extern "C" void* OotmmXflags_GrassCarryCsmcDL(Actor* carry, void* vanilla) {
+    auto* grass = reinterpret_cast<ObjGrassCarry*>(carry);
+    const auto* placement = Pending(GrassElementXflag(grass->grassManager, grass->grassElem));
+    void* dl = placement != nullptr ? OotmmCsmc_ContainerDL(*placement, "Bush") : nullptr;
+    return dl != nullptr ? dl : vanilla;
+}
+
+extern "C" int OotmmXflags_TreeColor(Actor* actor, unsigned char* rgb) {
+    const auto xf = Resolve(actor);
+    if (!xf.has_value() || Lookup(*xf) == nullptr) {
+        return 0;
+    }
+    const uint32_t color = OotmmCsmc_TreeColor(Pending(xf));
+    rgb[0] = (color >> 16) & 0xFF;
+    rgb[1] = (color >> 8) & 0xFF;
+    rgb[2] = color & 0xFF;
+    return 1;
+}
 
 extern "C" int OotmmXflags_IsShuffled(Actor* actor) {
     return Pending(Resolve(actor)) != nullptr;
@@ -688,6 +779,7 @@ void OotmmXflags_Init() {
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorInit>([](Actor* actor) {
         AdoptFreestanding(actor);
         AdoptFairy(actor);
+        AdoptGlitter(actor);
     });
     REGISTER_VB_SHOULD(VB_POT_DROP_COLLECTIBLE, {
         if (DropActor(va_arg(args, Actor*), gPlayState)) {

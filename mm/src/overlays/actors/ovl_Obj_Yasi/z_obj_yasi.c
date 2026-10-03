@@ -97,5 +97,13 @@ void ObjYasi_Draw(Actor* thisx, PlayState* play) {
     }
 
     Matrix_Scale(0.1f, 0.1f, 0.1f, MTXMODE_APPLY);
-    Gfx_DrawDListOpa(play, gPalmTreeDL);
+    Gfx* tree = (Gfx*)OotmmXflags_PalmTreeDL(thisx, gPalmTreeDL);
+    Gfx_DrawDListOpa(play, tree);
+    if (tree != gPalmTreeDL) {
+        Matrix_Translate(this->dyna.actor.world.pos.x + 5.0f, this->dyna.actor.world.pos.y + 290.0f,
+                         this->dyna.actor.world.pos.z, MTXMODE_NEW);
+        Matrix_Scale(0.5f, 0.5f, 0.5f, MTXMODE_APPLY);
+        Matrix_RotateYS(this->dyna.actor.shape.rot.y, MTXMODE_APPLY);
+        OotmmXflags_DrawItem(thisx, play);
+    }
 }

@@ -6,6 +6,7 @@
 
 #include "z_en_sw.h"
 #include "overlays/actors/ovl_En_Clear_Tag/z_en_clear_tag.h"
+#include "2s2h/OotmmChecks.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOSTILE)
 
@@ -1275,11 +1276,11 @@ s32 EnSw_OverrideLimbDraw(PlayState* play, s32 limbIndex, Gfx** dList, Vec3f* po
                 break;
 
             case OBJECT_ST_LIMB_05:
-                *dList = object_st_DL_003FB0;
+                *dList = (Gfx*)OotmmChecks_SkulltulaDL(&this->actor, "GsBody", object_st_DL_003FB0);
                 break;
 
             case OBJECT_ST_LIMB_04:
-                *dList = object_st_DL_0043D8;
+                *dList = (Gfx*)OotmmChecks_SkulltulaDL(&this->actor, "GsHead", object_st_DL_0043D8);
                 break;
 
             default:

@@ -127,6 +127,10 @@ void OotmmItemPresentation_Queue(Ship::GameIpcItemPresentation presentation) {
     });
 }
 
+bool OotmmItemPresentation_PlayerReceiving(const Player* player) {
+    return player->getItemId > GI_NONE && player->getItemId < GI_MAX;
+}
+
 bool OotmmItemPresentation_IsDelivering(const std::string& checkId) {
     return sDeliveredChecks.contains("mm:" + checkId);
 }

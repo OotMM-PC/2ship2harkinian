@@ -192,7 +192,7 @@ void ObjTree_Draw(Actor* thisx, PlayState* play) {
 
     Matrix_RotateZYX(xRot, 0, zRot, MTXMODE_APPLY);
     MATRIX_FINALIZE_AND_LOAD(POLY_OPA_DISP++, play->state.gfxCtx);
-    gSPDisplayList(POLY_OPA_DISP++, gTreeLeavesDL);
+    gSPDisplayList(POLY_OPA_DISP++, (Gfx*)OotmmXflags_CsmcDL(thisx, "Tree", gTreeLeavesDL));
 
     CLOSE_DISPS(play->state.gfxCtx);
 }

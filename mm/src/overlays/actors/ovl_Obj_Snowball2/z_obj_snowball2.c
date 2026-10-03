@@ -7,6 +7,7 @@
 #include "z_obj_snowball2.h"
 #include "objects/object_goroiwa/object_goroiwa.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmXflags.h"
 
 #define FLAGS (ACTOR_FLAG_THROW_ONLY)
 
@@ -629,5 +630,5 @@ void ObjSnowball2_Update(Actor* thisx, PlayState* play) {
 void ObjSnowball2_Draw(Actor* thisx, PlayState* play) {
     ObjSnowball2* this = (ObjSnowball2*)thisx;
 
-    Gfx_DrawDListOpa(play, object_goroiwa_DL_008B90);
+    Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(thisx, "Snowball", object_goroiwa_DL_008B90));
 }

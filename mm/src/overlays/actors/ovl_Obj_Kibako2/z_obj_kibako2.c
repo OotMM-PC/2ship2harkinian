@@ -7,6 +7,7 @@
 #include "z_obj_kibako2.h"
 #include "objects/object_kibako2/object_kibako2.h"
 #include "overlays/effects/ovl_Effect_Ss_Kakera/z_eff_ss_kakera.h"
+#include "2s2h/OotmmXflags.h"
 #include "GameInteractor/GameInteractor.h"
 
 #define FLAGS 0x00000000
@@ -250,5 +251,5 @@ void ObjKibako2_Update(Actor* thisx, PlayState* play) {
 }
 
 void ObjKibako2_Draw(Actor* thisx, PlayState* play) {
-    Gfx_DrawDListOpa(play, gLargeCrateDL);
+    Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(thisx, "Crate", gLargeCrateDL));
 }

@@ -22,6 +22,13 @@ void OotmmXflags_PrepareSpawn(struct Actor* parent, int slice);
 void OotmmXflags_ClearSpawn(void);
 void OotmmXflags_ClaimSpawn(struct Actor* actor);
 int OotmmXflags_PrepareFairy(struct Actor* butterfly);
+void* OotmmXflags_CsmcDL(struct Actor* actor, const char* family, void* vanilla);
+void* OotmmXflags_CsmcSliceDL(struct Actor* actor, int slice, const char* family, void* vanilla);
+void* OotmmXflags_PalmTreeDL(struct Actor* actor, void* vanilla);
+int OotmmXflags_DrawItem(struct Actor* actor, struct PlayState* play);
+void* OotmmXflags_GrassCsmcDL(struct Actor* manager, int group, int element, void* vanilla);
+void* OotmmXflags_GrassCarryCsmcDL(struct Actor* carry, void* vanilla);
+int OotmmXflags_TreeColor(struct Actor* actor, unsigned char* rgb);
 
 #ifdef __cplusplus
 }

@@ -760,7 +760,7 @@ void EnIshi_DrawGameplayKeepSmallRock(EnIshi* this, PlayState* play) {
 
     if ((this->actor.projectedPos.z <= 1200.0f) ||
         ((this->flags & ISHI_FLAG_UNDERWATER) && (this->actor.projectedPos.z < 1300.0f))) {
-        Gfx_DrawDListOpa(play, gFieldSmallRockOpaDL);
+        Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(&this->actor, "RockOpa", gFieldSmallRockOpaDL));
         return;
     }
 
@@ -773,7 +773,7 @@ void EnIshi_DrawGameplayKeepSmallRock(EnIshi* this, PlayState* play) {
 
         MATRIX_FINALIZE_AND_LOAD(POLY_XLU_DISP++, play->state.gfxCtx);
         gDPSetPrimColor(POLY_XLU_DISP++, 0, 0, 255, 255, 255, (s32)alpha);
-        gSPDisplayList(POLY_XLU_DISP++, gFieldSmallRockXluDL);
+        gSPDisplayList(POLY_XLU_DISP++, (Gfx*)OotmmXflags_CsmcDL(&this->actor, "RockXlu", gFieldSmallRockXluDL));
 
         CLOSE_DISPS(play->state.gfxCtx);
     }
@@ -827,5 +827,5 @@ void EnIshi_DrawGameplayKeepObject(Actor* thisx, PlayState* play) {
 }
 
 void EnIshi_DrawIshiObject(Actor* thisx, PlayState* play) {
-    Gfx_DrawDListOpa(play, gSmallRockDL);
+    Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(thisx, "RockIshi", gSmallRockDL));
 }
