@@ -11,6 +11,7 @@
 #include "OotmmShops.h"
 #include "OotmmCsmc.h"
 #include "OotmmDrops.h"
+#include "OotmmFaroresWind.h"
 #include "OotmmXflags.h"
 #include "OotmmDebugChecks.h"
 #include "OotmmIpc.h"
@@ -620,6 +621,11 @@ void BootIntoGame(GameState* gameState) {
             target = *spawn;
             gSaveContext.save.entrance = *spawn;
         }
+    } else if (bootEntrance == kOotmmFwCrossEntrance) {
+        if (const auto arrival = OotmmFaroresWind_PrepareArrival(static_cast<int32_t>(slot)); arrival.has_value()) {
+            target = *arrival;
+            gSaveContext.save.entrance = *arrival;
+        }
     } else if (bootEntrance.has_value()) {
         const auto entrance = bootEntrance;
         if (const auto resolved = ResolveMmEntrance(*entrance); resolved.has_value()) {
@@ -657,6 +663,7 @@ void OotmmSession_Init() {
         OotmmItemProbe_Init();
         OotmmItemApply_Init();
         OotmmScales_Init();
+        OotmmFaroresWind_Init();
         OotmmAdultLink_Init();
         OotmmPresence_Init();
         OotmmSpecialConds_Init();

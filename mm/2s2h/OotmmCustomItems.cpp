@@ -3,6 +3,7 @@
 #include "CustomMessage/CustomMessage.h"
 #include "OotmmIpc.h"
 #include "OotmmCustomEquipment.h"
+#include "OotmmFaroresWind.h"
 #include "OotmmSession.h"
 
 #include <array>
@@ -524,12 +525,6 @@ namespace {
 
 constexpr int32_t kFaroresWindMarkerParams = 2;
 
-// Vanilla persists the point in SaveContext.fw; MM has no such field, so the
-// authoritative copy lives here for the session and mirrors into respawn[HUMAN].
-RespawnData sFwPoint;
-RespawnData sFwRespawnTop;
-bool sFwRespawnTopValid;
-
 Actor* FindFaroresWindMarker(PlayState* play) {
     for (Actor* actor = play->actorCtx.actorLists[ACTORCAT_ITEMACTION].first; actor != nullptr; actor = actor->next) {
         if (actor->id == ACTOR_OOTMM_MAGIC_WIND && actor->params == kFaroresWindMarkerParams) {
@@ -561,12 +556,12 @@ extern "C" void OotmmCustomItems_PlaceFaroresWind(PlayState* play) {
     Play_SetupRespawnPoint(play, RESPAWN_MODE_HUMAN, PLAYER_PARAMS(0xFF, PLAYER_START_MODE_D));
     gSaveContext.respawn[RESPAWN_MODE_HUMAN].data = 1;
 
-    sFwPoint = gSaveContext.respawn[RESPAWN_MODE_DOWN];
-    sFwPoint.playerParams = PLAYER_PARAMS(0xFF, PLAYER_START_MODE_D);
-    sFwPoint.data = 40;
+    auto& point = OotmmFaroresWind_Point();
+    point = gSaveContext.respawn[RESPAWN_MODE_DOWN];
+    point.playerParams = PLAYER_PARAMS(0xFF, PLAYER_START_MODE_D);
+    point.data = 40;
 
-    sFwRespawnTop = gSaveContext.respawn[RESPAWN_MODE_TOP];
-    sFwRespawnTopValid = true;
+    OotmmFaroresWind_RespawnTop() = gSaveContext.respawn[RESPAWN_MODE_TOP];
 
     SpawnFaroresWindMarker(play);
 }
@@ -575,31 +570,33 @@ extern "C" void OotmmCustomItems_DispelFaroresWind(void) {
     Audio_PlaySfx_AtPos(&gSaveContext.respawn[RESPAWN_MODE_HUMAN].pos, NA_SE_PL_MAGIC_WIND_VANISH);
     gSaveContext.respawn[RESPAWN_MODE_HUMAN].data =
         static_cast<int8_t>(-gSaveContext.respawn[RESPAWN_MODE_HUMAN].data);
-    sFwPoint.data = 0;
+    OotmmFaroresWind_Point().data = 0;
 }
 
 extern "C" void OotmmCustomItems_ClearFaroresWind(void) {
-    sFwPoint.data = 0;
+    OotmmFaroresWind_Point().data = 0;
 }
 
 extern "C" void OotmmCustomItems_WarpToFaroresWind(PlayState* play) {
-    if (play == nullptr || sFwPoint.data <= 0) {
+    const auto& point = OotmmFaroresWind_Point();
+    if (play == nullptr || point.data <= 0) {
         return;
     }
-    gSaveContext.respawn[RESPAWN_MODE_HUMAN] = sFwPoint;
+    if (OotmmFaroresWind_IsCross(point)) {
+        OotmmFaroresWind_BeginCrossWarp();
+        return;
+    }
+    gSaveContext.respawn[RESPAWN_MODE_HUMAN] = point;
     gSaveContext.respawnFlag = 8;
     play->transitionTrigger = TRANS_TRIGGER_START;
-    play->nextEntrance = sFwPoint.entrance;
+    play->nextEntrance = point.entrance;
     play->transitionType = TRANS_TYPE_FADE_WHITE_FAST;
-
-    if (sFwRespawnTopValid) {
-        gSaveContext.respawn[RESPAWN_MODE_TOP] = sFwRespawnTop;
-        sFwRespawnTopValid = false;
-    }
+    gSaveContext.respawn[RESPAWN_MODE_TOP] = OotmmFaroresWind_RespawnTop();
 }
 
 extern "C" int OotmmCustomItems_FaroresWindSceneMatch(PlayState* play) {
-    if (play == nullptr || !OotmmSession_IsActive()) {
+    if (play == nullptr || !OotmmSession_IsActive() ||
+        gSaveContext.respawn[RESPAWN_MODE_HUMAN].entrance == kOotmmFwCrossEntrance) {
         return 0;
     }
     const s32 fwScene = Entrance_GetSceneIdAbsolute(gSaveContext.respawn[RESPAWN_MODE_HUMAN].entrance);
@@ -675,15 +672,22 @@ extern "C" void OotmmCustomItems_AfterPlayerInit(PlayState* play) {
         gSaveContext.magicState = MAGIC_STATE_METER_FLASH_1;
         OotmmCustomItems_SpawnMagicSpellActor(play, GET_PLAYER(play), OOTMM_MAGIC_SPELL_LOVE);
     }
-    if (sFwPoint.data != 0) {
-        gSaveContext.respawn[RESPAWN_MODE_HUMAN] = sFwPoint;
-        if (OotmmCustomItems_FaroresWindSceneMatch(play) != 0) {
-            SpawnFaroresWindMarker(play);
-        }
+    OotmmCustomItems_SyncFaroresWind(play);
+}
+
+extern "C" void OotmmCustomItems_SyncFaroresWind(PlayState* play) {
+    const auto& point = OotmmFaroresWind_Point();
+    if (point.data != 0) {
+        gSaveContext.respawn[RESPAWN_MODE_HUMAN] = point;
     } else {
         gSaveContext.respawn[RESPAWN_MODE_HUMAN].data = 0;
         gSaveContext.respawn[RESPAWN_MODE_HUMAN].pos.x = 0.0f;
         gSaveContext.respawn[RESPAWN_MODE_HUMAN].pos.y = 0.0f;
         gSaveContext.respawn[RESPAWN_MODE_HUMAN].pos.z = 0.0f;
+    }
+    if (point.data != 0 && OotmmCustomItems_FaroresWindSceneMatch(play) != 0) {
+        SpawnFaroresWindMarker(play);
+    } else if (Actor* marker = FindFaroresWindMarker(play); marker != nullptr) {
+        Actor_Kill(marker);
     }
 }

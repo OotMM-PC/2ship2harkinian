@@ -34,6 +34,7 @@ void OotmmItemApply_RefreshSaveSnapshot();
 nlohmann::json OotmmItemApply_LegacySnapshot(int fileNum);
 
 void OotmmItemApply_Init();
+void OotmmItemApply_RecordBossClear(int dungeonId);
 /// Clears the applied ledger so a fresh file re-receives every item the seed already gave.
 void OotmmItemApply_ResetLedgerForNewSave();
 void OotmmItemApply_Reconcile();

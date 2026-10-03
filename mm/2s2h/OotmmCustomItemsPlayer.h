@@ -25,6 +25,8 @@ void OotmmCustomItems_StartFaroresWindPrompt(void);
 /// Re-arms Nayru's Love and the Farore's Wind point and marker after a scene load.
 void OotmmCustomItems_AfterPlayerInit(PlayState* play);
 
+void OotmmCustomItems_SyncFaroresWind(PlayState* play);
+
 /// Clears the Spooky-as-Gibdo spoof before Player_Update reads currentMask.
 void OotmmCustomItems_MaskBeforeUpdate(Player* player);
 /// Re-applies the custom mask behaviour after Player_Update ran.

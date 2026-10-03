@@ -21,6 +21,7 @@
 #include "BenJsonConversions.hpp"
 #include "BenPort.h"
 #include "2s2h/OotmmCheckLedger.h"
+#include "2s2h/OotmmFaroresWind.h"
 #include "2s2h/OotmmItemApply.h"
 #include "2s2h/OotmmSession.h"
 #include <ship/window/Window.h>
@@ -757,6 +758,7 @@ static s32 WriteSaveData(u8* saveBuffer, u32 pageNum, u32 pageCount, bool initia
                 return false;
             }
             OotmmCheckLedger_Embed(save);
+            OotmmFaroresWind_Embed(save);
             return true;
         }
         if (!copySource.contains(section)) {
