@@ -102,6 +102,12 @@ extern "C" bool SavingEnhancements_CanSave() {
         return false;
     }
 
+    if (OotmmSession_IsActive() && gPlayState->sceneId == SCENE_OKUJOU &&
+        OotmmSession_GetState().GetStringSetting("moonCrash", "reset") != "cycle" &&
+        !OotmmSession_GetState().GetBoolSetting("erMoon", false)) {
+        return false;
+    }
+
     // Not in minigames that set temporary flags
     if (CHECK_WEEKEVENTREG(WEEKEVENTREG_08_01) || CHECK_WEEKEVENTREG(WEEKEVENTREG_82_08) ||
         CHECK_WEEKEVENTREG(WEEKEVENTREG_90_20) || CHECK_WEEKEVENTREG(WEEKEVENTREG_KICKOUT_WAIT) ||
@@ -228,7 +234,11 @@ static RegisterShipInitFunc registerSavingEnhancements(
                 DeleteOwlSave();
             }
         });
-        COND_HOOK(BeforeMoonCrash, true, []() { DeleteOwlSave(); });
+        COND_HOOK(BeforeMoonCrash, true, []() {
+            if (!OotmmSession_KeepsSaveOnMoonCrash()) {
+                DeleteOwlSave();
+            }
+        });
 
         // Vanilla has an arbitrary 2 second delay when saving, we can't remove it entirely because
         // it's used to pull off certain 0th Day glitches (specifically Any Item as Any Form and Goron Missile),

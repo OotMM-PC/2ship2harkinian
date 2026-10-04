@@ -7,6 +7,7 @@
 #include <fast/resource/type/DisplayList.h>
 #include <libultraship/bridge/resourcebridge.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmClockSpeed.h"
 #include "2s2h/resource/type/Scene.h"
 #include "2s2h/resource/type/CollisionHeader.h"
 #include "2s2h/resource/type/Path.h"
@@ -276,7 +277,7 @@ void Scene_CommandTimeSettings(PlayState* play, SOH::ISceneCommand* cmd) {
     }
 
     if (settings->settings.timeIncrement != 0xFF) {
-        play->envCtx.sceneTimeSpeed = settings->settings.timeIncrement;
+        play->envCtx.sceneTimeSpeed = OotmmClockSpeed_SceneTimeSpeed(settings->settings.timeIncrement);
     } else {
         play->envCtx.sceneTimeSpeed = 0;
     }

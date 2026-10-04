@@ -6,6 +6,8 @@
 
 #include "z_en_js.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmSpecialConds.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -964,6 +966,10 @@ void func_8096A38C(EnJs* this, PlayState* play) {
                     case 0x21FE:
                         switch (play->msgCtx.choiceIndex) {
                             case 0:
+                                if (OotmmSession_IsActive() && !OotmmSpecialConds_CanFightMajora()) {
+                                    Message_ContinueTextbox(play, 0x21FF);
+                                    break;
+                                }
                                 Message_ContinueTextbox(play, 0x2200);
                                 func_809696EC(this, 0);
                                 break;

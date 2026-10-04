@@ -23,6 +23,7 @@
 #include "2s2h/BenGui/CosmeticEditor.h"
 #include "2s2h_assets.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmClockSpeed.h"
 #include "2s2h/OotmmCustomItems.h"
 #include "2s2h/OotmmItemApply.h"
 #include "2s2h/OotmmSession.h"
@@ -6955,7 +6956,7 @@ void Interface_DrawClock(PlayState* play) {
                 gDPPipeSync(OVERLAY_DISP++);
 
                 // Time is slowed down to half speed with inverted song of time
-                if (gSaveContext.save.timeSpeedOffset == -2) {
+                if (gSaveContext.save.timeSpeedOffset == OotmmClockSpeed_InvertedOffset()) {
                     // Clock diamond is blue and flashes white
                     colorStep =
                         ABS_ALT(sClockInvDiamondPrimRed - sClockInvDiamondPrimRedTargets[sClockInvDiamondTargetIndex]) /

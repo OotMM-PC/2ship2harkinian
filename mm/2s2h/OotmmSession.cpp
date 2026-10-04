@@ -7,6 +7,7 @@
 #include "OotmmCheckLedger.h"
 #include "OotmmChecks.h"
 #include "OotmmNpcChecks.h"
+#include "OotmmHints.h"
 #include "OotmmShops.h"
 #include "OotmmCsmc.h"
 #include "OotmmDrops.h"
@@ -17,6 +18,10 @@
 #include "OotmmAdultLink.h"
 #include "OotmmItemProbe.h"
 #include "OotmmScales.h"
+#include "OotmmClockSpeed.h"
+#include "OotmmCycle.h"
+#include "OotmmRegionState.h"
+#include "OotmmSpecialConds.h"
 #include "OotmmPresence.h"
 
 #include <cstddef>
@@ -279,8 +284,6 @@ void ApplyEnhancements() {
                    sGameState.GetBoolSetting("freeScarecrowMm", false) ? 1 : 0);
     CVarSetInteger("gEnhancements.Masks.FastTransformation",
                    sGameState.GetBoolSetting("fastMasks", false) ? 1 : 0);
-    CVarSetInteger("gEnhancements.Masks.GoronRollingFastSpikes",
-                   sGameState.GetBoolSetting("lenientSpikes", true) ? 1 : 0);
     CVarSetInteger("gCheats.HookshotAnywhere",
                    sGameState.GetStringSetting("hookshotAnywhereMm", "off") != "off" ? 1 : 0);
     CVarSetInteger("gCheats.ClimbAnywhere",
@@ -353,31 +356,12 @@ void ApplySaveFlags() {
         }
     }
 
-    if (sGameState.WorldFlagContains("openDungeonsMm", "WF")) {
-        SET_WEEKEVENTREG(WEEKEVENTREG_20_01);
+    if (sGameState.GetStringSetting("beneathWell", "vanilla") == "open") {
+        gSaveContext.save.saveInfo.permanentSceneFlags[SCENE_REDEAD].switch0 |= 0xC0000082;
+        gSaveContext.save.saveInfo.permanentSceneFlags[SCENE_REDEAD].switch1 |= 0x000007FF;
+        gSaveContext.cycleSceneFlags[SCENE_REDEAD].switch0 |= 0xC0000082;
+        gSaveContext.cycleSceneFlags[SCENE_REDEAD].switch1 |= 0x000007FF;
     }
-    if (sGameState.WorldFlagContains("openDungeonsMm", "SH")) {
-        SET_WEEKEVENTREG(WEEKEVENTREG_30_01);
-    }
-    if (sGameState.WorldFlagContains("openDungeonsMm", "GB")) {
-        SET_WEEKEVENTREG(WEEKEVENTREG_53_20);
-    }
-
-    if (sGameState.WorldFlagContains("clearStateDungeonsMm", "WF") ||
-        sGameState.IsDungeonPreCompleted("WF") || sGameState.IsDungeonPreCompleted("Woodfall")) {
-        SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE);
-    }
-    if (sGameState.IsDungeonPreCompleted("SH") || sGameState.IsDungeonPreCompleted("Snowhead")) {
-        SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_SNOWHEAD_TEMPLE);
-    }
-    if (sGameState.WorldFlagContains("clearStateDungeonsMm", "GB") ||
-        sGameState.IsDungeonPreCompleted("GB") || sGameState.IsDungeonPreCompleted("GreatBay")) {
-        SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_GREAT_BAY_TEMPLE);
-    }
-    if (sGameState.IsDungeonPreCompleted("ST") || sGameState.IsDungeonPreCompleted("StoneTower")) {
-        SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_STONE_TOWER_TEMPLE);
-    }
-
     if (sGameState.GetStringSetting("smallKeyShuffleMm", "ownDungeon") == "removed") {
         DUNGEON_KEY_COUNT(DUNGEON_SCENE_INDEX_WOODFALL_TEMPLE) = 1;
         DUNGEON_KEY_COUNT(DUNGEON_SCENE_INDEX_SNOWHEAD_TEMPLE) = 3;
@@ -663,6 +647,7 @@ void OotmmSession_Init() {
         OotmmChecks_Init();
         OotmmNpcChecks_Init();
         OotmmShops_Init();
+        OotmmHints_Init();
         OotmmCsmc_Init();
         OotmmDrops_Init();
         OotmmDebugChecks_Init();
@@ -672,6 +657,10 @@ void OotmmSession_Init() {
         OotmmScales_Init();
         OotmmAdultLink_Init();
         OotmmPresence_Init();
+        OotmmSpecialConds_Init();
+        OotmmRegionState_Init();
+        OotmmClockSpeed_Init();
+        OotmmCycle_Init();
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveInit>(
             [](s16) { InitializeSave(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(
@@ -836,6 +825,7 @@ extern "C" int32_t OotmmSession_RedirectBossWarp(uint32_t bossId) {
     if (!OotmmSession_IsActive() || gPlayState == nullptr) {
         return 0;
     }
+    OotmmRegionState_ApplyBossWarp(static_cast<int>(bossId));
     const bool woodfallTempleRaised = CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE) &&
                                       CHECK_WEEKEVENTREG(WEEKEVENTREG_20_01);
     const auto destination = sGameState.ResolveBossWarp(bossId, woodfallTempleRaised);
@@ -843,7 +833,7 @@ extern "C" int32_t OotmmSession_RedirectBossWarp(uint32_t bossId) {
         return 0;
     }
 
-    gSaveContext.nextCutsceneIndex = 0;
+    gSaveContext.nextCutsceneIndex = 0xFFEF;
     gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
     gSaveContext.save.equippedMask = PLAYER_MASK_NONE;
     if ((*destination & kForeignEntrance) != 0) {
@@ -897,17 +887,53 @@ bool OotmmSession_BeginCrossGameTransition(const Ship::OotmmEntranceMapping& map
     return true;
 }
 
+static bool IsEntranceShuffle() {
+    for (const char* key : { "erBoss", "erRegions", "erWarps", "erGrottos", "erWallmasters", "erOverworld" }) {
+        if (sGameState.GetStringSetting(key, "none") != "none") {
+            return true;
+        }
+    }
+    for (const char* key : { "erMajorDungeons", "erMinorDungeons", "erSpiderHouses", "erPirateFortress",
+                             "erBeneathWell", "erIkanaCastle", "erSecretShrine", "erGanonCastle", "erGanonTower",
+                             "erMoon", "erIndoorsMajor", "erIndoorsExtra", "erIndoorsTelescopes", "erOneWaysMajor",
+                             "erOneWaysIkana", "erOneWaysSongs", "erOneWaysStatues", "erOneWaysOwls" }) {
+        if (sGameState.GetBoolSetting(key, false)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+extern "C" int32_t OotmmSession_KeepsSaveOnMoonCrash(void) {
+    return OotmmSession_IsActive() && sGameState.GetStringSetting("moonCrash", "reset") != "cycle";
+}
+
+extern "C" int32_t OotmmSession_ReadMoonCrashSave(uint8_t* buffer) {
+    if (!OotmmSession_KeepsSaveOnMoonCrash() || gSaveContext.fileNum < 0 || gSaveContext.fileNum >= 3) {
+        return false;
+    }
+    const uint32_t owlPage = static_cast<uint32_t>(gSaveContext.fileNum) * FLASH_SAVE_MAIN_MULTIPLIER;
+    if (SysFlashrom_ReadData(buffer, gFlashOwlSaveStartPages[owlPage], gFlashOwlSaveNumPages[owlPage]) != 0) {
+        return false;
+    }
+    Save save{};
+    std::memcpy(&save, buffer, sizeof(save));
+    return HasValidFileMagic(save);
+}
+
 extern "C" void OotmmSession_RedirectMoonCrashRespawn(void) {
     if (!OotmmSession_IsActive()) {
         return;
     }
-    // Upstream play.c sends the Clock Tower moon-crash respawn to the seed's initial entrance,
-    // which for a cross-game session is the MM entry spawn.
+    // Upstream play.c sends the Clock Tower moon-crash respawn to Clock Town, or with any entrance
+    // shuffle to the entrance MM was entered from.
     if (static_cast<uint16_t>(gSaveContext.save.entrance) != ENTRANCE(CLOCK_TOWER_INTERIOR, 3)) {
         return;
     }
     std::optional<uint16_t> spawn;
-    if (const auto bootEntrance = sGameState.GetBootConfig().BootEntrance; bootEntrance.has_value()) {
+    if (!IsEntranceShuffle()) {
+        spawn = ENTRANCE(SOUTH_CLOCK_TOWN, 0);
+    } else if (const auto bootEntrance = sGameState.GetBootConfig().BootEntrance; bootEntrance.has_value()) {
         spawn = ResolveMmEntrance(*bootEntrance);
     }
     if (!spawn.has_value()) {

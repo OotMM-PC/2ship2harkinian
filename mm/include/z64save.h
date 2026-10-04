@@ -379,6 +379,9 @@ typedef struct ShipSaveInfo {
     uint64_t filePlaytime;
     RespawnData respawn[RESPAWN_MODE_MAX];
     char commitHash[8];
+    u8 ootmmWisps;
+    u8 ootmmBossCycle;
+    u8 ootmmBossBeaten;
 } ShipSaveInfo;
 // #endregion
 

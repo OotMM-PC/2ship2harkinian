@@ -19,6 +19,7 @@
 #include "overlays/effects/ovl_Effect_Ss_Hitmark/z_eff_ss_hitmark.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmRegionState.h"
 
 #include "objects/gameplay_keep/gameplay_keep.h"
 
@@ -596,7 +597,7 @@ void BossHakugin_Init(Actor* thisx, PlayState* play2) {
     Lights_PointNoGlowSetInfo(&this->lightInfo, 0, 0, 0, 255, 255, 180, -1);
     this->direction = GOHT_DIRECTION_COUNTERCLOCKWISE;
 
-    if (CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_SNOWHEAD_TEMPLE)) {
+    if (OotmmRegionState_BossCleared(9, CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_SNOWHEAD_TEMPLE))) {
         BossHakugin_SpawnBlueWarpAndHeartContainer(this, play);
         Actor_Kill(&this->actor);
         return;

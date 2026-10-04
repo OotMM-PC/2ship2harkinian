@@ -36,6 +36,7 @@
 
 #include "2s2h/BenPort.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmRegionState.h"
 
 #define FLAGS                                                                                 \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOSTILE | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -902,7 +903,7 @@ void Boss01_Init(Actor* thisx, PlayState* play) {
         this->actor.draw = Boss01_Afterimage_Draw;
         this->actor.flags &= ~ACTOR_FLAG_ATTENTION_ENABLED;
     } else {
-        if (CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE)) {
+        if (OotmmRegionState_BossCleared(8, CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE))) {
             Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_DOOR_WARP1, 0.0f, 0.0f, 0.0f, 0, 0, 0,
                                ENDOORWARP1_FF_1);
             Actor_Spawn(&play->actorCtx, play, ACTOR_ITEM_B_HEART, 0.0f, 0.0f, 250.0f, 0, 0, 0, BHEART_PARAM_NORMAL);

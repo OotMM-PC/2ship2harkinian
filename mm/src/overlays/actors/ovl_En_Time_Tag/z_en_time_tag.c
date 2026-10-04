@@ -11,6 +11,8 @@
 #include "z_en_time_tag.h"
 #include "2s2h/OotmmNpcChecks.h"
 #include "2s2h/OotmmSongEvents.h"
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmSpecialConds.h"
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -122,7 +124,17 @@ void EnTimeTag_RooftopOath_Wait(EnTimeTag* this, PlayState* play) {
     if ((play->msgCtx.ocarinaMode == OCARINA_MODE_EVENT) &&
         OotmmSongEvents_Matches(OOTMM_MM_SONG_EVENT_CLOCK_TOWER_ROOF, play->msgCtx.lastPlayedSong)) {
         OotmmSongEvents_ClearPlayed(play);
-        if (this->actor.csId != CS_ID_NONE) {
+        if ((this->actor.csId != CS_ID_NONE) && OotmmSession_IsActive()) {
+            this->actionFunc = EnTimeTag_RooftopOath_DoNothing;
+            if (OotmmSpecialConds_MoonAccessible()) {
+                play->nextEntrance = ENTRANCE(THE_MOON, 0);
+                play->transitionTrigger = TRANS_TRIGGER_START;
+                play->transitionType = TRANS_TYPE_FADE_BLACK;
+                gSaveContext.timerStates[TIMER_ID_MOON_CRASH] = TIMER_STATE_OFF;
+            } else {
+                Message_StartTextbox(play, 0x2039, NULL);
+            }
+        } else if (this->actor.csId != CS_ID_NONE) {
             this->actionFunc = EnTimeTag_RooftopOath_Cutscene;
             CutsceneManager_Queue(thisx->csId);
             gSaveContext.timerStates[TIMER_ID_MOON_CRASH] = TIMER_STATE_OFF;

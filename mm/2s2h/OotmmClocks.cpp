@@ -71,10 +71,10 @@ uint32_t MoonCrashLinear(const uint32_t mask) {
 }
 
 void ApplyGracePeriod() {
-    if (!OotmmClocks_Enabled()) {
+    if (!OotmmSession_IsActive()) {
         return;
     }
-    const uint32_t moonCrash = MoonCrashLinear(OwnedMask());
+    const uint32_t moonCrash = MoonCrashLinear(OotmmClocks_HalfDayMask());
     const uint32_t linear =
         Linear(static_cast<uint32_t>(gSaveContext.save.day), gSaveContext.save.time);
     const bool crashed = linear >= moonCrash && linear < 0x40000;

@@ -2,6 +2,8 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
 #include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmCustomItems.h"
+#include "2s2h/OotmmItemApply.h"
 
 extern "C" {
 #include <variables.h>
@@ -25,10 +27,13 @@ s32 timeSpeedOffsetCopy = 0;
 
 void RegisterEndOfCycleSaveHooks() {
     COND_HOOK(BeforeEndOfCycleSave, true, []() {
+        OotmmItemApply_RememberTradeItems();
         memcpy(&saveInfoCopy, &gSaveContext.save.saveInfo, sizeof(SaveInfo));
         memcpy(&shipSaveInfoCopy, &gSaveContext.save.shipSaveInfo, sizeof(ShipSaveInfo));
         timeSpeedOffsetCopy = gSaveContext.save.timeSpeedOffset;
     });
+
+    COND_HOOK(AfterEndOfCycleSave, true, []() { OotmmItemApply_ResetTradeCycle(); });
 
     COND_HOOK(AfterEndOfCycleSave, true, []() {
         if (!(OotmmSession_IsActive() ? OotmmSession_GetState().GetBoolSetting("keepItemsReset", false) : CVAR_RUPEES)) {
@@ -88,7 +93,73 @@ void RegisterEndOfCycleSaveHooks() {
         CLEAR_EVENTINF(EVENTINF_THREEDAYRESET_LOST_ARROW_AMMO);
     });
 
-    COND_HOOK(AfterEndOfCycleSave, CVAR_BOTTLE, []() {
+    COND_HOOK(AfterEndOfCycleSave, true, []() {
+        if (OotmmSession_IsActive()) {
+            const bool keep = OotmmSession_GetState().GetBoolSetting("keepBottlesReset", false);
+            if (keep && (saveInfoCopy.weekEventReg[WEEKEVENTREG_DRANK_CHATEAU_ROMANI >> 8] &
+                         (WEEKEVENTREG_DRANK_CHATEAU_ROMANI & 0xFF))) {
+                SET_WEEKEVENTREG(WEEKEVENTREG_DRANK_CHATEAU_ROMANI);
+            } else {
+                CLEAR_WEEKEVENTREG(WEEKEVENTREG_DRANK_CHATEAU_ROMANI);
+            }
+            auto& inventory = gSaveContext.save.saveInfo.inventory;
+            for (int slot = SLOT_BOTTLE_1; slot <= SLOT_BOTTLE_6; ++slot) {
+                const auto before = saveInfoCopy.inventory.items[slot];
+                if (before == ITEM_NONE) {
+                    continue;
+                }
+                auto after = before;
+                switch (before) {
+                    case ITEM_GOLD_DUST:
+                    case ITEM_OOTMM_RUTO_LETTER:
+                        break;
+                    case ITEM_HOT_SPRING_WATER:
+                        after = keep ? ITEM_SPRING_WATER : ITEM_BOTTLE;
+                        break;
+                    case ITEM_ZORA_EGG:
+                    case ITEM_SEAHORSE:
+                    case ITEM_DEKU_PRINCESS:
+                    case ITEM_MUSHROOM:
+                    case ITEM_BIG_POE:
+                        after = ITEM_BOTTLE;
+                        break;
+                    default:
+                        if (!keep) {
+                            after = ITEM_BOTTLE;
+                        }
+                        break;
+                }
+                inventory.items[slot] = after;
+            }
+            for (int form = 0; form < 4; ++form) {
+                auto& equips = gSaveContext.save.saveInfo.equips;
+                for (int button = EQUIP_SLOT_C_LEFT; button <= EQUIP_SLOT_C_RIGHT; ++button) {
+                    const auto slot = equips.cButtonSlots[form][button];
+                    if (slot >= SLOT_BOTTLE_1 && slot <= SLOT_BOTTLE_6) {
+                        equips.buttonItems[form][button] = inventory.items[slot];
+                    }
+                }
+                auto& dpad = gSaveContext.save.shipSaveInfo.dpadEquips;
+                for (int button = 0; button < 4; ++button) {
+                    const auto slot = dpad.dpadSlots[form][button];
+                    if (slot >= SLOT_BOTTLE_1 && slot <= SLOT_BOTTLE_6) {
+                        dpad.dpadItems[form][button] = inventory.items[slot];
+                    }
+                }
+            }
+            if (gPlayState != nullptr) {
+                for (int button = EQUIP_SLOT_C_LEFT; button <= EQUIP_SLOT_C_RIGHT; ++button) {
+                    Interface_LoadItemIconImpl(gPlayState, button);
+                }
+                for (int button = EQUIP_SLOT_D_RIGHT; button <= EQUIP_SLOT_D_UP; ++button) {
+                    Interface_Dpad_LoadItemIconImpl(gPlayState, button);
+                }
+            }
+            return;
+        }
+        if (!CVAR_BOTTLE) {
+            return;
+        }
         int stolenBottles = (((saveInfoCopy.stolenItems & 0xFF000000) >> 0x18) == ITEM_BOTTLE) +
                             (((saveInfoCopy.stolenItems & 0x00FF0000) >> 0x10) == ITEM_BOTTLE);
 

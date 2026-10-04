@@ -14,6 +14,7 @@
 
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmRegionState.h"
 
 #define FLAGS                                                                                 \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOSTILE | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -593,7 +594,7 @@ void Boss02_Init(Actor* thisx, PlayState* play) {
     s32 i;
     s32 pad[2];
 
-    if (CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_STONE_TOWER_TEMPLE) &&
+    if (OotmmRegionState_BossCleared(11, CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_STONE_TOWER_TEMPLE)) &&
         (TWINMOLD_GET_TYPE(&this->actor) == TWINMOLD_TYPE_RED)) {
         sBlueWarp = (DoorWarp1*)Actor_SpawnAsChild(&play->actorCtx, &this->actor, play, ACTOR_DOOR_WARP1, 0.0f, 60.0f,
                                                    0.0f, 0, 0, 0, ENDOORWARP1_FF_1);
@@ -2153,7 +2154,7 @@ void func_809DEAC4(Boss02* this, PlayState* play) {
             break;
 
         case 1:
-            if (CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_STONE_TOWER_TEMPLE) ||
+            if (OotmmRegionState_BossCleared(11, CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_STONE_TOWER_TEMPLE)) ||
                 ((u32)(KREG(13) + 15) >= this->unk_1D1C)) {
                 break;
             }

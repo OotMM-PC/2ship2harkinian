@@ -21,6 +21,8 @@ void OotmmSession_ApplyDeathRespawn(void);
 int32_t OotmmSession_ReturnToSpawn(void);
 /// Runs after the conditional-trigger pass has landed a moon-crash reset in the Clock Tower.
 void OotmmSession_RedirectMoonCrashRespawn(void);
+int32_t OotmmSession_KeepsSaveOnMoonCrash(void);
+int32_t OotmmSession_ReadMoonCrashSave(uint8_t* buffer);
 /// Marks the result so the seed's entrance remap does not translate it twice. -1 when unresolvable.
 int32_t OotmmSession_ApplyResolvedMmEntrance(uint32_t entrance);
 int32_t OotmmSession_RedirectBossWarp(uint32_t bossId);

@@ -54,6 +54,7 @@
 #include "2s2h/BenPort.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 void func_800DDFE0(Camera* camera);
@@ -2277,7 +2278,7 @@ s32 Camera_Normal1(Camera* camera) {
         camera->inputDir.z = 0;
 
         // crit wiggle
-        if (gSaveContext.save.saveInfo.playerData.health <= 0x10) {
+        if ((gSaveContext.save.saveInfo.playerData.health <= 0x10) && !OotmmSession_BoolSetting("critWiggleDisable")) {
             phi_v1_2 = ((s32)(camera->play->state.frames << 0x18) >> 0x15) & 0xFD68;
             camera->inputDir.y += phi_v1_2;
         }
@@ -2288,7 +2289,9 @@ s32 Camera_Normal1(Camera* camera) {
         *eye = *eyeNext;
     }
 
-    phi_f2 = (gSaveContext.save.saveInfo.playerData.health <= 0x10) ? 0.8f : 1.0f;
+    phi_f2 = ((gSaveContext.save.saveInfo.playerData.health <= 0x10) && !OotmmSession_BoolSetting("critWiggleDisable"))
+                 ? 0.8f
+                 : 1.0f;
     camera->fov = Camera_ScaledStepToCeilF(roData->unk_18 * phi_f2, camera->fov, camera->fovUpdateRate, 0.1f);
 
     if (roData->interfaceFlags & NORMAL1_FLAG_2) {

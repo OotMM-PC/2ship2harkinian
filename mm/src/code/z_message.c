@@ -9,6 +9,7 @@
 #include "z64save.h"
 #include "BenPort.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmClockSpeed.h"
 #include "2s2h/OotmmNpcChecks.h"
 #include "2s2h/OotmmOwls.h"
 #include "2s2h/OotmmSession.h"
@@ -5988,7 +5989,7 @@ void Message_Update(PlayState* play) {
                             Audio_PlaySfx_MessageDecide();
                             if (gSaveContext.save.timeSpeedOffset == 0) {
                                 play->msgCtx.ocarinaMode = OCARINA_MODE_APPLY_INV_SOT_SLOW;
-                                gSaveContext.save.timeSpeedOffset = -2;
+                                gSaveContext.save.timeSpeedOffset = OotmmClockSpeed_InvertedOffset();
                             } else {
                                 play->msgCtx.ocarinaMode = OCARINA_MODE_APPLY_INV_SOT_FAST;
                                 gSaveContext.save.timeSpeedOffset = 0;

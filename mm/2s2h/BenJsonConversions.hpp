@@ -79,6 +79,9 @@ void to_json(json& j, const ShipSaveInfo& shipSaveInfo) {
         { "filePlaytime", shipSaveInfo.filePlaytime },
         { "respawn", shipSaveInfo.respawn },
         { "commitHash", commitHash },
+        { "ootmmWisps", shipSaveInfo.ootmmWisps },
+        { "ootmmBossCycle", shipSaveInfo.ootmmBossCycle },
+        { "ootmmBossBeaten", shipSaveInfo.ootmmBossBeaten },
     };
 }
 
@@ -91,6 +94,9 @@ void from_json(const json& j, ShipSaveInfo& shipSaveInfo) {
     j.at("filePlaytime").get_to(shipSaveInfo.filePlaytime);
     j.at("respawn").get_to(shipSaveInfo.respawn);
     j.at("commitHash").get_to(shipSaveInfo.commitHash);
+    shipSaveInfo.ootmmWisps = j.value("ootmmWisps", static_cast<u8>(0));
+    shipSaveInfo.ootmmBossCycle = j.value("ootmmBossCycle", static_cast<u8>(0));
+    shipSaveInfo.ootmmBossBeaten = j.value("ootmmBossBeaten", static_cast<u8>(0));
 
     // OOTMM_STRIPPED: the built-in randomizer is removed; its saves cannot be loaded.
     if (shipSaveInfo.saveType == SAVETYPE_RANDO) {

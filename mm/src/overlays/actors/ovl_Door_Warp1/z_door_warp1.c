@@ -10,6 +10,7 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmNpcChecks.h"
 #include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmRegionState.h"
 
 #define FLAGS 0x00000000
 
@@ -264,6 +265,8 @@ void func_808B8C48(DoorWarp1* this, PlayState* play) {
         ((DOORWARP1_GET_FF(&this->dyna.actor) == ENDOORWARP1_FF_3) && CHECK_QUEST_ITEM(QUEST_REMAINS_GOHT)) ||
         ((DOORWARP1_GET_FF(&this->dyna.actor) == ENDOORWARP1_FF_4) && CHECK_QUEST_ITEM(QUEST_REMAINS_GYORG)) ||
         ((DOORWARP1_GET_FF(&this->dyna.actor) == ENDOORWARP1_FF_5) && CHECK_QUEST_ITEM(QUEST_REMAINS_TWINMOLD));
+    vanillaCondition =
+        OotmmRegionState_BossWarpPadActive(DOORWARP1_GET_FF(&this->dyna.actor) - ENDOORWARP1_FF_2, vanillaCondition);
     if (GameInteractor_Should(VB_ACTIVATE_BOSS_WARP_PAD, vanillaCondition, this)) {
         s16 params = DOORWARP1_GET_FF00_2(&this->dyna.actor);
 
@@ -684,118 +687,122 @@ void func_808BA10C(DoorWarp1* this, PlayState* play) {
             phi_v0_2 = 0;
         }
 
-        if (this->unk_202 != 0) {
-            if (phi_v0_2 > 0) {
-                SET_WEEKEVENTREG(WEEKEVENTREG_ENTERED_WOODFALL_TEMPLE_PRISON);
-            }
+        play->transitionTrigger = TRANS_TRIGGER_START;
+        play->transitionType = TRANS_TYPE_FADE_WHITE;
+        gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
+        if (!OotmmSession_RedirectBossWarp(DoorWarp1_GetOotmmBossId(play))) {
+            if (this->unk_202 != 0) {
+                if (phi_v0_2 > 0) {
+                    SET_WEEKEVENTREG(WEEKEVENTREG_ENTERED_WOODFALL_TEMPLE_PRISON);
+                }
 
-            switch (phi_v0_2) {
-                case 0:
-                    phi_a0 = gSaveContext.save.saveInfo.unk_EA8[0] & 0xFF;
-                    break;
+                switch (phi_v0_2) {
+                    case 0:
+                        phi_a0 = gSaveContext.save.saveInfo.unk_EA8[0] & 0xFF;
+                        break;
 
-                case 1:
-                    phi_a0 = (gSaveContext.save.saveInfo.unk_EA8[0] & 0xFF00) >> 8;
-                    break;
+                    case 1:
+                        phi_a0 = (gSaveContext.save.saveInfo.unk_EA8[0] & 0xFF00) >> 8;
+                        break;
 
-                case 2:
-                    phi_a0 = (gSaveContext.save.saveInfo.unk_EA8[0] & 0xFF0000) >> 0x10;
-                    break;
+                    case 2:
+                        phi_a0 = (gSaveContext.save.saveInfo.unk_EA8[0] & 0xFF0000) >> 0x10;
+                        break;
 
-                case 3:
-                    phi_a0 = (gSaveContext.save.saveInfo.unk_EA8[0] & 0xFF000000) >> 0x18;
-                    break;
+                    case 3:
+                        phi_a0 = (gSaveContext.save.saveInfo.unk_EA8[0] & 0xFF000000) >> 0x18;
+                        break;
 
-                default:
-                    phi_a0 = 0;
-                    break;
-            }
+                    default:
+                        phi_a0 = 0;
+                        break;
+                }
 
-            switch (phi_a0) {
-                case 0:
-                    phi_v0_3 = 10;
-                    break;
+                switch (phi_a0) {
+                    case 0:
+                        phi_v0_3 = 10;
+                        break;
 
-                case 1:
-                    phi_v0_3 = 0;
-                    break;
+                    case 1:
+                        phi_v0_3 = 0;
+                        break;
 
-                case 2:
-                    phi_v0_3 = 1;
-                    break;
+                    case 2:
+                        phi_v0_3 = 1;
+                        break;
 
-                case 3:
-                    phi_v0_3 = 2;
-                    break;
+                    case 3:
+                        phi_v0_3 = 2;
+                        break;
 
-                default:
-                    phi_v0_3 = 10;
-                    break;
-            }
+                    default:
+                        phi_v0_3 = 10;
+                        break;
+                }
 
-            play->nextEntrance = ENTRANCE(GIANTS_CHAMBER, 0);
-            if (phi_v0_3 < 10) {
-                gSaveContext.nextCutsceneIndex = phi_v0_3 + 0xFFF0;
-            }
+                play->nextEntrance = ENTRANCE(GIANTS_CHAMBER, 0);
+                if (phi_v0_3 < 10) {
+                    gSaveContext.nextCutsceneIndex = phi_v0_3 + 0xFFF0;
+                }
 
-            play->transitionTrigger = TRANS_TRIGGER_START;
-            play->transitionType = TRANS_TYPE_FADE_WHITE;
-            gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
-        } else {
-            switch (phi_v0_2) {
-                case 0:
-                    if (CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE)) {
-                        // Skips the entrance cutscene as this flag is attached to `ENTRANCE(WOODFALL_TEMPLE, 1)`
-                        SET_WEEKEVENTREG(WEEKEVENTREG_ENTERED_WOODFALL_TEMPLE_PRISON);
-                        play->nextEntrance = ENTRANCE(WOODFALL_TEMPLE, 1);
+                play->transitionTrigger = TRANS_TRIGGER_START;
+                play->transitionType = TRANS_TYPE_FADE_WHITE;
+                gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
+            } else {
+                switch (phi_v0_2) {
+                    case 0:
+                        if (CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE)) {
+                            // Skips the entrance cutscene as this flag is attached to `ENTRANCE(WOODFALL_TEMPLE, 1)`
+                            SET_WEEKEVENTREG(WEEKEVENTREG_ENTERED_WOODFALL_TEMPLE_PRISON);
+                            play->nextEntrance = ENTRANCE(WOODFALL_TEMPLE, 1);
+                            play->transitionTrigger = TRANS_TRIGGER_START;
+                            play->transitionType = TRANS_TYPE_FADE_WHITE;
+                            gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
+                        } else {
+                            play->nextEntrance = ENTRANCE(WOODFALL, 0);
+                            gSaveContext.nextCutsceneIndex = 0xFFF0;
+                            play->transitionTrigger = TRANS_TRIGGER_START;
+                            play->transitionType = TRANS_TYPE_FADE_WHITE;
+                            gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
+                        }
+                        break;
+
+                    case 1:
+                        SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_SNOWHEAD_TEMPLE);
+                        play->nextEntrance = ENTRANCE(MOUNTAIN_VILLAGE_SPRING, 7);
                         play->transitionTrigger = TRANS_TRIGGER_START;
                         play->transitionType = TRANS_TYPE_FADE_WHITE;
                         gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
-                    } else {
-                        play->nextEntrance = ENTRANCE(WOODFALL, 0);
-                        gSaveContext.nextCutsceneIndex = 0xFFF0;
+                        break;
+
+                    case 3:
+                        if (CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_GREAT_BAY_TEMPLE)) {
+                            play->nextEntrance = ENTRANCE(ZORA_CAPE, 9);
+                            gSaveContext.nextCutsceneIndex = 0xFFF0;
+                            play->transitionTrigger = TRANS_TRIGGER_START;
+                            play->transitionType = TRANS_TYPE_FADE_WHITE;
+                            gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
+                        } else {
+                            SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_GREAT_BAY_TEMPLE);
+                            play->nextEntrance = ENTRANCE(ZORA_CAPE, 8);
+                            gSaveContext.nextCutsceneIndex = 0xFFF0;
+                            play->transitionTrigger = TRANS_TRIGGER_START;
+                            play->transitionType = TRANS_TYPE_FADE_WHITE;
+                            gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
+                        }
+                        break;
+
+                    case 2:
+                        SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_STONE_TOWER_TEMPLE);
+                        play->nextEntrance = ENTRANCE(IKANA_CANYON, 15);
+                        gSaveContext.nextCutsceneIndex = 0xFFF2;
                         play->transitionTrigger = TRANS_TRIGGER_START;
                         play->transitionType = TRANS_TYPE_FADE_WHITE;
                         gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
-                    }
-                    break;
-
-                case 1:
-                    SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_SNOWHEAD_TEMPLE);
-                    play->nextEntrance = ENTRANCE(MOUNTAIN_VILLAGE_SPRING, 7);
-                    play->transitionTrigger = TRANS_TRIGGER_START;
-                    play->transitionType = TRANS_TYPE_FADE_WHITE;
-                    gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
-                    break;
-
-                case 3:
-                    if (CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_GREAT_BAY_TEMPLE)) {
-                        play->nextEntrance = ENTRANCE(ZORA_CAPE, 9);
-                        gSaveContext.nextCutsceneIndex = 0xFFF0;
-                        play->transitionTrigger = TRANS_TRIGGER_START;
-                        play->transitionType = TRANS_TYPE_FADE_WHITE;
-                        gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
-                    } else {
-                        SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_GREAT_BAY_TEMPLE);
-                        play->nextEntrance = ENTRANCE(ZORA_CAPE, 8);
-                        gSaveContext.nextCutsceneIndex = 0xFFF0;
-                        play->transitionTrigger = TRANS_TRIGGER_START;
-                        play->transitionType = TRANS_TYPE_FADE_WHITE;
-                        gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
-                    }
-                    break;
-
-                case 2:
-                    SET_WEEKEVENTREG(WEEKEVENTREG_CLEARED_STONE_TOWER_TEMPLE);
-                    play->nextEntrance = ENTRANCE(IKANA_CANYON, 15);
-                    gSaveContext.nextCutsceneIndex = 0xFFF2;
-                    play->transitionTrigger = TRANS_TRIGGER_START;
-                    play->transitionType = TRANS_TYPE_FADE_WHITE;
-                    gSaveContext.nextTransitionType = TRANS_TYPE_FADE_WHITE;
-                    break;
+                        break;
+                }
             }
         }
-        OotmmSession_RedirectBossWarp(DoorWarp1_GetOotmmBossId(play));
     } else if (DOORWARP1_GET_FF00_1(&this->dyna.actor) != 0xFF) {
         if (DOORWARP1_GET_FF(&this->dyna.actor) == ENDOORWARP1_FF_6) {
             gSaveContext.respawnFlag = -2;

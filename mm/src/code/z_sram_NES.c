@@ -1264,20 +1264,26 @@ void Sram_ResetSaveFromMoonCrash(SramContext* sramCtx) {
 
     memset(sramCtx->saveBuf, 0, SAVE_BUFFER_SIZE);
 
-    if (SysFlashrom_ReadData(sramCtx->saveBuf, gFlashSaveStartPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER],
-                             gFlashSaveNumPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER]) != 0) {
-        SysFlashrom_ReadData(
-            sramCtx->saveBuf,
-            gFlashSaveStartPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER + FLASH_SAVE_BACKUP_OFFSET],
-            gFlashSaveNumPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER + FLASH_SAVE_BACKUP_OFFSET]);
-    }
-    memcpy(&gSaveContext.save, sramCtx->saveBuf, sizeof(Save));
-    if (CHECK_NEWF(gSaveContext.save.saveInfo.playerData.newf)) {
-        SysFlashrom_ReadData(
-            sramCtx->saveBuf,
-            gFlashSaveStartPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER + FLASH_SAVE_BACKUP_OFFSET],
-            gFlashSaveNumPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER + FLASH_SAVE_BACKUP_OFFSET]);
-        memcpy(&gSaveContext, sramCtx->saveBuf, sizeof(Save));
+    if (OotmmSession_IsActive() && OotmmSession_ReadMoonCrashSave(sramCtx->saveBuf)) {
+        memcpy(&gSaveContext.save, sramCtx->saveBuf, sizeof(Save));
+        gSaveContext.save.isOwlSave = false;
+    } else {
+        if (SysFlashrom_ReadData(sramCtx->saveBuf,
+                                 gFlashSaveStartPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER],
+                                 gFlashSaveNumPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER]) != 0) {
+            SysFlashrom_ReadData(
+                sramCtx->saveBuf,
+                gFlashSaveStartPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER + FLASH_SAVE_BACKUP_OFFSET],
+                gFlashSaveNumPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER + FLASH_SAVE_BACKUP_OFFSET]);
+        }
+        memcpy(&gSaveContext.save, sramCtx->saveBuf, sizeof(Save));
+        if (CHECK_NEWF(gSaveContext.save.saveInfo.playerData.newf)) {
+            SysFlashrom_ReadData(
+                sramCtx->saveBuf,
+                gFlashSaveStartPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER + FLASH_SAVE_BACKUP_OFFSET],
+                gFlashSaveNumPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER + FLASH_SAVE_BACKUP_OFFSET]);
+            memcpy(&gSaveContext, sramCtx->saveBuf, sizeof(Save));
+        }
     }
     gSaveContext.save.cutsceneIndex = cutsceneIndex;
 
@@ -1307,6 +1313,10 @@ void Sram_ResetSaveFromMoonCrash(SramContext* sramCtx) {
     gSaveContext.powderKegTimer = 0;
     gSaveContext.unk_1014 = 0;
     gSaveContext.jinxTimer = 0;
+
+    if (OotmmSession_IsActive()) {
+        GameInteractor_ExecuteOnSaveLoad(gSaveContext.fileNum);
+    }
 }
 
 static u16 sOwlWarpEntrances[OWL_WARP_MAX - 1] = {

@@ -20840,7 +20840,7 @@ void func_80857AEC(PlayState* play, Player* this) {
                 this->unk_B08 = 0.0f;
                 Actor_Spawn(&play->actorCtx, play, ACTOR_EN_TEST, this->actor.world.pos.x, this->actor.world.pos.y,
                             this->actor.world.pos.z, 0, 0, 0, 0);
-            } else {
+            } else if (!OotmmSession_BoolSetting("lenientSpikes")) {
                 this->av1.actionVar1 = 4;
             }
         }
@@ -20913,10 +20913,11 @@ void Player_Action_96(Player* this, PlayState* play) {
             speedTarget = 18.0f;
             Math_StepToC(&this->av1.actionVar1, 4, 1);
 
-            uint8_t vanillaSpikeModeCondition =
-                (this->stateFlags3 & PLAYER_STATE3_80000) && (!CHECK_BTN_ALL(sPlayerControlInput->cur.button, BTN_A) ||
-                                                              (gSaveContext.save.saveInfo.playerData.magic == 0) ||
-                                                              ((this->av1.actionVar1 == 4) && (this->unk_B08 < 12.0f)));
+            f32 minSpikeSpeed = OotmmSession_BoolSetting("lenientSpikes") ? 0.0f : 12.0f;
+            uint8_t vanillaSpikeModeCondition = (this->stateFlags3 & PLAYER_STATE3_80000) &&
+                                                (!CHECK_BTN_ALL(sPlayerControlInput->cur.button, BTN_A) ||
+                                                 (gSaveContext.save.saveInfo.playerData.magic == 0) ||
+                                                 ((this->av1.actionVar1 == 4) && (this->unk_B08 < minSpikeSpeed)));
             if (GameInteractor_Should(VB_GORON_ROLL_DISABLE_SPIKE_MODE, vanillaSpikeModeCondition)) {
                 if (Math_StepToS(&this->unk_B86[1], 0, 1)) {
                     this->stateFlags3 &= ~PLAYER_STATE3_80000;
@@ -21035,10 +21036,11 @@ void Player_Action_96(Player* this, PlayState* play) {
                     f32 var_fa1;
 
                     if (this->unk_B86[1] == 0) {
+                        s16 chargeSpeed = OotmmSession_BoolSetting("lenientSpikes") ? 0x1000 : 0x36B0;
                         if (GameInteractor_Should(VB_GORON_ROLL_INCREASE_SPIKE_LEVEL,
                                                   (gSaveContext.magicState == MAGIC_STATE_IDLE) &&
                                                       (gSaveContext.save.saveInfo.playerData.magic >= 2) &&
-                                                      (this->av2.actionVar2 >= 0x36B0))) {
+                                                      (this->av2.actionVar2 >= chargeSpeed))) {
                             this->av1.actionVar1++;
                             Actor_PlaySfx_Flagged2(&this->actor, NA_SE_PL_GORON_BALL_CHARGE - SFX_FLAG);
                         } else {
