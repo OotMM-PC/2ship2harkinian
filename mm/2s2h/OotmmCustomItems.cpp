@@ -159,6 +159,12 @@ extern "C" const char* OotmmCustomItems_NameTexture(uint8_t item) {
             return kName;
         }
     }
+    if (item == ITEM_OCARINA_FAIRY || item == ITEM_LONGSHOT) {
+        const char* name = item == ITEM_OCARINA_FAIRY
+                               ? "__OTR__textures/ot_item_name_static/gFairyOcarinaItemNameENGTex"
+                               : "__OTR__textures/ot_item_name_static/gHookshotItemNameENGTex";
+        return ResourceMgr_FileExists(name) ? name : nullptr;
+    }
     const CustomItem* entry = Find(item);
     if (entry == nullptr || !ResourceMgr_FileExists(entry->NameTexture)) {
         return nullptr;

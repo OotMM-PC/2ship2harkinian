@@ -3498,13 +3498,17 @@ void func_801514B0(PlayState* play, u16 arg1, u8 arg2) {
     sCharTexScale = temp / msgCtx->textCharScale;
     D_801F6B08 = temp / 1;
 
-    if ((arg1 == 0x1709) && (player->transformation == 3)) {
+    bool loadFromMessageTable = true;
+    GameInteractor_ExecuteOnOpenText(&arg1, &loadFromMessageTable);
+
+    if (loadFromMessageTable && (arg1 == 0x1709) && (player->transformation == 3)) {
         arg1 = 0x1705;
     }
 
     msgCtx->currentTextId = arg1;
 
-    if (gSaveContext.options.language == LANGUAGE_JPN) {
+    if (!loadFromMessageTable) {
+    } else if (gSaveContext.options.language == LANGUAGE_JPN) {
         Message_FindMessage(play, arg1);
         msgCtx->msgLength = font->messageEnd;
         // BENTODO

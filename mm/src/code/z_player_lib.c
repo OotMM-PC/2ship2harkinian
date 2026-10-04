@@ -2850,6 +2850,16 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
                     }
                 }
 
+                if (OotmmSession_IsActive() && (player->transformation == PLAYER_FORM_HUMAN) &&
+                    (sPlayerRightHandType == PLAYER_MODELTYPE_RH_INSTRUMENT) && !OotmmAdultLink_IsAdult() &&
+                    (gSaveContext.save.saveInfo.inventory.items[SLOT_OCARINA] == ITEM_OCARINA_FAIRY)) {
+                    Gfx* ootmmDList = OotmmEquipment_RightHandFairyOcarinaDList(sPlayerLod);
+
+                    if (ootmmDList != NULL) {
+                        *dList = ootmmDList;
+                    }
+                }
+
                 if ((sPlayerRightHandType == PLAYER_MODELTYPE_RH_SHIELD) &&
                     (player->transformation == PLAYER_FORM_HUMAN) &&
                     (player->currentShield != PLAYER_SHIELD_NONE) && OotmmCustomItems_WearingDekuShield() &&

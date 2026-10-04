@@ -26,6 +26,7 @@ Gfx* OotmmEquipment_BoomerangFlightDList(void);
 /// OoT's Deku shield for the sheath limb and the guarding fist, or NULL when not shipped.
 Gfx* OotmmEquipment_DekuShieldBackDList(void);
 Gfx* OotmmEquipment_DekuShieldHandDList(int lod);
+Gfx* OotmmEquipment_RightHandFairyOcarinaDList(int lod);
 
 void OotmmEquipment_GetTunicColor(uint8_t* r, uint8_t* g, uint8_t* b);
 void OotmmEquipment_TunicColorOf(int32_t tunic, uint8_t* r, uint8_t* g, uint8_t* b);

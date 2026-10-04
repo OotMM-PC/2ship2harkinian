@@ -481,6 +481,12 @@ Gfx* OotmmEquipment_DekuShieldHandDList(int lod) {
                                : "__OTR__objects/ot_obj_link_child/gLinkChildRightFistAndDekuShieldNearDL");
 }
 
+Gfx* OotmmEquipment_RightHandFairyOcarinaDList(int lod) {
+    return LoadOptionalGfx(lod != 0
+                               ? "__OTR__objects/ot_obj_link_child/gLinkChildRightHandHoldingFairyOcarinaFarDL"
+                               : "__OTR__objects/ot_obj_link_child/gLinkChildRightHandHoldingFairyOcarinaNearDL");
+}
+
 Gfx* OotmmEquipment_LeftHandHammerDList(void) {
     return LoadOptionalGfx(OT_LEFT_HAND_HAMMER_DL);
 }

@@ -194,17 +194,16 @@ extern "C" void OotmmItemPage_UpdateCursor(PlayState* play) {
     const uint8_t item = owned[first + sCursor];
     ApplyCursor(pauseCtx, item);
 
-    if (gSaveContext.buttonStatus[EQUIP_SLOT_A] != BTN_DISABLED) {
-        gSaveContext.buttonStatus[EQUIP_SLOT_A] = BTN_DISABLED;
-        gSaveContext.hudVisibility = HUD_VISIBILITY_IDLE;
-        Interface_SetHudVisibility(HUD_VISIBILITY_ALL);
-    }
-
     if (!idle || pauseCtx->debugEditor != DEBUG_EDITOR_NONE) {
         return;
     }
 
     const u16 pressed = CONTROLLER1(&play->state)->press.button;
+    if (CHECK_BTN_ALL(pressed, BTN_A) && play->msgCtx.msgLength == 0) {
+        pauseCtx->itemDescriptionOn = true;
+        func_801514B0(play, 0x1700 + item, sCursor / kColumns < 2 ? 3 : 1);
+        return;
+    }
     s16 targetButton = -1;
     if (CHECK_BTN_ALL(pressed, BTN_CLEFT)) {
         targetButton = PAUSE_EQUIP_C_LEFT;

@@ -9,6 +9,8 @@
 #include "OotmmChecks.h"
 #include "OotmmNpcChecks.h"
 #include "OotmmHints.h"
+#include "OotmmItemDescriptions.h"
+#include "OotmmDekuShield.h"
 #include "OotmmShops.h"
 #include "OotmmCsmc.h"
 #include "OotmmDrops.h"
@@ -645,6 +647,8 @@ void OotmmSession_Init() {
         OotmmNpcChecks_Init();
         OotmmShops_Init();
         OotmmHints_Init();
+        OotmmItemDescriptions_Init();
+        OotmmDekuShield_Init();
         OotmmCsmc_Init();
         OotmmDrops_Init();
         OotmmXflags_Init();

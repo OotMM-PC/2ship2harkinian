@@ -304,6 +304,9 @@ std::vector<uint8_t> LadderTiers(const Ship::OotmmGrantOp& op) {
         tiers.push_back(ITEM_WALLET_GIANT);
         return tiers;
     }
+    if (suffix == "SWORD" && !shared && state.GetStringSetting("progressiveGFS", "separate") == "progressive") {
+        return { ITEM_SWORD_KOKIRI, ITEM_SWORD_RAZOR, ITEM_SWORD_GILDED, ITEM_SWORD_GREAT_FAIRY };
+    }
     if (const Ladder* ladder = FindLadder(suffix)) {
         return ladder->Tiers;
     }
@@ -1038,6 +1041,16 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
             }
             case Ship::OotmmGrantKind::Song:
             case Ship::OotmmGrantKind::QuestFlag: {
+                if ((itemId == "MM_SONG_GORON_HALF" || itemId == "SHARED_SONG_GORON_HALF") &&
+                    OotmmSession_GetState().GetStringSetting("progressiveGoronLullabyMm", "progressive") ==
+                        "progressive") {
+                    for (uint32_t unit = already; unit < count; unit++) {
+                        SET_QUEST_ITEM(CHECK_QUEST_ITEM(QUEST_SONG_LULLABY_INTRO) ? QUEST_SONG_LULLABY
+                                                                                  : QUEST_SONG_LULLABY_INTRO);
+                    }
+                    sLedger.SetApplied(itemId, count);
+                    break;
+                }
                 if (already != 0) {
                     break;
                 }
