@@ -2,6 +2,8 @@
 
 #include "OotmmSession.h"
 
+#include <libultraship/bridge/OotmmProgress.h>
+
 extern "C" {
 #include "macros.h"
 #include "variables.h"
@@ -13,21 +15,24 @@ extern "C" int OotmmDungeons_SmallKeysRemoved(void) {
 }
 
 extern "C" int OotmmDungeons_MaxSmallKeys(int dungeonIndex) {
-    if (OotmmDungeons_SmallKeysRemoved()) {
-        return 0;
-    }
+    const char* code = nullptr;
     switch (dungeonIndex) {
         case DUNGEON_SCENE_INDEX_WOODFALL_TEMPLE:
-            return 1;
+            code = "WF";
+            break;
         case DUNGEON_SCENE_INDEX_SNOWHEAD_TEMPLE:
-            return 3;
+            code = "SH";
+            break;
         case DUNGEON_SCENE_INDEX_GREAT_BAY_TEMPLE:
-            return 1;
+            code = "GB";
+            break;
         case DUNGEON_SCENE_INDEX_STONE_TOWER_TEMPLE:
-            return 4;
+            code = "ST";
+            break;
         default:
             return 0;
     }
+    return static_cast<int>(Ship::OotmmMaxSmallKeys(OotmmSession_GetState(), Ship::OotmmGame::Mm, code));
 }
 
 extern "C" int OotmmDungeons_BossDoorIsOpen(void) {

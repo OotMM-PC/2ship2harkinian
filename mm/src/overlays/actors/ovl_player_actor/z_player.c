@@ -13231,7 +13231,9 @@ void Player_DetectSecrets(PlayState* play, Player* this) {
     this->secretRumbleCharge += step;
     if (this->secretRumbleCharge > SQ(2000.0f)) {
         this->secretRumbleCharge = 0.0f;
-        Player_RequestRumble(play, this, 120, 20, 10, SQ(0));
+        if (GameInteractor_Should(VB_RUMBLE_FOR_SECRET, true, this)) {
+            Player_RequestRumble(play, this, 120, 20, 10, SQ(0));
+        }
     }
 }
 

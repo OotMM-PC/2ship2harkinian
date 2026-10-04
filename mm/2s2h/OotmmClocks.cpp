@@ -5,9 +5,9 @@
 #include "OotmmIpc.h"
 #include "OotmmSession.h"
 
-#include <array>
+#include <libultraship/bridge/OotmmProgress.h>
+
 #include <cstdint>
-#include <string>
 
 extern "C" {
 #include "functions.h"
@@ -21,43 +21,12 @@ namespace {
 constexpr uint32_t kAllHalfDays = 0x3F;
 constexpr uint32_t kGraceLinear = 0x1E0;
 
-constexpr std::array<const char*, 6> kClockIds = {
-    "MM_CLOCK1", "MM_CLOCK2", "MM_CLOCK3", "MM_CLOCK4", "MM_CLOCK5", "MM_CLOCK6",
-};
-
 uint32_t Linear(uint32_t day, uint16_t time) {
     return day * 0x10000 + static_cast<uint16_t>(time - 0x4000);
 }
 
 uint32_t HalfDayLinear(uint32_t halfDay) {
     return 0x10000 + halfDay * 0x8000;
-}
-
-uint32_t OwnedMask() {
-    const auto& state = OotmmSession_GetState();
-    const auto& inventory = OotmmIpc_GetInventory();
-    const std::string mode = state.GetStringSetting("progressiveClocks", "ascending");
-
-    uint32_t mask = 0;
-    for (size_t i = 0; i < kClockIds.size(); i++) {
-        if (inventory.Has(kClockIds[i])) {
-            mask |= 1u << i;
-        }
-    }
-    if (mode == "separate") {
-        return mask & kAllHalfDays;
-    }
-
-    uint32_t count = inventory.Count("MM_CLOCK");
-    if (count > 5) {
-        count = 5;
-    }
-    if (mode == "descending") {
-        mask |= ((1u << (count + 1)) - 1) << (5 - count);
-    } else {
-        mask |= (1u << (count + 1)) - 1;
-    }
-    return mask & kAllHalfDays;
 }
 
 uint32_t MoonCrashLinear(const uint32_t mask) {
@@ -140,5 +109,5 @@ extern "C" uint32_t OotmmClocks_HalfDayMask(void) {
     if (!OotmmClocks_Enabled()) {
         return kAllHalfDays;
     }
-    return OwnedMask();
+    return Ship::OotmmClockMask(OotmmSession_GetState(), OotmmIpc_GetInventory());
 }

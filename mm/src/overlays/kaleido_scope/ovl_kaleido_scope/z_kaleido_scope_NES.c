@@ -20,6 +20,7 @@
 #include "archives/map_name_static/map_name_static.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
+#include "2s2h/OotmmPauseInfo.h"
 #include "2s2h/OotmmSaveMenu.h"
 #include "2s2h/OotmmSession.h"
 #include "2s2h/OotmmCustomItems.h"
@@ -783,13 +784,15 @@ void KaleidoScope_DrawPages(PlayState* play, GraphicsContext* gfxCtx) {
             POLY_OPA_DISP = KaleidoScope_DrawPageSections(POLY_OPA_DISP, pauseCtx->mapPageVtx, sMapPageBgTextures);
 
             GameInteractor_ExecuteBeforeKaleidoDrawPage(pauseCtx, PAUSE_MAP);
-            if (sInDungeonScene) {
-                KaleidoScope_DrawDungeonMap(play);
-                Gfx_SetupDL42_Opa(gfxCtx);
-                gDPSetCombineMode(POLY_OPA_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
-                MapDisp_DrawDungeonMap(play);
-            } else {
-                KaleidoScope_DrawWorldMap(play);
+            if (!OotmmPauseInfo_Draw(play)) {
+                if (sInDungeonScene) {
+                    KaleidoScope_DrawDungeonMap(play);
+                    Gfx_SetupDL42_Opa(gfxCtx);
+                    gDPSetCombineMode(POLY_OPA_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+                    MapDisp_DrawDungeonMap(play);
+                } else {
+                    KaleidoScope_DrawWorldMap(play);
+                }
             }
             GameInteractor_ExecuteAfterKaleidoDrawPage(pauseCtx, PAUSE_MAP);
         }
@@ -886,34 +889,36 @@ void KaleidoScope_DrawPages(PlayState* play, GraphicsContext* gfxCtx) {
                 POLY_OPA_DISP = KaleidoScope_DrawPageSections(POLY_OPA_DISP, pauseCtx->mapPageVtx, sMapPageBgTextures);
 
                 GameInteractor_ExecuteBeforeKaleidoDrawPage(pauseCtx, pauseCtx->pageIndex);
-                if (sInDungeonScene) {
-                    KaleidoScope_DrawDungeonMap(play);
-                    Gfx_SetupDL42_Opa(gfxCtx);
+                if (!OotmmPauseInfo_Draw(play)) {
+                    if (sInDungeonScene) {
+                        KaleidoScope_DrawDungeonMap(play);
+                        Gfx_SetupDL42_Opa(gfxCtx);
 
-                    gDPSetCombineMode(POLY_OPA_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
+                        gDPSetCombineMode(POLY_OPA_DISP++, G_CC_MODULATEIA_PRIM, G_CC_MODULATEIA_PRIM);
 
-                    MapDisp_DrawDungeonMap(play);
-                } else {
-                    Matrix_RotateYF(R_PAUSE_WORLD_MAP_YAW / 1000.0f, MTXMODE_NEW);
-
-                    if ((pauseCtx->state == PAUSE_STATE_OPENING_3) || (pauseCtx->state == PAUSE_STATE_OWL_WARP_3) ||
-                        (pauseCtx->state >= PAUSE_STATE_OWL_WARP_6) ||
-                        ((pauseCtx->state == PAUSE_STATE_SAVEPROMPT) &&
-                         ((pauseCtx->savePromptState == PAUSE_SAVEPROMPT_STATE_3) ||
-                          (pauseCtx->savePromptState == PAUSE_SAVEPROMPT_STATE_7)))) {
-                        Matrix_Translate(0.0f, (R_PAUSE_WORLD_MAP_Y_OFFSET - 8000) / 100.0f,
-                                         R_PAUSE_WORLD_MAP_DEPTH / 100.0f, MTXMODE_APPLY);
+                        MapDisp_DrawDungeonMap(play);
                     } else {
-                        Matrix_Translate(0.0f, R_PAUSE_WORLD_MAP_Y_OFFSET / 100.0f, R_PAUSE_WORLD_MAP_DEPTH / 100.0f,
-                                         MTXMODE_APPLY);
+                        Matrix_RotateYF(R_PAUSE_WORLD_MAP_YAW / 1000.0f, MTXMODE_NEW);
+
+                        if ((pauseCtx->state == PAUSE_STATE_OPENING_3) || (pauseCtx->state == PAUSE_STATE_OWL_WARP_3) ||
+                            (pauseCtx->state >= PAUSE_STATE_OWL_WARP_6) ||
+                            ((pauseCtx->state == PAUSE_STATE_SAVEPROMPT) &&
+                             ((pauseCtx->savePromptState == PAUSE_SAVEPROMPT_STATE_3) ||
+                              (pauseCtx->savePromptState == PAUSE_SAVEPROMPT_STATE_7)))) {
+                            Matrix_Translate(0.0f, (R_PAUSE_WORLD_MAP_Y_OFFSET - 8000) / 100.0f,
+                                             R_PAUSE_WORLD_MAP_DEPTH / 100.0f, MTXMODE_APPLY);
+                        } else {
+                            Matrix_Translate(0.0f, R_PAUSE_WORLD_MAP_Y_OFFSET / 100.0f,
+                                             R_PAUSE_WORLD_MAP_DEPTH / 100.0f, MTXMODE_APPLY);
+                        }
+
+                        Matrix_Scale(1.0f, 1.0f, 1.0f, MTXMODE_APPLY);
+                        Matrix_RotateXFApply(-pauseCtx->mapPageRoll / 100.0f);
+
+                        MATRIX_FINALIZE_AND_LOAD(POLY_OPA_DISP++, gfxCtx);
+
+                        KaleidoScope_DrawWorldMap(play);
                     }
-
-                    Matrix_Scale(1.0f, 1.0f, 1.0f, MTXMODE_APPLY);
-                    Matrix_RotateXFApply(-pauseCtx->mapPageRoll / 100.0f);
-
-                    MATRIX_FINALIZE_AND_LOAD(POLY_OPA_DISP++, gfxCtx);
-
-                    KaleidoScope_DrawWorldMap(play);
                 }
                 GameInteractor_ExecuteAfterKaleidoDrawPage(pauseCtx, pauseCtx->pageIndex);
                 break;
@@ -4290,6 +4295,9 @@ void KaleidoScope_Update(PlayState* play) {
                     break;
 
                 case PAUSE_MAP:
+                    if (OotmmPauseInfo_Update(play)) {
+                        break;
+                    }
                     if (sInDungeonScene) {
                         KaleidoScope_UpdateDungeonCursor(play);
                     } else {

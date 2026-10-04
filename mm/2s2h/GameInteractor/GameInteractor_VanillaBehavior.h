@@ -1709,6 +1709,14 @@ typedef enum {
     // true
     // ```
     // #### `args`
+    // - `*Player`
+    VB_RUMBLE_FOR_SECRET,
+
+    // #### `result`
+    // ```c
+    // true
+    // ```
+    // #### `args`
     // - `*EnSuttari`
     VB_SAKON_TAKE_DAMAGE,
 
