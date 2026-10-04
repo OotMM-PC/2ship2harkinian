@@ -209,13 +209,19 @@ void HandleSongAct(PlayState* play) {
 
 void ResolveWarp(PlayState* play) {
     const SongDef& def = Def(sActiveSong);
+    const auto resolved = OotmmSession_GetState().GetSongEntrance(sActiveSong - OOTMM_SONG_MINUET);
     sActiveSong = OOTMM_SONG_NONE;
 
     const Ship::OotmmEntranceMapping* mapping =
         OotmmSession_GetState().FindEntrance(Ship::OotmmGame::Oot, def.WarpNativeId);
 
     ResetWarp();
-    sWarp.CrossGame = mapping == nullptr || mapping->ToGame == Ship::OotmmGame::Oot;
+    const auto destinationGame = resolved.has_value()
+        ? ((*resolved & 0x80000000u) != 0 ? Ship::OotmmGame::Mm : Ship::OotmmGame::Oot)
+        : (mapping != nullptr ? mapping->ToGame : Ship::OotmmGame::Oot);
+    const uint32_t destination = resolved.has_value() ? *resolved & 0x7fffffffu
+        : (mapping != nullptr && mapping->ToNativeId.has_value() ? *mapping->ToNativeId : def.WarpNativeId);
+    sWarp.CrossGame = destinationGame == Ship::OotmmGame::Oot;
     if (sWarp.CrossGame) {
         if (!OotmmIpc_IsConnected()) {
             CustomMessage::StartTextbox("The launcher is not listening, so the song cannot carry you there.");
@@ -226,14 +232,13 @@ void ResolveWarp(PlayState* play) {
         sWarp.Mapping.From = def.WarpEntrance;
         sWarp.Mapping.ToGame = Ship::OotmmGame::Oot;
         sWarp.Mapping.To = mapping != nullptr ? mapping->To : def.WarpEntrance;
-        sWarp.Mapping.ToNativeId = mapping != nullptr && mapping->ToNativeId.has_value() ? *mapping->ToNativeId
-                                                                                         : def.WarpNativeId;
+        sWarp.Mapping.ToNativeId = destination;
     } else {
-        if (!mapping->ToNativeId.has_value()) {
+        if (!resolved.has_value() && (mapping == nullptr || !mapping->ToNativeId.has_value())) {
             ShowRestrictedText(play);
             return;
         }
-        sWarp.MmEntrance = *mapping->ToNativeId;
+        sWarp.MmEntrance = destination;
     }
 
     play->msgCtx.ocarinaMode = OCARINA_MODE_WARP_TO_SOUTH_CLOCK_TOWN;
@@ -374,9 +379,49 @@ extern "C" void OotmmSongs_Update(PlayState* play, Player* player) {
     }
 }
 
-extern "C" int32_t OotmmSongs_OverrideSoaringDestination(PlayState* play) {
+extern "C" int32_t OotmmSongs_OverrideSoaringDestination(PlayState* play, int32_t owlMode) {
     if (!sWarp.Pending) {
-        return false;
+        if (!OotmmSession_IsActive() || owlMode < OCARINA_MODE_WARP_TO_GREAT_BAY_COAST ||
+            owlMode >= OCARINA_MODE_WARP_TO_ENTRANCE) {
+            return false;
+        }
+        switch (play->sceneId) {
+            case SCENE_MITURIN:
+            case SCENE_HAKUGIN:
+            case SCENE_SEA:
+            case SCENE_INISIE_N:
+            case SCENE_INISIE_R:
+            case SCENE_SECOM:
+            case SCENE_MITURIN_BS:
+            case SCENE_HAKUGIN_BS:
+            case SCENE_SEA_BS:
+            case SCENE_INISIE_BS:
+                return false;
+        }
+        const auto destination = OotmmSession_GetState().GetOwlEntrance(
+            owlMode - OCARINA_MODE_WARP_TO_GREAT_BAY_COAST);
+        if (!destination.has_value()) {
+            return false;
+        }
+        ResetWarp();
+        sWarp.CrossGame = (*destination & 0x80000000u) != 0;
+        if (sWarp.CrossGame) {
+            sWarp.Mapping.FromGame = Ship::OotmmGame::Mm;
+            sWarp.Mapping.From = "MM owl warp";
+            sWarp.Mapping.ToGame = Ship::OotmmGame::Oot;
+            sWarp.Mapping.To = "OoT owl destination";
+            sWarp.Mapping.ToNativeId = *destination & 0x7fffffffu;
+        } else {
+            sWarp.MmEntrance = *destination;
+            if (sWarp.MmEntrance == ENTRANCE(SOUTHERN_SWAMP_POISONED, 10) &&
+                CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_WOODFALL_TEMPLE)) {
+                sWarp.MmEntrance = ENTRANCE(SOUTHERN_SWAMP_CLEARED, 10);
+            } else if (sWarp.MmEntrance == ENTRANCE(MOUNTAIN_VILLAGE_WINTER, 8) &&
+                       CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_SNOWHEAD_TEMPLE)) {
+                sWarp.MmEntrance = ENTRANCE(MOUNTAIN_VILLAGE_SPRING, 8);
+            }
+        }
+        sWarp.Pending = true;
     }
     if (!sWarp.CrossGame) {
         const int32_t resolved = OotmmSession_ApplyResolvedMmEntrance(sWarp.MmEntrance);

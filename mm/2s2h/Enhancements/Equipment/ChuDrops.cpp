@@ -1,6 +1,7 @@
 #include <libultraship/bridge/consolevariablebridge.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
+#include "2s2h/OotmmSession.h"
 #include "2s2h/CustomItem/CustomItem.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 
@@ -74,6 +75,9 @@ static void ChuDrop_Draw(Actor* actor, PlayState* play) {
 
 void RegisterChuDrops() {
     COND_ID_HOOK(ShouldActorInit, ACTOR_EN_ITEM00, CVAR, [](Actor* actor, bool* should) {
+        if (OotmmSession_IsActive()) {
+            return;
+        }
         u8 params = actor->params & 0xFF;
         if (params == ITEM00_BOMBS_0 || params == ITEM00_BOMBS_A || params == ITEM00_BOMBS_B) {
             if (rand() % 100 < 50) {

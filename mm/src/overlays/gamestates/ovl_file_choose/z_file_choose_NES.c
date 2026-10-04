@@ -1,3 +1,4 @@
+#include "2s2h/OotmmSession.h"
 /*
  * File: z_file_choose_NES.c
  * Overlay: ovl_file_choose
@@ -14,6 +15,7 @@
 #include "misc/title_static/title_static.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/SaveManager/SaveManager.h"
 #include "2s2h_assets.h"
 #include <string.h>
 #include "BenPort.h"
@@ -2073,8 +2075,15 @@ void FileSelect_ConfirmFile(GameState* thisx) {
     FileSelectState* this = (FileSelectState*)thisx;
     Input* input = CONTROLLER1(&this->state);
 
+    if (OotmmSession_FileSelectionPending()) {
+        return;
+    }
+
     if (CHECK_BTN_ALL(input->press.button, BTN_START) || (CHECK_BTN_ALL(input->press.button, BTN_A))) {
         if (this->confirmButtonIndex == FS_BTN_CONFIRM_YES) {
+            if (!OotmmSession_RequestFileSelection(this->buttonIndex)) {
+                return;
+            }
             Rumble_Request(300.0f, 180, 20, 100);
             Audio_PlaySfx(NA_SE_SY_FSEL_DECIDE_L);
             this->selectMode = SM_FADE_OUT;
@@ -2559,6 +2568,7 @@ void FileSelect_InitContext(GameState* thisx) {
 
 void FileSelect_Destroy(GameState* this) {
     ShrinkWindow_Destroy();
+    SaveManager_ResetReadSnapshots();
     gFileSelectState = NULL;
 }
 
@@ -2566,6 +2576,7 @@ void FileSelect_Init(GameState* thisx) {
     s32 pad;
     FileSelectState* this = (FileSelectState*)thisx;
     gFileSelectState = this;
+    SaveManager_ResetReadSnapshots();
     size_t size;
 
     GameState_SetFramerateDivisor(&this->state, 1);

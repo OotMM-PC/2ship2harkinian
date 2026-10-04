@@ -1,3 +1,4 @@
+#include "2s2h/OotmmSession.h"
 /*
  * File: z_file_copy_erase.c
  * Overlay: ovl_file_choose
@@ -6,6 +7,7 @@
 
 #include "z_file_select.h"
 #include "z64rumble.h"
+#include "2s2h/SaveManager/SaveManager.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 // When choosing a file to copy or erase, the 6 main menu buttons are placed at these offsets
@@ -422,18 +424,30 @@ void FileSelect_CopyConfirm(GameState* thisx) {
     Input* input = CONTROLLER1(&this->state);
     u16 time;
 
+    if (OotmmSession_FileSelectionPending()) {
+        return;
+    }
+
     if (((this->buttonIndex != FS_BTN_CONFIRM_YES) && CHECK_BTN_ANY(input->press.button, BTN_A | BTN_START)) ||
         CHECK_BTN_ALL(input->press.button, BTN_B)) {
+        if (!SaveManager_CancelCopy()) {
+            Audio_PlaySfx(NA_SE_SY_ERROR);
+            return;
+        }
         this->actionTimer = 4;
         this->nextTitleLabel = FS_TITLE_COPY_TO;
         this->configMode = CM_RETURN_TO_COPY_DEST;
         Audio_PlaySfx(NA_SE_SY_FSEL_CLOSE);
     } else if (CHECK_BTN_ANY(input->press.button, BTN_A | BTN_START)) {
+        if (!OotmmSession_RequestFileCopy(this->selectedFileIndex, this->copyDestFileIndex)) {
+            return;
+        }
         gSaveContext.save.time = time = CURRENT_TIME; // Set to itself with unused temp
         this->nameAlpha[this->copyDestFileIndex] = 0;
         this->fileInfoAlpha[this->copyDestFileIndex] = this->nameAlpha[this->copyDestFileIndex];
         this->nextTitleLabel = FS_TITLE_COPY_COMPLETE;
         this->actionTimer = 4;
+        SaveManager_BeginCopy();
         Sram_CopySave(this, sramCtx);
         if (!gSaveContext.flashSaveAvailable) {
             this->configMode = CM_COPY_ANIM_1;
@@ -464,6 +478,14 @@ void FileSelect_CopyWaitForFlashSave(GameState* thisx) {
     Sram_UpdateWriteToFlashDefault(sramCtx);
 
     if (sramCtx->status == 0) {
+        if (!SaveManager_FinishCopy()) {
+            this->configMode = CM_COPY_CONFIRM;
+            this->titleLabel = FS_TITLE_COPY_CONFIRM;
+            this->nextTitleLabel = FS_TITLE_COPY_CONFIRM;
+            this->buttonIndex = FS_BTN_CONFIRM_YES;
+            Audio_PlaySfx(NA_SE_SY_ERROR);
+            return;
+        }
         this->configMode = CM_COPY_ANIM_1;
 
         for (i = 0; i < 6; i++) {

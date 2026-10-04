@@ -244,6 +244,8 @@ typedef enum Item00Type {
     /* 0x1C */ ITEM00_COMPASS,
     /* 0x1D */ ITEM00_MUSHROOM_CLOUD,
 
+    ITEM00_BOMBCHU = 0x1E,
+
     /* 0xFF */ ITEM00_NO_DROP = -1
 } Item00Type;
 

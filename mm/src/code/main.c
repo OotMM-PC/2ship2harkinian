@@ -48,12 +48,14 @@ s32 gScreenHeight = SCREEN_HEIGHT;
 size_t gSystemHeapSize = 0;
 
 void InitOTR();
+void SaveManager_RunValidationCommand(int argc, char** argv);
 void Heaps_Free(void);
 #ifdef __GNUC__
 #define SDL_main main
 #endif
 
 void SDL_main(int argc, char** argv /* void* arg*/) {
+    SaveManager_RunValidationCommand(argc, argv);
     intptr_t fb;
     intptr_t sysHeap;
     s32 exit;

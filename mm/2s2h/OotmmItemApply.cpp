@@ -1,6 +1,7 @@
 #include "OotmmItemApply.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/SaveManager/SaveManager.h"
 #include "OotmmCustomItems.h"
 #include "OotmmDungeons.h"
 #include "OotmmIpc.h"
@@ -8,9 +9,12 @@
 
 #include <libultraship/bridge/OotmmAppliedLedger.h>
 #include <libultraship/bridge/OotmmItemGrant.h>
+#include <libultraship/bridge/OotmmHealth.h>
+#include <libultraship/bridge/OotmmBombchu.h>
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <chrono>
 #include <map>
 #include <string>
 #include <string_view>
@@ -112,9 +116,25 @@ const DungeonSlot* FindDungeon(std::string_view suffix) {
 }
 
 Ship::OotmmAppliedLedger sLedger;
+Ship::OotmmSharedResourceState sSharedResources;
+
+bool SharedBombchuReward(const std::string& id) {
+    return id == "SHARED_BOMBCHU" || id.rfind("SHARED_BOMBCHU_", 0) == 0;
+}
+
+bool LoadSharedResources(const nlohmann::json& saved) {
+    if (!OotmmSession_GetState().GetBoolSetting("sharedBombchu", false)) {
+        return true;
+    }
+    const auto& boot = OotmmSession_GetState().GetBootConfig();
+    return sSharedResources.Load(boot.SharedResources, saved, boot.SaveId, gSaveContext.fileNum);
+}
 std::map<std::string, std::string> sUnhandled;
 uint64_t sAppliedRevision = 0;
 bool sLedgerLoaded = false;
+bool sLedgerValid = true;
+std::chrono::steady_clock::time_point sLedgerRetryAt{};
+std::unordered_map<std::string, bool> sReadSnapshots;
 
 // Keyed per-game and per-save-tag: the other game's fresh-save reset cannot erase these records,
 // and a save recreated under a new tag starts from an empty ledger and re-grants everything.
@@ -134,12 +154,61 @@ std::string LegacyLedgerPath() {
 }
 
 void EnsureLedger() {
-    if (sLedgerLoaded) {
+    if (sLedgerLoaded || std::chrono::steady_clock::now() < sLedgerRetryAt) {
         return;
     }
+    sLedgerValid = false;
+    sLedgerRetryAt = std::chrono::steady_clock::now() + std::chrono::seconds(1);
     // Older sessions shared one ledger between both games; adopt it once, then stay per-game.
-    if (!sLedger.Load(LedgerPath())) {
-        sLedger.Load(LegacyLedgerPath());
+    const bool legacyValid = sLedger.LoadLegacy(LedgerPath(), LegacyLedgerPath());
+    nlohmann::json save;
+    const auto file = SaveManager_GetFileName(gSaveContext.fileNum + 1);
+    if (SaveManager_ReadSaveFile(file, save) == 0) {
+        const auto selected = sReadSnapshots.find(file);
+        const bool owlSave = selected == sReadSnapshots.end() ? gSaveContext.save.isOwlSave : selected->second;
+        const char* section = owlSave ? "owlSave" : "newCycleSave";
+        if (save.contains(section) && save[section].is_object()) {
+            auto& snapshot = save[section];
+            sLedgerValid = LoadSharedResources(snapshot.value("ootmmSharedResources", nlohmann::json(nullptr)));
+            if (snapshot.contains("ootmmApplied")) {
+                if (!sLedger.RestoreSnapshot(snapshot["ootmmApplied"])) {
+                    sLedgerValid = false;
+                    SPDLOG_ERROR("[OoTMM] Invalid applied-item snapshot in {}", section);
+                }
+            } else {
+                if (!legacyValid) {
+                    sLedgerValid = false;
+                    SPDLOG_ERROR("[OoTMM] Invalid legacy applied ledger; delivery is suspended");
+                    return;
+                }
+                snapshot["ootmmApplied"] = sLedger.GetValues();
+                if (!SaveManager_WriteSaveFile(file, save)) {
+                    sLedgerValid = false;
+                    SPDLOG_ERROR("[OoTMM] Failed to initialize applied-item snapshot");
+                    return;
+                }
+            }
+        } else {
+            SPDLOG_ERROR("[OoTMM] Missing applied-item save section {}", section);
+        }
+    } else {
+        return;
+    }
+    if (sLedgerValid) {
+        auto& player = gSaveContext.save.saveInfo.playerData;
+        auto& inventory = gSaveContext.save.saveInfo.inventory;
+        const auto health = Ship::ResolveOotmmSavedHealth(
+            player.healthCapacity, player.health, inventory.questItems >> 28,
+            uint64_t(sLedger.Applied("MM_HEART_CONTAINER")) + sLedger.Applied("SHARED_HEART_CONTAINER"),
+            uint64_t(sLedger.Applied("MM_HEART_PIECE")) + sLedger.Applied("SHARED_HEART_PIECE"));
+        if (!health) {
+            sLedgerValid = false;
+            SPDLOG_ERROR("[OoTMM] Applied health rewards exceed native save bounds; delivery is suspended");
+        } else {
+            player.healthCapacity = health->Capacity;
+            player.health += health->Healing;
+            inventory.questItems = (inventory.questItems & 0x0fffffffU) | (uint32_t(health->Pieces) << 28);
+        }
     }
     sLedgerLoaded = true;
 }
@@ -302,6 +371,56 @@ std::vector<uint8_t> OwnedTradeItems(uint8_t slot) {
     return owned;
 }
 
+uint32_t BombchuBagTier() {
+    const uint64_t bags = uint64_t(sLedger.Applied("MM_BOMBCHU_BAG")) +
+                          sLedger.Applied("SHARED_BOMBCHU_BAG");
+    return static_cast<uint32_t>(std::min<uint64_t>(3,
+        std::max<uint64_t>(bags, sLedger.Applied("native:bombchuBagFirst"))));
+}
+
+int32_t BombchuCapacity() {
+    const auto tier = BombchuBagTier();
+    return Ship::ResolveOotmmBombchuCapacity(
+        OotmmSession_GetState().GetStringSetting("bombchuBehaviorMm", "bombBag"),
+        CUR_UPG_VALUE(UPG_BOMB_BAG), tier).value_or(0);
+}
+
+bool RestoreSharedResources() {
+    if (!OotmmSession_GetState().GetBoolSetting("sharedBombchu", false) || !sSharedResources.NeedsRestore()) {
+        return true;
+    }
+    const auto& snapshot = *sSharedResources.Current();
+    const auto ammo = snapshot.Values.find("bombchu");
+    const auto owned = snapshot.Values.find("bombchuOwned");
+    const auto first = snapshot.Values.find("bombchuBagFirst");
+    if (ammo == snapshot.Values.end() || ammo->second > 50 || owned == snapshot.Values.end() ||
+        owned->second > 1 || first == snapshot.Values.end() || first->second > 1) {
+        return false;
+    }
+    for (const auto& [id, count] : snapshot.Applied) {
+        if (!SharedBombchuReward(id) || OotmmIpc_GetInventory().Count(id) < count) {
+            return false;
+        }
+    }
+    std::vector<std::string> previous;
+    for (const auto& [id, count] : sLedger.GetValues()) {
+        if (SharedBombchuReward(id)) {
+            previous.push_back(id);
+        }
+    }
+    for (const auto& id : previous) {
+        sLedger.Erase(id);
+    }
+    for (const auto& [id, count] : snapshot.Applied) {
+        sLedger.SetApplied(id, count);
+    }
+    sLedger.SetApplied("native:bombchuBagFirst", first->second);
+    gSaveContext.save.saveInfo.inventory.items[SLOT_BOMBCHU] = owned->second ? ITEM_BOMBCHU : ITEM_NONE;
+    gSaveContext.save.saveInfo.inventory.ammo[SLOT_BOMBCHU] = static_cast<int8_t>(ammo->second);
+    sSharedResources.Restored();
+    return true;
+}
+
 void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
     if (count == 0) {
         return;
@@ -320,6 +439,29 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
             case Ship::OotmmGrantKind::Upgrade:
             case Ship::OotmmGrantKind::Mask:
             case Ship::OotmmGrantKind::Bottle: {
+                if (op.Slot == "BOMBCHU_BAG") {
+                    gSaveContext.save.saveInfo.inventory.items[SLOT_BOMBCHU] = ITEM_BOMBCHU;
+                    if (count > already) {
+                        sLedger.SetApplied(itemId, count);
+                        gSaveContext.save.saveInfo.inventory.ammo[SLOT_BOMBCHU] = BombchuCapacity();
+                    }
+                    break;
+                }
+                if (op.Slot == "DEFENSE_UPGRADE") {
+                    if (count > already) {
+                        const auto health = Ship::ResolveOotmmHealth(
+                            gSaveContext.save.saveInfo.playerData.healthCapacity, gSaveContext.save.saveInfo.playerData.health, gSaveContext.save.saveInfo.inventory.questItems >> 28, 0, 0, 20);
+                        if (!health) {
+                            sUnhandled[itemId] = "Invalid native health for defense reward";
+                            break;
+                        }
+                        gSaveContext.save.saveInfo.playerData.doubleDefense = 1;
+                        gSaveContext.save.saveInfo.inventory.defenseHearts = 20;
+                        Health_ChangeBy(play, health->Healing);
+                        sLedger.SetApplied(itemId, count);
+                    }
+                    break;
+                }
                 if (op.Slot == "TRANSCENDENT_FAIRY") {
                     if (already == 0) {
                         for (const auto& dungeon : kDungeons) {
@@ -385,6 +527,20 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                 if (count <= already) {
                     break;
                 }
+                if (op.Slot == "BOMBCHU" || op.Slot.starts_with("BOMBCHU_")) {
+                    if (OotmmSession_GetState().GetStringSetting("bombchuBehaviorMm", "bombBag") == "bagFirst") {
+                        sLedger.SetApplied("native:bombchuBagFirst", 1);
+                    }
+                    const auto capacity = BombchuCapacity();
+                    if (capacity > 0) {
+                        gSaveContext.save.saveInfo.inventory.items[SLOT_BOMBCHU] = ITEM_BOMBCHU;
+                        const uint64_t amount = uint64_t(count - already) * TrailingNumber(op.Slot, 1);
+                        gSaveContext.save.saveInfo.inventory.ammo[SLOT_BOMBCHU] = static_cast<int8_t>(std::min<uint64_t>(
+                            capacity, std::max<int32_t>(0, gSaveContext.save.saveInfo.inventory.ammo[SLOT_BOMBCHU]) + amount));
+                    }
+                    sLedger.SetApplied(itemId, count);
+                    break;
+                }
                 for (const auto& [name, slot] : kAmmoSlots) {
                     if (op.Slot.rfind(name, 0) == 0) {
                         const uint32_t per = TrailingNumber(op.Slot, 1);
@@ -397,7 +553,20 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
             }
             case Ship::OotmmGrantKind::Health: {
                 if (count > already) {
-                    Health_ChangeBy(play, static_cast<int16_t>((count - already) * 16));
+                    const uint32_t delta = count - already;
+                    const bool container = op.Slot == "HEART_CONTAINER";
+                    const bool piece = op.Slot == "HEART_PIECE";
+                    const auto result = Ship::ResolveOotmmHealth(
+                        gSaveContext.save.saveInfo.playerData.healthCapacity, gSaveContext.save.saveInfo.playerData.health, gSaveContext.save.saveInfo.inventory.questItems >> 28,
+                        container ? delta : 0, piece ? delta : 0, (!container && !piece) ? delta : 0);
+                    if (!result) {
+                        sUnhandled[itemId] = "Health reward exceeds native save bounds";
+                        break;
+                    }
+                    gSaveContext.save.saveInfo.playerData.healthCapacity = result->Capacity;
+                    gSaveContext.save.saveInfo.inventory.questItems = (gSaveContext.save.saveInfo.inventory.questItems & 0x0fffffffU) |
+                        (uint32_t(result->Pieces) << 28);
+                    Health_ChangeBy(play, result->Healing);
                     sLedger.SetApplied(itemId, count);
                 }
                 break;
@@ -532,18 +701,63 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
 
 } // namespace
 
+extern "C" int32_t OotmmItemApply_BombchuCapacity(void) {
+    if (!OotmmSession_IsActive()) {
+        return CUR_CAPACITY(UPG_BOMB_BAG);
+    }
+    EnsureLedger();
+    return sLedgerValid ? BombchuCapacity() : 0;
+}
+
+extern "C" int32_t OotmmItemApply_SelectBombDrop(int32_t bombDrop, int32_t bombchuDrop) {
+    if (!OotmmSession_IsActive()) {
+        return bombDrop;
+    }
+    EnsureLedger();
+    if (!sLedgerValid) {
+        return -1;
+    }
+    switch (Ship::ResolveOotmmBombDrop(CUR_UPG_VALUE(UPG_BOMB_BAG) > 0, BombchuBagTier() > 0,
+        std::max<int32_t>(0, gSaveContext.save.saveInfo.inventory.ammo[SLOT_BOMB]),
+        std::max<int32_t>(0, gSaveContext.save.saveInfo.inventory.ammo[SLOT_BOMBCHU]))) {
+        case Ship::OotmmBombDrop::None: return -1;
+        case Ship::OotmmBombDrop::Bomb: return bombDrop;
+        case Ship::OotmmBombDrop::Bombchu: return bombchuDrop;
+        case Ship::OotmmBombDrop::Random: return Rand_ZeroOne() < 0.5f ? bombchuDrop : bombDrop;
+    }
+    return -1;
+}
+
+extern "C" void OotmmItemApply_AddBombchuAmmo(int32_t amount) {
+    if (!OotmmSession_IsActive()) {
+        return;
+    }
+    const int32_t capacity = OotmmItemApply_BombchuCapacity();
+    if (capacity == 0 || !sLedgerValid) {
+        return;
+    }
+    if (amount > 0) {
+        gSaveContext.save.saveInfo.inventory.items[SLOT_BOMBCHU] = ITEM_BOMBCHU;
+    }
+    gSaveContext.save.saveInfo.inventory.ammo[SLOT_BOMBCHU] = static_cast<int8_t>(std::clamp<int64_t>(
+        int64_t(gSaveContext.save.saveInfo.inventory.ammo[SLOT_BOMBCHU]) + amount, 0, capacity));
+}
+
 void OotmmItemApply_ResetLedgerForNewSave() {
     if (!OotmmSession_IsActive()) {
         return;
     }
     sLedger.Reset();
+    sLedgerRetryAt = {};
+    sReadSnapshots[SaveManager_GetFileName(gSaveContext.fileNum + 1)] = false;
+    sLedgerValid = LoadSharedResources(nullptr);
     sLedger.Save(LedgerPath());
     sLedgerLoaded = true;
     sAppliedRevision = 0;
 }
 
 void OotmmItemApply_Reconcile() {
-    if (gPlayState == nullptr || !OotmmSession_IsActive()) {
+    if (gPlayState == nullptr || !OotmmSession_IsActive() || OotmmSession_HasPendingInitialSave()) {
         return;
     }
     const auto& inventory = OotmmIpc_GetInventory();
@@ -551,7 +765,25 @@ void OotmmItemApply_Reconcile() {
         return;
     }
     EnsureLedger();
+    if (!sLedgerValid) {
+        return;
+    }
+    for (const auto& [itemId, count] : inventory.GetValues()) {
+        const auto suffix = Ship::OotmmItemGrant::SuffixOf(itemId);
+        if (suffix == "BOMB_BAG") {
+            ApplyOne(gPlayState, itemId, count);
+        }
+    }
+    if (!RestoreSharedResources()) {
+        return;
+    }
     sAppliedRevision = inventory.GetRevision();
+    for (const auto& [itemId, count] : inventory.GetValues()) {
+        const auto suffix = Ship::OotmmItemGrant::SuffixOf(itemId);
+        if (suffix == "BOMBCHU_BAG") {
+            ApplyOne(gPlayState, itemId, count);
+        }
+    }
     size_t owned = 0;
     for (const auto& [itemId, count] : inventory.GetValues()) {
         if (count > 0) {
@@ -649,18 +881,87 @@ extern "C" void OotmmItemApply_SetTradeItemOwned(uint8_t slot, uint8_t item, int
     }
 }
 
+void OotmmItemApply_RefreshSaveSnapshot() {
+    sLedgerLoaded = false;
+    sLedgerRetryAt = {};
+    sAppliedRevision = 0;
+    EnsureLedger();
+}
+
+nlohmann::json OotmmItemApply_LegacySnapshot(int fileNum) {
+    Ship::OotmmAppliedLedger ledger;
+    if (!ledger.LoadLegacy(LedgerPathFor(fileNum),
+            OotmmSession_GetState().GetBootConfig().StatePath + ".applied." + std::to_string(fileNum))) {
+        return nullptr;
+    }
+    return ledger.GetValues();
+}
+
+void OotmmItemApply_NoteSaveRead(const std::string& fileName, bool owlSave) {
+    sReadSnapshots[fileName] = owlSave;
+}
+
+
+bool OotmmItemApply_CaptureSharedSnapshot(const nlohmann::json& native, nlohmann::json& snapshot) {
+    snapshot = nullptr;
+    if (!OotmmSession_IsActive() || !OotmmSession_GetState().GetBoolSetting("sharedBombchu", false)) {
+        return true;
+    }
+    EnsureLedger();
+    if (!sLedgerValid) {
+        return false;
+    }
+    const auto& boot = OotmmSession_GetState().GetBootConfig();
+    std::map<std::string, uint32_t> applied;
+    for (const auto& [id, count] : sLedger.GetValues()) {
+        if (SharedBombchuReward(id)) {
+            applied.emplace(id, count);
+        }
+    }
+    return sSharedResources.Capture(boot.SaveId, gSaveContext.fileNum, "mm",
+        {{"bombchu", native.at("ammo").at(SLOT_BOMBCHU).get<uint32_t>()},
+         {"bombchuOwned", native.at("items").at(SLOT_BOMBCHU) == ITEM_BOMBCHU ? 1u : 0u},
+         {"bombchuBagFirst", sLedger.Applied("native:bombchuBagFirst")}}, applied, snapshot);
+}
+
+bool OotmmItemApply_Embed(nlohmann::json& save) {
+    if (OotmmSession_HasPendingInitialSave()) {
+        return false;
+    }
+    if (OotmmSession_IsActive() && gPlayState != nullptr) {
+        EnsureLedger();
+        if (!sLedgerValid) {
+            return false;
+        }
+        nlohmann::json shared;
+        if (!OotmmItemApply_CaptureSharedSnapshot(save.at("save").at("saveInfo").at("inventory"), shared)) {
+            return false;
+        }
+        if (!shared.is_null()) {
+            save["ootmmSharedResources"] = std::move(shared);
+        }
+        save["ootmmApplied"] = sLedger.GetValues();
+    }
+    return true;
+}
+
 void OotmmItemApply_Init() {
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(
         OotmmItemApply_Reconcile);
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>([](s16) {
         sAppliedRevision = 0;
         sLedgerLoaded = false;
+        sLedgerRetryAt = {};
+        if (OotmmSession_IsActive()) {
+            EnsureLedger();
+        }
     });
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveInit>([](s16 fileNum) {
         if (!OotmmSession_IsActive()) {
             return;
         }
         sLedger.Reset();
+        sLedgerValid = LoadSharedResources(nullptr);
         sLedger.Save(LedgerPathFor(fileNum));
         sLedgerLoaded = true;
         sAppliedRevision = 0;

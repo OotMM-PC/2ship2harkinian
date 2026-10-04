@@ -5,6 +5,8 @@
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "overlays/actors/ovl_En_Elforg/z_en_elforg.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmItemApply.h"
+#include "2s2h/OotmmSession.h"
 
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 
@@ -147,6 +149,7 @@ void EnItem00_Init(Actor* thisx, PlayState* play) {
             shadowOffset = 250.0f;
             break;
 
+        case ITEM00_BOMBCHU:
         case ITEM00_BOMBS_A:
         case ITEM00_BOMBS_B:
         case ITEM00_DEKU_NUTS_1:
@@ -261,6 +264,10 @@ void EnItem00_Init(Actor* thisx, PlayState* play) {
         case ITEM00_BOMBS_A:
         case ITEM00_BOMBS_B:
             Item_Give(play, ITEM_BOMBS_5);
+            break;
+
+        case ITEM00_BOMBCHU:
+            Item_Give(play, ITEM_BOMBCHUS_5);
             break;
 
         case ITEM00_ARROWS_10:
@@ -427,7 +434,7 @@ void func_800A6780(EnItem00* this, PlayState* play) {
     if (this->actor.params <= ITEM00_RUPEE_RED) {
         this->actor.shape.rot.y += 0x3C0;
     } else if ((this->actor.params >= ITEM00_SHIELD_HERO) && (this->actor.params != ITEM00_DEKU_NUTS_10) &&
-               (this->actor.params != ITEM00_BOMBS_0)) {
+               (this->actor.params != ITEM00_BOMBS_0) && (this->actor.params != ITEM00_BOMBCHU)) {
         this->actor.world.rot.x -= 0x2BC;
         this->actor.shape.rot.y += 0x190;
         this->actor.shape.rot.x = this->actor.world.rot.x - 0x4000;
@@ -603,6 +610,10 @@ void EnItem00_Update(Actor* thisx, PlayState* play) {
             Item_Give(play, ITEM_BOMBS_5);
             break;
 
+        case ITEM00_BOMBCHU:
+            Item_Give(play, ITEM_BOMBCHUS_5);
+            break;
+
         case ITEM00_ARROWS_10:
             Item_Give(play, ITEM_ARROWS_10);
             break;
@@ -764,6 +775,7 @@ void EnItem00_Draw(Actor* thisx, PlayState* play) {
             case ITEM00_SMALL_KEY:
             case ITEM00_DEKU_NUTS_10:
             case ITEM00_BOMBS_0:
+            case ITEM00_BOMBCHU:
                 EnItem00_DrawSprite(this, play);
                 break;
 
@@ -830,7 +842,7 @@ TexturePtr sItemDropTextures[] = {
     gDropDekuStickTex,     // Sticks (1)
     gDropMagicLargeTex,    // Magic (Large)
     gDropMagicSmallTex,    // Magic (Small)
-    NULL,
+    gDropBombchuTex,
     gDropKeySmallTex // Small Key
 };
 
@@ -845,6 +857,8 @@ void EnItem00_DrawSprite(EnItem00* this, PlayState* play) {
         texIndex = 6;
     } else if (this->actor.params == ITEM00_BOMBS_0) {
         texIndex = 1;
+    } else if (this->actor.params == ITEM00_BOMBCHU) {
+        texIndex = 10;
     } else if (this->actor.params >= ITEM00_ARROWS_30) {
         texIndex -= 3;
         if (this->actor.params < ITEM00_ARROWS_50) {
@@ -897,6 +911,10 @@ void EnItem00_DrawHeartPiece(EnItem00* this, PlayState* play) {
 }
 
 s16 func_800A7650(s16 dropId) {
+    if (OotmmSession_IsActive() &&
+        (dropId == ITEM00_BOMBS_A || dropId == ITEM00_BOMBS_B || dropId == ITEM00_BOMBS_0)) {
+        return OotmmItemApply_SelectBombDrop(dropId, ITEM00_BOMBCHU);
+    }
     if ((((dropId == ITEM00_BOMBS_A) || (dropId == ITEM00_BOMBS_0) || (dropId == ITEM00_BOMBS_B)) &&
          (INV_CONTENT(ITEM_BOMB) == ITEM_NONE)) ||
         (((dropId == ITEM00_ARROWS_10) || (dropId == ITEM00_ARROWS_30) || (dropId == ITEM00_ARROWS_40) ||

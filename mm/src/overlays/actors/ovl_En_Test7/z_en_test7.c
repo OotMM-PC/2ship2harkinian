@@ -656,8 +656,7 @@ void EnTest7_WarpCsWarp(EnTest7* this, PlayState* play) {
 
     this->windCapsule.yaw -= 0x2EE0;
 
-    if (OotmmSongs_OverrideSoaringDestination(play)) {
-        // An OoT warp song owns this soaring; the destination (or cross-game handoff) is set.
+    if (OotmmSongs_OverrideSoaringDestination(play, OWL_WARP_CS_GET_OCARINA_MODE(&this->actor))) {
     } else if (play->sceneId == SCENE_SECOM) {
         play->nextEntrance = ENTRANCE(IKANA_CANYON, 6);
     } else if (OWL_WARP_CS_GET_OCARINA_MODE(&this->actor) == OCARINA_MODE_WARP_TO_ENTRANCE) {

@@ -77,6 +77,10 @@ void EnItem00_3DItemsDraw(Actor* actor, PlayState* play) {
                 Matrix_Scale(8.0f, 8.0f, 8.0f, MTXMODE_APPLY);
                 GetItem_Draw(play, GID_BOMB);
                 break;
+            case ITEM00_BOMBCHU:
+                Matrix_Scale(8.0f, 8.0f, 8.0f, MTXMODE_APPLY);
+                GetItem_Draw(play, GID_BOMBCHU);
+                break;
             case ITEM00_ARROWS_10:
                 Matrix_Scale(7.0f, 7.0f, 7.0f, MTXMODE_APPLY);
                 GetItem_Draw(play, GID_ARROWS_SMALL);

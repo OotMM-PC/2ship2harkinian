@@ -25,8 +25,7 @@ int32_t OotmmSongs_EffectActorId(void);
 uint16_t OotmmSongs_EffectActorParams(void);
 
 void OotmmSongs_Update(PlayState* play, Player* player);
-/// Redirects the soaring owl's destination while an OoT warp song is pending; 1 when handled.
-int32_t OotmmSongs_OverrideSoaringDestination(PlayState* play);
+int32_t OotmmSongs_OverrideSoaringDestination(PlayState* play, int32_t owlMode);
 
 #ifdef __cplusplus
 }

@@ -1,4 +1,5 @@
 #include "OotmmChecks.h"
+#include "OotmmCheckLedger.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "OotmmIpc.h"
@@ -26,6 +27,11 @@ bool sWasConnected = false;
 
 const Ship::OotmmPlacement* FindChest(uint32_t scene, uint32_t flag) {
     return OotmmSession_GetState().FindCheck(Ship::OotmmGame::Mm, scene, "chest", flag);
+}
+
+void Report(const Ship::OotmmPlacement& placement) {
+    OotmmIpc_SendCheckCollected(placement.CheckId);
+    OotmmCheckLedger_Record(placement.CheckId);
 }
 
 Ship::GameIpcItemPresentation MakePresentation(const Ship::OotmmPlacement& placement) {
@@ -73,7 +79,7 @@ void SweepSavedChests() {
             chestBits |= gPlayState->actorCtx.sceneFlags.chest;
         }
         if ((chestBits & (1u << flag)) != 0 && !OotmmIpc_IsCheckCompleted(placement.CheckId)) {
-            OotmmIpc_SendCheckCollected(placement.CheckId);
+            Report(placement);
         }
     }
 }
@@ -91,7 +97,7 @@ void OotmmChecks_Init() {
                 return;
             }
             if (const auto* placement = FindChest(Play_GetOriginalSceneId(sceneId), flag)) {
-                OotmmIpc_SendCheckCollected(placement->CheckId);
+                Report(*placement);
             }
         });
 

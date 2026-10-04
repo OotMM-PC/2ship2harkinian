@@ -6,6 +6,10 @@
 extern "C" {
 #endif
 
+int32_t OotmmItemApply_BombchuCapacity(void);
+void OotmmItemApply_AddBombchuAmmo(int32_t amount);
+int32_t OotmmItemApply_SelectBombDrop(int32_t bombDrop, int32_t bombchuDrop);
+
 /// Every item the trade slot can hold, in cycle order. Returns the count written.
 int32_t OotmmItemApply_TradeSlotCandidates(uint8_t slot, uint8_t* outItems, int32_t capacity);
 
@@ -17,6 +21,12 @@ void OotmmItemApply_SetTradeItemOwned(uint8_t slot, uint8_t item, int32_t owned)
 
 #ifdef __cplusplus
 }
+
+#include <nlohmann/json.hpp>
+bool OotmmItemApply_Embed(nlohmann::json& save);
+void OotmmItemApply_NoteSaveRead(const std::string& fileName, bool owlSave);
+void OotmmItemApply_RefreshSaveSnapshot();
+nlohmann::json OotmmItemApply_LegacySnapshot(int fileNum);
 
 void OotmmItemApply_Init();
 /// Clears the applied ledger so a fresh file re-receives every item the seed already gave.

@@ -1,4 +1,9 @@
 #include "OotmmSession.h"
+#include "SaveManager/SaveManager.h"
+#include "BenGui/Notification.h"
+#include "OotmmCheckLedger.h"
+#include <array>
+#include <chrono>
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
@@ -19,25 +24,57 @@
 #include <fstream>
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <optional>
+#include <string>
 #include <spdlog/spdlog.h>
+#include <ship/utils/AtomicFile.h>
+#include <ship/window/Window.h>
 
 extern "C" {
 #include "functions.h"
 #include "global.h"
 #include "overlays/actors/ovl_Bg_F40_Switch/z_bg_f40_switch.h"
 #include "overlays/gamestates/ovl_select/z_select.h"
+#include "overlays/gamestates/ovl_file_choose/z_file_select.h"
 }
 
 namespace {
 
 Ship::OotmmGameState sGameState;
 bool sBootedIntoGame = false;
+constexpr int kBootInventoryWaitFrames = 300;
+int sBootInventoryWait = 0;
+
+bool AwaitingBootInventory() {
+    if (OotmmIpc_GetInventory().GetRevision() != 0 || sBootInventoryWait >= kBootInventoryWaitFrames) {
+        return false;
+    }
+    sBootInventoryWait++;
+    return true;
+}
+std::optional<std::array<uint8_t, SAVE_BUFFER_SIZE>> sInitialSave;
+uint32_t sInitialSavePage = 0;
+std::chrono::steady_clock::time_point sInitialSaveRetryAt{};
 bool sPlayerExitPending = false;
 bool sCrossGamePending = false;
 bool sCrossGameAccepted = false;
 uint32_t sCrossGameWaitFrames = 0;
+Ship::OotmmEntranceMapping sCrossGameRequest;
+std::optional<Ship::OotmmEntranceMapping> sCrossGameRetry;
+uint32_t sCrossGameRetryFrames = 0;
 std::optional<uint32_t> sLastResolvedEntrance;
 uint16_t sGrottoReturnEntrance = 0;
+std::string sCrossGameWaitReason;
+
+void QueueCrossGameRetry(const Ship::OotmmEntranceMapping& mapping, const char* reason) {
+    sCrossGameRetry = mapping;
+    sCrossGameRetryFrames = 0;
+    gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
+    if (sCrossGameWaitReason != reason) {
+        sCrossGameWaitReason = reason;
+        Notification::Emit({ .prefix = "OoTMM", .message = reason, .remainingTime = 8.0f });
+    }
+}
+
 
 // respawnFlag values: reload the entrance only, restore respawn[TOP], restore the grotto slot.
 constexpr int32_t kRespawnSceneEntrance = -2;
@@ -278,6 +315,9 @@ void ApplySaveFlags() {
         return;
     }
 
+    gSaveContext.save.isFirstCycle = true;
+    SET_WEEKEVENTREG(WEEKEVENTREG_59_04);
+
     // Refill form B slots emptied by the old swordless start: an empty form B triggers the
     // "Weird B" bug, where attacking uses the item sharing the do-action label's id.
     if (BUTTON_ITEM_EQUIP(PLAYER_FORM_GORON, EQUIP_SLOT_B) == ITEM_NONE) {
@@ -397,13 +437,27 @@ void StampFileMagic() {
 }
 
 uint32_t BootSlot() {
-    // OoT picks its file at its own file select, so the marker it leaves outranks the launcher slot.
+    if (const auto slot = sGameState.GetBootConfig().LogicalSlot; slot.has_value()) {
+        return *slot;
+    }
     std::ifstream in(sGameState.GetBootConfig().StatePath + ".last-file");
     int32_t fileNum = -1;
     if (in >> fileNum && fileNum >= 0 && fileNum < 3) {
         return static_cast<uint32_t>(fileNum);
     }
-    return sGameState.GetBootConfig().LogicalSlot.value_or(0);
+    return 0;
+}
+
+void RetryInitialSave() {
+    if (!sInitialSave || std::chrono::steady_clock::now() < sInitialSaveRetryAt) {
+        return;
+    }
+    sInitialSaveRetryAt = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    if (SaveManager_WriteInitialOotmmSave(sInitialSave->data(), gFlashSaveStartPages[sInitialSavePage],
+                                        gFlashSpecialSaveNumPages[sInitialSavePage]) == 0) {
+        sInitialSave.reset();
+        OotmmItemApply_RefreshSaveSnapshot();
+    }
 }
 
 void PersistNewSave(uint8_t* saveBuffer) {
@@ -412,11 +466,14 @@ void PersistNewSave(uint8_t* saveBuffer) {
     std::memset(saveBuffer, 0, SAVE_BUFFER_SIZE);
     std::memcpy(saveBuffer, &gSaveContext.save, sizeof(Save));
     std::memcpy(saveBuffer + SAVE_BUFFER_SIZE_HALF, &gSaveContext.save, sizeof(Save));
-    const uint32_t page = FLASH_SAVE_FILE_1_NEW_CYCLE_SAVE + BootSlot() * FLASH_SAVE_MAIN_MULTIPLIER;
-    SysFlashrom_WriteDataSync(saveBuffer, gFlashSaveStartPages[page], gFlashSpecialSaveNumPages[page]);
+    sInitialSave.emplace();
+    std::memcpy(sInitialSave->data(), saveBuffer, SAVE_BUFFER_SIZE);
+    sInitialSavePage = FLASH_SAVE_FILE_1_NEW_CYCLE_SAVE + BootSlot() * FLASH_SAVE_MAIN_MULTIPLIER;
+    sInitialSaveRetryAt = {};
+    RetryInitialSave();
 }
 
-void PersistTransitionSave() {
+bool PersistTransitionSave() {
     const bool wasOwlSave = gSaveContext.save.isOwlSave;
     gSaveContext.save.isOwlSave = true;
     SavingEnhancements_PersistSaveEntranceInfo();
@@ -427,9 +484,13 @@ void PersistTransitionSave() {
     Sram_SetFlashPagesOwlSave(&gPlayState->sramCtx,
                               gFlashOwlSaveStartPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER],
                               gFlashOwlSaveNumPages[gSaveContext.fileNum * FLASH_SAVE_MAIN_MULTIPLIER]);
-    Sram_StartWriteToFlashOwlSave(&gPlayState->sramCtx);
+    const bool saved = SaveManager_SysFlashrom_WriteData(gPlayState->sramCtx.saveBuf,
+                                                        gPlayState->sramCtx.curPage,
+                                                        gPlayState->sramCtx.numPages) == 0;
+    gPlayState->sramCtx.status = 0;
     gSaveContext.save.isOwlSave = wasOwlSave;
     SavingEnhancements_ClearSaveEntranceInfo();
+    return saved;
 }
 
 std::optional<uint16_t> InitialMmSpawn() {
@@ -446,11 +507,21 @@ void UpdateEntranceTransition() {
     if (gPlayState == nullptr) {
         return;
     }
+    if (sCrossGameRetry.has_value()) {
+        gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
+        if (++sCrossGameRetryFrames >= 60) {
+            const auto mapping = *sCrossGameRetry;
+            sCrossGameRetry.reset();
+            OotmmSession_BeginCrossGameTransition(mapping);
+        }
+        return;
+    }
     if (sCrossGamePending) {
         gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
         sCrossGameAccepted |= OotmmIpc_ConsumeTransitionAccepted();
         if (!sCrossGameAccepted && ++sCrossGameWaitFrames > 120) {
-            SPDLOG_ERROR("[OoTMM] Launcher did not accept the cross-game transition");
+            SPDLOG_ERROR("[OoTMM] Launcher did not accept the cross-game transition; retrying");
+            QueueCrossGameRetry(sCrossGameRequest, "The launcher has not confirmed the switch. Retrying.");
             sCrossGamePending = false;
             sCrossGameWaitFrames = 0;
         }
@@ -506,17 +577,9 @@ void UpdateEntranceTransition() {
 
     SPDLOG_INFO("[OoTMM] Cross-game entrance 0x{:X} -> {} (0x{:X})", source, mapping->To,
                 *mapping->ToNativeId);
-    PersistTransitionSave();
-    if (!OotmmIpc_SendCrossGameTransition(*mapping, sGameState.GetBootConfig().OotAge)) {
-        SPDLOG_ERROR("[OoTMM] Cross-game transition requires the launcher IPC connection");
-        gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
-        return;
+    if (OotmmSession_BeginCrossGameTransition(*mapping)) {
+        sLastResolvedEntrance = source;
     }
-
-    sCrossGamePending = true;
-    sCrossGameAccepted = false;
-    sCrossGameWaitFrames = 0;
-    sLastResolvedEntrance = source;
     gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
 }
 
@@ -533,7 +596,7 @@ void BootIntoGame(GameState* gameState) {
     }
     if (!loaded) {
         std::memset(saveBuffer, 0, sizeof(saveBuffer));
-        if (SysFlashrom_ReadData(saveBuffer, gFlashSaveStartPages[slot], gFlashSaveNumPages[slot]) == 0) {
+        if (SysFlashrom_ReadData(saveBuffer, gFlashSaveStartPages[owlPage], gFlashSaveNumPages[owlPage]) == 0) {
             loaded = RestoreSave(gSaveContext, saveBuffer, false);
         }
     }
@@ -591,6 +654,7 @@ void BootIntoGame(GameState* gameState) {
 void OotmmSession_Init() {
     if (sGameState.LoadFromEnvironment()) {
         ApplyEnhancements();
+        OotmmCheckLedger_Init();
         OotmmChecks_Init();
         OotmmCsmc_Init();
         OotmmDrops_Init();
@@ -606,6 +670,7 @@ void OotmmSession_Init() {
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(
             [](s16) { ApplySaveFlags(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(UpdateEntranceTransition);
+        GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(RetryInitialSave);
         // The seed owns the Blast Mask cooldown; vanilla hardcodes it to 310 frames.
         COND_VB_SHOULD(VB_SET_BLAST_MASK_COOLDOWN_TIMER, true, {
             *should = false;
@@ -635,11 +700,63 @@ const Ship::OotmmGameState& OotmmSession_GetState() {
     return sGameState;
 }
 
+bool OotmmSession_HasPendingInitialSave() {
+    return sInitialSave.has_value();
+}
+
+extern "C" int32_t OotmmSession_SaveProgress(void) {
+    return OotmmSession_IsActive() && gPlayState != nullptr && gSaveContext.fileNum >= 0 &&
+           gSaveContext.fileNum < 3 && gSaveContext.rupeeAccumulator == 0 && PersistTransitionSave();
+}
+
 extern "C" int32_t OotmmSession_IsActive(void) {
     return sGameState.IsActive() && sGameState.HasSeed() ? 1 : 0;
 }
 
 extern "C" int32_t OotmmSession_TryBootDirectly(void* gameState) {
+    if (OotmmSession_IsActive() && !sBootedIntoGame && gameState != nullptr &&
+        !sGameState.GetBootConfig().OpenFileSelect && AwaitingBootInventory()) {
+        return 1;
+    }
+    if (OotmmSession_IsActive() && !sBootedIntoGame && gameState != nullptr &&
+        sGameState.GetBootConfig().MmRecovery.has_value()) {
+        const auto& boot = sGameState.GetBootConfig();
+        const auto& recovery = *boot.MmRecovery;
+        std::string error;
+        const bool restored = SaveManager_RecoverOotmmBackup(recovery.Primary, recovery.Backup, error);
+        const nlohmann::json result = {{"version", 1}, {"saveId", boot.SaveId}, {"slot", *boot.LogicalSlot},
+                                       {"restored", restored}, {"reason", error}};
+        std::error_code writeError;
+        const bool reported = Ship::WriteFileAtomically(boot.StatePath + ".recovery-result.json", result.dump(), writeError);
+        if (!restored || !reported) {
+            sBootedIntoGame = true;
+            SPDLOG_ERROR("[OoTMM] Save recovery stopped: {} {}", error, writeError.message());
+            Ship::Context::GetInstance()->GetWindow()->Close();
+            return 1;
+        }
+    }
+    if (OotmmSession_IsActive() && !sBootedIntoGame && gameState != nullptr) {
+        std::string error;
+        if (!SaveManager_ValidateCurrentOotmmSave(error)) {
+            const auto& boot = sGameState.GetBootConfig();
+            const nlohmann::json result = {{"version", 1}, {"saveId", boot.SaveId}, {"slot", boot.LogicalSlot.value_or(0)},
+                                           {"restored", false}, {"reason", error}};
+            std::error_code writeError;
+            Ship::WriteFileAtomically(boot.StatePath + ".recovery-result.json", result.dump(), writeError);
+            sBootedIntoGame = true;
+            SPDLOG_ERROR("[OoTMM] Save validation stopped: {}", error);
+            Ship::Context::GetInstance()->GetWindow()->Close();
+            return 1;
+        }
+    }
+    if (OotmmSession_IsActive() && sGameState.GetBootConfig().OpenFileSelect && !sBootedIntoGame && gameState != nullptr) {
+        sBootedIntoGame = true;
+        auto* menuState = static_cast<GameState*>(gameState);
+        menuState->running = false;
+        SET_NEXT_GAMESTATE(menuState, FileSelect_Init, sizeof(FileSelectState));
+        return 1;
+    }
+
     if (!OotmmSession_IsActive() || sBootedIntoGame || gameState == nullptr) {
         return 0;
     }
@@ -711,13 +828,23 @@ bool OotmmSession_BeginCrossGameTransition(const Ship::OotmmEntranceMapping& map
     if (!OotmmSession_IsActive() || gPlayState == nullptr || sCrossGamePending) {
         return false;
     }
+    if (sCrossGameRetry.has_value()) {
+        gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
+        return true;
+    }
     SPDLOG_INFO("[OoTMM] Cross-game warp {} -> {} (0x{:X})", mapping.From, mapping.To,
                 mapping.ToNativeId.value_or(0));
-    PersistTransitionSave();
-    if (!OotmmIpc_SendCrossGameTransition(mapping, sGameState.GetBootConfig().OotAge)) {
-        SPDLOG_ERROR("[OoTMM] Cross-game warp requires the launcher IPC connection");
-        return false;
+    if (!PersistTransitionSave()) {
+        SPDLOG_ERROR("[OoTMM] Cross-game transition waiting for a successful source save");
+        QueueCrossGameRetry(mapping, "Could not save. Waiting to retry before switching games.");
+        return true;
     }
+    if (!OotmmIpc_SendCrossGameTransition(mapping, sGameState.GetBootConfig().OotAge)) {
+        SPDLOG_ERROR("[OoTMM] Cross-game transition waiting for the launcher connection");
+        QueueCrossGameRetry(mapping, "Waiting for the launcher to reconnect before switching games.");
+        return true;
+    }
+    sCrossGameRequest = mapping;
     sCrossGamePending = true;
     sCrossGameAccepted = false;
     sCrossGameWaitFrames = 0;

@@ -19,6 +19,7 @@ extern "C" {
 #include "variables.h"
 #include "src/overlays/actors/ovl_En_Box/z_en_box.h"
 
+#include "src/overlays/gamestates/ovl_file_choose/z_file_select.h"
 extern PlayState* gPlayState;
 }
 

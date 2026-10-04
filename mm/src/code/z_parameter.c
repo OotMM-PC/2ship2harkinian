@@ -24,6 +24,7 @@
 #include "2s2h_assets.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmCustomItems.h"
+#include "2s2h/OotmmItemApply.h"
 #include "2s2h/OotmmSession.h"
 #include <libultraship/bridge/gfxbridge.h>
 #include <libultraship/bridge/consolevariablebridge.h>
@@ -4405,6 +4406,10 @@ u8 Item_GiveImpl(PlayState* play, u8 item) {
         return ITEM_NONE;
 
     } else if (item == ITEM_BOMBCHU) {
+        if (OotmmSession_IsActive()) {
+            OotmmItemApply_AddBombchuAmmo(10);
+            return ITEM_NONE;
+        }
         if (INV_CONTENT(ITEM_BOMBCHU) != ITEM_BOMBCHU) {
             INV_CONTENT(ITEM_BOMBCHU) = ITEM_BOMBCHU;
             AMMO(ITEM_BOMBCHU) = 10;
@@ -4416,6 +4421,10 @@ u8 Item_GiveImpl(PlayState* play, u8 item) {
         return ITEM_NONE;
 
     } else if ((item >= ITEM_BOMBCHUS_20) && (item <= ITEM_BOMBCHUS_5)) {
+        if (OotmmSession_IsActive()) {
+            OotmmItemApply_AddBombchuAmmo(sBombchuRefillCounts[item - ITEM_BOMBCHUS_20]);
+            return ITEM_NONE;
+        }
         if (gSaveContext.save.saveInfo.inventory.items[SLOT_BOMBCHU] != ITEM_BOMBCHU) {
             INV_CONTENT(ITEM_BOMBCHU) = ITEM_BOMBCHU;
             AMMO(ITEM_BOMBCHU) += sBombchuRefillCounts[item - ITEM_BOMBCHUS_20];
@@ -5190,6 +5199,10 @@ void Rupees_ChangeBy(s16 rupeeChange) {
 }
 
 void Inventory_ChangeAmmo(s16 item, s16 ammoChange) {
+    if (item == ITEM_BOMBCHU && OotmmSession_IsActive()) {
+        OotmmItemApply_AddBombchuAmmo(ammoChange);
+        return;
+    }
     if (item == ITEM_DEKU_STICK) {
         AMMO(ITEM_DEKU_STICK) += ammoChange;
 

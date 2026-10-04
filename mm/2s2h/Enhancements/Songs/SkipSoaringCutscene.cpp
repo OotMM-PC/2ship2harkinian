@@ -20,8 +20,7 @@ static void SkipSoaringCutscene(Actor* actor, bool* should) {
 
     *should = false;
 
-    if (OotmmSongs_OverrideSoaringDestination(gPlayState)) {
-        // An OoT warp song owns this soaring; the destination (or cross-game handoff) is set.
+    if (OotmmSongs_OverrideSoaringDestination(gPlayState, ocarinaMode)) {
     } else if (gPlayState->sceneId == SCENE_SECOM) {
         gPlayState->nextEntrance = ENTRANCE(IKANA_CANYON, 6);
     } else if (ocarinaMode == OCARINA_MODE_WARP_TO_ENTRANCE) {

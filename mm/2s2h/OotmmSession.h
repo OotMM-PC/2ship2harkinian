@@ -10,6 +10,10 @@ extern "C" {
 
 int32_t OotmmSession_TryBootDirectly(void* gameState);
 int32_t OotmmSession_IsActive(void);
+int32_t OotmmSession_RequestFileSelection(int32_t slot);
+int32_t OotmmSession_FileSelectionPending(void);
+int32_t OotmmSession_RequestFileCopy(int32_t source, int32_t target);
+int32_t OotmmSession_SaveProgress(void);
 void OotmmSession_NotePlayerExitTransition(void);
 /// Gives death OoT's grotto rule: back at the grotto Link died in, or out of the one he arrived from.
 void OotmmSession_ApplyDeathRespawn(void);
@@ -24,6 +28,7 @@ int32_t OotmmSession_ApplyResolvedMmEntrance(uint32_t entrance);
 }
 
 void OotmmSession_Init();
+bool OotmmSession_HasPendingInitialSave();
 const Ship::OotmmGameState& OotmmSession_GetState();
 /// On success the session suppresses local transitions until the launcher answers.
 bool OotmmSession_BeginCrossGameTransition(const Ship::OotmmEntranceMapping& mapping);

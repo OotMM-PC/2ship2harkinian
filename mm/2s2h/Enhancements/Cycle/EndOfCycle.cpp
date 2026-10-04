@@ -1,6 +1,7 @@
 #include <libultraship/bridge/consolevariablebridge.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
+#include "2s2h/OotmmSession.h"
 
 extern "C" {
 #include <variables.h>
@@ -29,12 +30,29 @@ void RegisterEndOfCycleSaveHooks() {
         timeSpeedOffsetCopy = gSaveContext.save.timeSpeedOffset;
     });
 
-    COND_HOOK(AfterEndOfCycleSave, CVAR_RUPEES, []() {
+    COND_HOOK(AfterEndOfCycleSave, true, []() {
+        if (!(OotmmSession_IsActive() ? OotmmSession_GetState().GetBoolSetting("keepItemsReset", false) : CVAR_RUPEES)) {
+            return;
+        }
         gSaveContext.save.saveInfo.playerData.rupees = saveInfoCopy.playerData.rupees;
         CLEAR_EVENTINF(EVENTINF_THREEDAYRESET_LOST_RUPEES);
     });
 
-    COND_HOOK(AfterEndOfCycleSave, CVAR_CONSUME, []() {
+    COND_HOOK(AfterEndOfCycleSave, true, []() {
+        if (OotmmSession_IsActive()) {
+            if (OotmmSession_GetState().GetBoolSetting("keepItemsReset", false)) {
+                memcpy(gSaveContext.save.saveInfo.inventory.ammo, saveInfoCopy.inventory.ammo,
+                       sizeof(gSaveContext.save.saveInfo.inventory.ammo));
+                gSaveContext.eventInf[7] &= 0xE0;
+            } else {
+                memset(gSaveContext.save.saveInfo.inventory.ammo, 0, sizeof(gSaveContext.save.saveInfo.inventory.ammo));
+            }
+            AMMO(ITEM_PICTOGRAPH_BOX) = 0;
+            return;
+        }
+        if (!CVAR_CONSUME) {
+            return;
+        }
         if (INV_CONTENT(ITEM_BOMB) == ITEM_BOMB) {
             INV_CONTENT(ITEM_BOMB) = saveInfoCopy.inventory.items[ITEM_BOMB];
             AMMO(ITEM_BOMB) = saveInfoCopy.inventory.ammo[ITEM_BOMB];

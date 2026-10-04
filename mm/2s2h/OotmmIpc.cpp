@@ -1,4 +1,9 @@
 #include "OotmmIpc.h"
+#include "OotmmSession.h"
+#include <nlohmann/json.hpp>
+#include <ship/Context.h>
+#include <ship/window/Window.h>
+#include <ship/window/gui/Gui.h>
 
 #include "OotmmItemPresentation.h"
 #include "build.h"
@@ -10,6 +15,13 @@ namespace {
 Ship::GameIpcSession sSession;
 Ship::GameIpcSettings sSettings;
 Ship::OotmmInventory sInventory;
+uint64_t sSaveRequestId = 0;
+std::optional<uint64_t> sPendingSaveRequest;
+
+void SaveSelectionNotice(const std::string& message) {
+    Ship::Context::GetInstance()->GetWindow()->GetGui()->GetGameOverlay()->TextDrawNotification(
+        8.0f, true, "%s", message.c_str());
+}
 
 } // namespace
 
@@ -20,6 +32,7 @@ extern "C" int gOotmmGameSpeedSmooth = 0;
 
 void OotmmIpc_Init() {
     sInventory.Reset();
+    sPendingSaveRequest.reset();
     sSession.Start("mm", gBuildVersion);
 }
 
@@ -30,6 +43,26 @@ void OotmmIpc_Pump() {
         gOotmmPvpEnabled = sSettings.Pvp ? 1 : 0;
         gOotmmShowNames = sSettings.ShowNames ? 1 : 0;
         sSession.AcknowledgeSettings(sSettings.Revision);
+    }
+    std::string response;
+    while (sSession.TryReceive(response)) {
+        auto parsed = nlohmann::json::parse(response, nullptr, false);
+        if (!parsed.is_object() || !parsed.contains("type") || parsed["type"] != "nativeSaveResult" ||
+            !parsed.contains("version") || parsed["version"] != 1 || !sPendingSaveRequest ||
+            !parsed.contains("requestId") || !parsed["requestId"].is_number_unsigned() ||
+            parsed["requestId"].get<uint64_t>() != *sPendingSaveRequest ||
+            !parsed.contains("accepted") || !parsed["accepted"].is_boolean()) {
+            continue;
+        }
+        if (!parsed["accepted"].get<bool>()) {
+            sPendingSaveRequest.reset();
+            SaveSelectionNotice(parsed.contains("reason") && parsed["reason"].is_string()
+                ? parsed["reason"].get<std::string>() : "Save selection was rejected. Please retry.");
+        }
+    }
+    if (sPendingSaveRequest && !sSession.IsConnected()) {
+        sPendingSaveRequest.reset();
+        SaveSelectionNotice("Launcher disconnected. Reconnect before selecting another save.");
     }
     Ship::GameIpcItemPresentation presentation;
     while (sSession.TryPopItemPresentation(presentation)) {
@@ -99,4 +132,67 @@ bool OotmmIpc_IsCheckCompleted(const std::string& checkId) {
 
 uint64_t OotmmIpc_CompletedChecksRevision() {
     return sSession.CompletedChecksRevision();
+}
+
+extern "C" int32_t OotmmSession_FileSelectionPending(void) {
+    return sPendingSaveRequest.has_value();
+}
+
+extern "C" int32_t OotmmSession_RequestFileSelection(int32_t slot) {
+    if (!OotmmSession_IsActive()) {
+        return 1;
+    }
+    const auto& boot = OotmmSession_GetState().GetBootConfig();
+    if (slot >= 0 && slot < 3 && boot.LogicalSlot == static_cast<uint32_t>(slot)) {
+        return 1;
+    }
+    if (slot < 0 || slot > 2 || !boot.LogicalSlot || *boot.LogicalSlot > 2 || boot.SaveId.empty()) {
+        SaveSelectionNotice("Cannot select this save without a valid launcher slot binding.");
+        return 0;
+    }
+    if (sPendingSaveRequest) {
+        return 0;
+    }
+    if (!sSession.IsConnected() || sSaveRequestId >= 9007199254740991ULL) {
+        SaveSelectionNotice("Connect to the launcher before selecting another save.");
+        return 0;
+    }
+    const auto id = ++sSaveRequestId;
+    const auto packet = nlohmann::json{{"type", "nativeSaveRequest"}, {"version", 1},
+        {"requestId", id}, {"operation", "select"}, {"saveId", boot.SaveId},
+        {"activeSlot", *boot.LogicalSlot}, {"sourceSlot", *boot.LogicalSlot}, {"targetSlot", slot}};
+    if (sSession.Send(packet.dump())) {
+        sPendingSaveRequest = id;
+        SaveSelectionNotice("Opening selected save through the launcher...");
+    } else {
+        SaveSelectionNotice("Could not request the selected save. Please retry.");
+    }
+    return 0;
+}
+
+extern "C" int32_t OotmmSession_RequestFileCopy(int32_t source, int32_t target) {
+    if (!OotmmSession_IsActive()) {
+        return 1;
+    }
+    const auto& boot = OotmmSession_GetState().GetBootConfig();
+    if (sPendingSaveRequest) {
+        return 0;
+    }
+    if (source < 0 || source > 2 || target < 0 || target > 2 || source == target ||
+        !boot.LogicalSlot || *boot.LogicalSlot > 2 || boot.SaveId.empty() ||
+        !sSession.IsConnected() || sSaveRequestId >= 9007199254740991ULL) {
+        SaveSelectionNotice("Connect to the launcher with a valid save binding before copying.");
+        return 0;
+    }
+    const auto id = ++sSaveRequestId;
+    const auto packet = nlohmann::json{{"type", "nativeSaveRequest"}, {"version", 1},
+        {"requestId", id}, {"operation", "copy"}, {"saveId", boot.SaveId},
+        {"activeSlot", *boot.LogicalSlot}, {"sourceSlot", source}, {"targetSlot", target}};
+    if (sSession.Send(packet.dump())) {
+        sPendingSaveRequest = id;
+        SaveSelectionNotice("Copying both games' saves through the launcher...");
+    } else {
+        SaveSelectionNotice("Could not request the save copy. Please retry.");
+    }
+    return 0;
 }

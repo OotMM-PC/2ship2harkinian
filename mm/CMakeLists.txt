@@ -658,3 +658,13 @@ wut_create_wuhb(${PROJECT_NAME}
 INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/2s2h.rpx ${CMAKE_CURRENT_BINARY_DIR}/2s2h.wuhb DESTINATION . COMPONENT 2s2h)
 
 endif()
+
+if(WIN32)
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND}
+            "-DOOTMM_EXECUTABLE=$<TARGET_FILE:${PROJECT_NAME}>"
+            "-DOOTMM_GAME=mm"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/WriteOotmmCapabilities.cmake"
+        VERBATIM)
+    install(FILES "$<TARGET_FILE:${PROJECT_NAME}>.ootmm.json" DESTINATION . COMPONENT 2s2h)
+endif()

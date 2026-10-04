@@ -211,6 +211,10 @@ void ConsoleLogo_Main(GameState* thisx) {
     ConsoleLogo_Draw(&this->state);
     FrameInterpolation_StopRecord();
 
+    if (OotmmSession_TryBootDirectly(&this->state)) {
+        this->exit = false;
+    }
+
     if (this->exit) {
         gSaveContext.seqId = NA_BGM_DISABLED;
         gSaveContext.ambienceId = AMBIENCE_ID_DISABLED;
