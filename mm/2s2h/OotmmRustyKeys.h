@@ -8,6 +8,7 @@ struct Actor;
 struct PlayState;
 
 int OotmmRustyDoorLocked(struct PlayState* play, struct Actor* actor);
+void OotmmRustyDoorDrawLock(struct PlayState* play);
 
 #ifdef __cplusplus
 }

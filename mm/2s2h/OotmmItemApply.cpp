@@ -125,6 +125,31 @@ const DungeonSlot* FindDungeon(std::string_view suffix) {
 Ship::OotmmAppliedLedger sLedger;
 Ship::OotmmSharedResourceState sSharedResources;
 
+uint32_t CollectedSmallKeys(const DungeonSlot& dungeon) {
+    const uint32_t max = static_cast<uint32_t>(OotmmDungeons_MaxSmallKeys(dungeon.Index));
+    const std::string code(dungeon.Code);
+    if (sLedger.Applied("MM_SKELETON_KEY") != 0 || sLedger.Applied("SHARED_SKELETON_KEY") != 0 ||
+        sLedger.Applied("MM_KEY_RING_" + code) != 0) {
+        return max;
+    }
+    return std::min(max, sLedger.Applied("MM_SMALL_KEY_" + code));
+}
+
+void ApplySmallKeyItem(const std::string& itemId, uint32_t count) {
+    std::vector<uint32_t> before;
+    for (const auto& dungeon : kDungeons) {
+        before.push_back(CollectedSmallKeys(dungeon));
+    }
+    sLedger.SetApplied(itemId, count);
+    for (size_t i = 0; i < kDungeons.size(); ++i) {
+        const uint32_t after = CollectedSmallKeys(kDungeons[i]);
+        if (after > before[i]) {
+            s8& held = gSaveContext.save.saveInfo.inventory.dungeonKeys[kDungeons[i].Index];
+            held = static_cast<s8>((held < 0 ? 0 : held) + (after - before[i]));
+        }
+    }
+}
+
 bool FamilyEnabled(const Ship::OotmmSharedFamily& family) {
     if (!family.EnabledValue.empty()) {
         return OotmmSession_GetState().GetStringSetting(std::string(family.Setting), "") == family.EnabledValue;
@@ -965,13 +990,8 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                     break;
                 }
                 if (op.Slot.rfind("SMALL_KEY", 0) == 0) {
-                    if (count > already &&
-                        dungeon->Index <
-                            ARRAY_COUNT(gSaveContext.save.saveInfo.inventory.dungeonKeys)) {
-                        const s8 held = gSaveContext.save.saveInfo.inventory.dungeonKeys[dungeon->Index];
-                        gSaveContext.save.saveInfo.inventory.dungeonKeys[dungeon->Index] =
-                            static_cast<s8>((held < 0 ? 0 : held) + (count - already));
-                        sLedger.SetApplied(itemId, count);
+                    if (count > already) {
+                        ApplySmallKeyItem(itemId, count);
                     }
                     break;
                 }
@@ -988,20 +1008,11 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                 }
                 break;
             }
-            case Ship::OotmmGrantKind::SmallKeyRing: {
-                const DungeonSlot* dungeon = FindDungeon(op.Slot);
-                if (already != 0 || dungeon == nullptr ||
-                    dungeon->Index >=
-                        ARRAY_COUNT(gSaveContext.save.saveInfo.inventory.dungeonKeys)) {
-                    break;
+            case Ship::OotmmGrantKind::SmallKeyRing:
+            case Ship::OotmmGrantKind::SkeletonKey: {
+                if (already == 0) {
+                    ApplySmallKeyItem(itemId, 1);
                 }
-                const int keys = OotmmDungeons_MaxSmallKeys(dungeon->Index);
-                if (keys == 0) {
-                    break;
-                }
-                gSaveContext.save.saveInfo.inventory.dungeonKeys[dungeon->Index] =
-                    static_cast<s8>(keys);
-                sLedger.SetApplied(itemId, 1);
                 break;
             }
             case Ship::OotmmGrantKind::Token: {

@@ -366,18 +366,6 @@ void ApplySaveFlags() {
         gSaveContext.cycleSceneFlags[SCENE_REDEAD].switch0 |= 0xC0000082;
         gSaveContext.cycleSceneFlags[SCENE_REDEAD].switch1 |= 0x000007FF;
     }
-    if (sGameState.GetStringSetting("smallKeyShuffleMm", "ownDungeon") == "removed") {
-        DUNGEON_KEY_COUNT(DUNGEON_SCENE_INDEX_WOODFALL_TEMPLE) = 1;
-        DUNGEON_KEY_COUNT(DUNGEON_SCENE_INDEX_SNOWHEAD_TEMPLE) = 3;
-        DUNGEON_KEY_COUNT(DUNGEON_SCENE_INDEX_GREAT_BAY_TEMPLE) = 1;
-        DUNGEON_KEY_COUNT(DUNGEON_SCENE_INDEX_STONE_TOWER_TEMPLE) = 4;
-    }
-    if (sGameState.GetStringSetting("bossKeyShuffleMm", "ownDungeon") == "removed") {
-        SET_DUNGEON_ITEM(DUNGEON_BOSS_KEY, DUNGEON_SCENE_INDEX_WOODFALL_TEMPLE);
-        SET_DUNGEON_ITEM(DUNGEON_BOSS_KEY, DUNGEON_SCENE_INDEX_SNOWHEAD_TEMPLE);
-        SET_DUNGEON_ITEM(DUNGEON_BOSS_KEY, DUNGEON_SCENE_INDEX_GREAT_BAY_TEMPLE);
-        SET_DUNGEON_ITEM(DUNGEON_BOSS_KEY, DUNGEON_SCENE_INDEX_STONE_TOWER_TEMPLE);
-    }
 }
 
 void InitializeSave() {

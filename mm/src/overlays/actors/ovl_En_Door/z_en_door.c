@@ -933,9 +933,7 @@ void EnDoor_Draw(Actor* thisx, PlayState* play) {
             }
         }
         if (OotmmRustyDoorLocked(play, &this->knobDoor.dyna.actor)) {
-            gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 140, 64, 255);
-            gDPSetEnvColor(POLY_OPA_DISP++, 140, 55, 15, 255);
-            Actor_DrawDoorLock(play, 10, DOORLOCK_NORMAL);
+            OotmmRustyDoorDrawLock(play);
         } else if (this->lockTimer) {
             Actor_DrawDoorLock(play, this->lockTimer, DOORLOCK_NORMAL);
         }

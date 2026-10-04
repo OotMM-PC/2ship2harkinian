@@ -10,6 +10,8 @@ extern "C" {
 #include "macros.h"
 #include "variables.h"
 #include "z64.h"
+
+Gfx* ResourceMgr_LoadGfxByName(const char* path);
 }
 
 namespace {
@@ -180,4 +182,35 @@ extern "C" int OotmmRustyDoorLocked(PlayState* play, Actor* actor) {
     }
     const int key = ResolveDoor(play->sceneId, static_cast<uint16_t>(actor->params) >> 10);
     return key >= 0 && !OotmmIpc_GetInventory().Has(kItemIds[key]);
+}
+
+extern "C" void OotmmRustyDoorDrawLock(PlayState* play) {
+    Gfx* chain = ResourceMgr_LoadGfxByName("__OTR__objects/ootmm_door_lock/gRustyDoorChainDL");
+    Gfx* lock = ResourceMgr_LoadGfxByName("__OTR__objects/ootmm_door_lock/gRustyDoorLockDL");
+    if (chain == nullptr || lock == nullptr) {
+        OPEN_DISPS(play->state.gfxCtx);
+        gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 140, 64, 255);
+        CLOSE_DISPS(play->state.gfxCtx);
+        Actor_DrawDoorLock(play, 10, DOORLOCK_NORMAL);
+        return;
+    }
+
+    constexpr f32 kChainAngle = 0.54f;
+    MtxF base;
+    f32 chainRotZ = 0.0f;
+
+    OPEN_DISPS(play->state.gfxCtx);
+    Matrix_Translate(0.0f, 5000.0f, 500.0f, MTXMODE_APPLY);
+    Matrix_Get(&base);
+    for (s32 i = 0; i < 4; i++) {
+        Matrix_Put(&base);
+        Matrix_RotateZF(chainRotZ, MTXMODE_APPLY);
+        MATRIX_FINALIZE_AND_LOAD(POLY_OPA_DISP++, play->state.gfxCtx);
+        gSPDisplayList(POLY_OPA_DISP++, chain);
+        chainRotZ += (i % 2) ? 2.0f * kChainAngle : M_PIf - 2.0f * kChainAngle;
+    }
+    Matrix_Put(&base);
+    MATRIX_FINALIZE_AND_LOAD(POLY_OPA_DISP++, play->state.gfxCtx);
+    gSPDisplayList(POLY_OPA_DISP++, lock);
+    CLOSE_DISPS(play->state.gfxCtx);
 }
