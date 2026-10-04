@@ -128,6 +128,8 @@ const char* OotmmCustomItems_MaskDList(int32_t mask);
 /// Deku seed ammo for the cross-game slingshot, clamped to the bag tier.
 int32_t OotmmCustomItems_SlingshotAmmo(void);
 void OotmmCustomItems_SetSlingshotAmmo(int32_t ammo);
+void OotmmCustomItems_AddSlingshotSeeds(int32_t count);
+int32_t OotmmCustomItems_SlingshotTierMax(uint32_t tier);
 int32_t OotmmCustomItems_SlingshotMaxAmmo(void);
 
 void OotmmCustomItems_StartRutoLetterTextbox(void);

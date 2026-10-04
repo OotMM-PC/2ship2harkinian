@@ -10,6 +10,7 @@ extern "C" {
 
 int32_t OotmmSession_TryBootDirectly(void* gameState);
 int32_t OotmmSession_IsActive(void);
+int32_t OotmmSession_BoolSetting(const char* key);
 int32_t OotmmSession_RequestFileSelection(int32_t slot);
 int32_t OotmmSession_FileSelectionPending(void);
 int32_t OotmmSession_RequestFileCopy(int32_t source, int32_t target);

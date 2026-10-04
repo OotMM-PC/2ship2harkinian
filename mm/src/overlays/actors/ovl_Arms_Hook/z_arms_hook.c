@@ -78,7 +78,7 @@ void ArmsHook_Wait(ArmsHook* this, PlayState* play) {
         ArmsHook_SetupAction(this, ArmsHook_Shoot);
         Actor_SetSpeeds(&this->actor, 20.0f);
         this->actor.parent = &GET_PLAYER(play)->actor;
-        this->timer = 26;
+        this->timer = (GET_PLAYER(play)->heldItemId == ITEM_LONGSHOT) ? 13 : 26;
     }
 }
 

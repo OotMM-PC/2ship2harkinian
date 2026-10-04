@@ -382,6 +382,7 @@ typedef struct ShipSaveInfo {
     u8 ootmmWisps;
     u8 ootmmBossCycle;
     u8 ootmmBossBeaten;
+    u8 ootmmSlingshotSeeds;
 } ShipSaveInfo;
 // #endregion
 

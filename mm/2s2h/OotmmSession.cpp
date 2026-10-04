@@ -20,6 +20,7 @@
 #include "OotmmAdultLink.h"
 #include "OotmmItemProbe.h"
 #include "OotmmScales.h"
+#include "OotmmStrength.h"
 #include "OotmmClockSpeed.h"
 #include "OotmmCycle.h"
 #include "OotmmRegionState.h"
@@ -664,6 +665,7 @@ void OotmmSession_Init() {
         OotmmItemApply_Init();
         OotmmScales_Init();
         OotmmFaroresWind_Init();
+        OotmmStrength_Init();
         OotmmAdultLink_Init();
         OotmmPresence_Init();
         OotmmSpecialConds_Init();
@@ -716,6 +718,10 @@ extern "C" int32_t OotmmSession_SaveProgress(void) {
 
 extern "C" int32_t OotmmSession_IsActive(void) {
     return sGameState.IsActive() && sGameState.HasSeed() ? 1 : 0;
+}
+
+extern "C" int32_t OotmmSession_BoolSetting(const char* key) {
+    return OotmmSession_IsActive() && sGameState.GetBoolSetting(key, false) ? 1 : 0;
 }
 
 extern "C" int32_t OotmmSession_TryBootDirectly(void* gameState) {

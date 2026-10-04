@@ -67,6 +67,14 @@ static const char* emptyCButtonArrows[] = {
     gEmptyCRightArrowTex,
 };
 
+static s32 Interface_IsOcarina(u8 item) {
+    return (item == ITEM_OCARINA_OF_TIME) || (item == ITEM_OCARINA_FAIRY);
+}
+
+static s32 Interface_IsHookshot(u8 item) {
+    return (item == ITEM_HOOKSHOT) || (item == ITEM_LONGSHOT);
+}
+
 u8 gPlayerFormItemRestrictions[PLAYER_FORM_MAX][114] = {
     // PLAYER_FORM_FIERCE_DEITY
     {
@@ -192,7 +200,7 @@ u8 gPlayerFormItemRestrictions[PLAYER_FORM_MAX][114] = {
         false, // ITEM_ARROW_FIRE
         false, // ITEM_ARROW_ICE
         false, // ITEM_ARROW_LIGHT
-        false, // ITEM_OCARINA_FAIRY
+        true,  // ITEM_OCARINA_FAIRY
         false, // ITEM_BOMB
         false, // ITEM_BOMBCHU
         false, // ITEM_DEKU_STICK
@@ -309,7 +317,7 @@ u8 gPlayerFormItemRestrictions[PLAYER_FORM_MAX][114] = {
         false, // ITEM_ARROW_FIRE
         false, // ITEM_ARROW_ICE
         false, // ITEM_ARROW_LIGHT
-        false, // ITEM_OCARINA_FAIRY
+        true,  // ITEM_OCARINA_FAIRY
         false, // ITEM_BOMB
         false, // ITEM_BOMBCHU
         false, // ITEM_DEKU_STICK
@@ -426,7 +434,7 @@ u8 gPlayerFormItemRestrictions[PLAYER_FORM_MAX][114] = {
         false, // ITEM_ARROW_FIRE
         false, // ITEM_ARROW_ICE
         false, // ITEM_ARROW_LIGHT
-        false, // ITEM_OCARINA_FAIRY
+        true,  // ITEM_OCARINA_FAIRY
         false, // ITEM_BOMB
         false, // ITEM_BOMBCHU
         false, // ITEM_DEKU_STICK
@@ -3165,7 +3173,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                 if (Player_GetEnvironmentalHazard(play) == PLAYER_ENV_HAZARD_UNDERWATER_FLOOR) {
                     if (!((GET_CUR_FORM_BTN_ITEM(i) >= ITEM_BOTTLE) &&
                           (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_OBABA_DRINK)) &&
-                        !(OotmmSession_IsActive() && (GET_CUR_FORM_BTN_ITEM(i) == ITEM_HOOKSHOT))) {
+                        !(OotmmSession_IsActive() && Interface_IsHookshot(GET_CUR_FORM_BTN_ITEM(i)))) {
                         if (gSaveContext.buttonStatus[i] == BTN_ENABLED) {
                             restoreHudVisibility = true;
                         }
@@ -3196,7 +3204,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                 if (Player_GetEnvironmentalHazard(play) == PLAYER_ENV_HAZARD_UNDERWATER_FLOOR) {
                     if (!((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
                           (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK)) &&
-                        !(OotmmSession_IsActive() && (DPAD_GET_CUR_FORM_BTN_ITEM(j) == ITEM_HOOKSHOT))) {
+                        !(OotmmSession_IsActive() && Interface_IsHookshot(DPAD_GET_CUR_FORM_BTN_ITEM(j)))) {
                         if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_ENABLED) {
                             restoreHudVisibility = true;
                         }
@@ -3433,7 +3441,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                              (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_PENDANT_OF_MEMORIES)) ||
                             ((GET_CUR_FORM_BTN_ITEM(i) >= ITEM_BOTTLE) &&
                              (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_OBABA_DRINK)) ||
-                            (GET_CUR_FORM_BTN_ITEM(i) == ITEM_OCARINA_OF_TIME)) {
+                            Interface_IsOcarina(GET_CUR_FORM_BTN_ITEM(i))) {
                             if (gSaveContext.buttonStatus[i] == BTN_ENABLED) {
                                 restoreHudVisibility = true;
                             }
@@ -3444,7 +3452,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                              (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_PENDANT_OF_MEMORIES)) ||
                             ((GET_CUR_FORM_BTN_ITEM(i) >= ITEM_BOTTLE) &&
                              (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_OBABA_DRINK)) ||
-                            (GET_CUR_FORM_BTN_ITEM(i) == ITEM_OCARINA_OF_TIME)) {
+                            Interface_IsOcarina(GET_CUR_FORM_BTN_ITEM(i))) {
                             if (gSaveContext.buttonStatus[i] == BTN_DISABLED) {
                                 restoreHudVisibility = true;
                             }
@@ -3491,7 +3499,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                               (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_PENDANT_OF_MEMORIES)) &&
                             !((GET_CUR_FORM_BTN_ITEM(i) >= ITEM_BOTTLE) &&
                               (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_OBABA_DRINK)) &&
-                            (GET_CUR_FORM_BTN_ITEM(i) != ITEM_OCARINA_OF_TIME) &&
+                            !Interface_IsOcarina(GET_CUR_FORM_BTN_ITEM(i)) &&
                             !((GET_CUR_FORM_BTN_ITEM(i) >= ITEM_MASK_DEKU) &&
                               (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_MASK_GIANT)) &&
                             (GET_CUR_FORM_BTN_ITEM(i) != ITEM_PICTOGRAPH_BOX)) {
@@ -3506,7 +3514,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                               (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_PENDANT_OF_MEMORIES)) &&
                             !((GET_CUR_FORM_BTN_ITEM(i) >= ITEM_BOTTLE) &&
                               (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_OBABA_DRINK)) &&
-                            (GET_CUR_FORM_BTN_ITEM(i) != ITEM_OCARINA_OF_TIME) &&
+                            !Interface_IsOcarina(GET_CUR_FORM_BTN_ITEM(i)) &&
                             !((GET_CUR_FORM_BTN_ITEM(i) >= ITEM_MASK_DEKU) &&
                               (GET_CUR_FORM_BTN_ITEM(i) <= ITEM_MASK_GIANT)) &&
                             (GET_CUR_FORM_BTN_ITEM(i) != ITEM_PICTOGRAPH_BOX)) {
@@ -3584,7 +3592,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                              (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_PENDANT_OF_MEMORIES)) ||
                             ((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
                              (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK)) ||
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) == ITEM_OCARINA_OF_TIME)) {
+                            Interface_IsOcarina(DPAD_GET_CUR_FORM_BTN_ITEM(j))) {
                             if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_ENABLED) {
                                 restoreHudVisibility = true;
                             }
@@ -3595,7 +3603,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                              (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_PENDANT_OF_MEMORIES)) ||
                             ((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
                              (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK)) ||
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) == ITEM_OCARINA_OF_TIME)) {
+                            Interface_IsOcarina(DPAD_GET_CUR_FORM_BTN_ITEM(j))) {
                             if (gSaveContext.shipSaveContext.dpad.status[j] == BTN_DISABLED) {
                                 restoreHudVisibility = true;
                             }
@@ -3642,7 +3650,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                               (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_PENDANT_OF_MEMORIES)) &&
                             !((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
                               (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK)) &&
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_OCARINA_OF_TIME) &&
+                            !Interface_IsOcarina(DPAD_GET_CUR_FORM_BTN_ITEM(j)) &&
                             !((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_MASK_DEKU) &&
                               (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_MASK_GIANT)) &&
                             (DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_PICTOGRAPH_BOX)) {
@@ -3657,7 +3665,7 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                               (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_PENDANT_OF_MEMORIES)) &&
                             !((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_BOTTLE) &&
                               (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_OBABA_DRINK)) &&
-                            (DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_OCARINA_OF_TIME) &&
+                            !Interface_IsOcarina(DPAD_GET_CUR_FORM_BTN_ITEM(j)) &&
                             !((DPAD_GET_CUR_FORM_BTN_ITEM(j) >= ITEM_MASK_DEKU) &&
                               (DPAD_GET_CUR_FORM_BTN_ITEM(j) <= ITEM_MASK_GIANT)) &&
                             (DPAD_GET_CUR_FORM_BTN_ITEM(j) != ITEM_PICTOGRAPH_BOX)) {
@@ -5201,7 +5209,7 @@ void Health_GiveHearts(s16 hearts) {
 }
 
 void Rupees_ChangeBy(s16 rupeeChange) {
-    gSaveContext.rupeeAccumulator += rupeeChange;
+    gSaveContext.rupeeAccumulator += OotmmWallet_ScaleRupees(rupeeChange);
 }
 
 void Inventory_ChangeAmmo(s16 item, s16 ammoChange) {
@@ -8887,20 +8895,14 @@ void Interface_DrawMinigameIcons(PlayState* play) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
-s16 sRupeeDigitsFirst[] = { 1, 0, 0, 0 };
-
-s16 sRupeeDigitsCount[] = { 2, 3, 3, 0 };
+s16 sRupeeDigitsCount[] = { 2, 3, 3, 3 };
 
 Color_RGB16 sRupeeCounterIconPrimColors[] = {
-    { 200, 255, 100 },
-    { 170, 170, 255 },
-    { 255, 105, 105 },
+    { 200, 255, 100 }, { 170, 170, 255 }, { 255, 105, 105 }, { 255, 90, 255 }, { 224, 224, 224 },
 };
 
 Color_RGB16 sRupeeCounterIconEnvColors[] = {
-    { 0, 80, 0 },
-    { 10, 10, 80 },
-    { 40, 10, 0 },
+    { 0, 80, 0 }, { 10, 10, 80 }, { 40, 10, 0 }, { 60, 0, 60 }, { 50, 50, 50 },
 };
 
 TexturePtr sMinigameCountdownTextures[] = {
@@ -9003,16 +9005,18 @@ void Interface_Draw(PlayState* play) {
         Gfx_SetupDL39_Overlay(play->state.gfxCtx);
 
         // Draw Rupee Icon
-        gDPSetPrimColorOverride(OVERLAY_DISP++, 0, 0, sRupeeCounterIconPrimColors[CUR_UPG_VALUE(UPG_WALLET)].r,
-                                sRupeeCounterIconPrimColors[CUR_UPG_VALUE(UPG_WALLET)].g,
-                                sRupeeCounterIconPrimColors[CUR_UPG_VALUE(UPG_WALLET)].b, interfaceCtx->magicAlpha,
-                                COSMETIC_ELEMENT_RUPEE_ICON);
-        gDPSetEnvColor(OVERLAY_DISP++, sRupeeCounterIconEnvColors[CUR_UPG_VALUE(UPG_WALLET)].r,
-                       sRupeeCounterIconEnvColors[CUR_UPG_VALUE(UPG_WALLET)].g,
-                       sRupeeCounterIconEnvColors[CUR_UPG_VALUE(4)].b, 255);
-        HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_RUPEE_COUNTER);
-        OVERLAY_DISP =
-            Gfx_DrawTexRectIA8(OVERLAY_DISP, gRupeeCounterIconTex, 16, 16, 26, 206, 16, 16, 1 << 10, 1 << 10);
+        s16 walletColor = OotmmWallet_Bottomless() ? 4 : CUR_UPG_VALUE(UPG_WALLET);
+        if (OotmmWallet_HasWallet()) {
+            gDPSetPrimColorOverride(OVERLAY_DISP++, 0, 0, sRupeeCounterIconPrimColors[walletColor].r,
+                                    sRupeeCounterIconPrimColors[walletColor].g,
+                                    sRupeeCounterIconPrimColors[walletColor].b, interfaceCtx->magicAlpha,
+                                    COSMETIC_ELEMENT_RUPEE_ICON);
+            gDPSetEnvColor(OVERLAY_DISP++, sRupeeCounterIconEnvColors[walletColor].r,
+                           sRupeeCounterIconEnvColors[walletColor].g, sRupeeCounterIconEnvColors[walletColor].b, 255);
+            HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_RUPEE_COUNTER);
+            OVERLAY_DISP =
+                Gfx_DrawTexRectIA8(OVERLAY_DISP, gRupeeCounterIconTex, 16, 16, 26, 206, 16, 16, 1 << 10, 1 << 10);
+        }
 
         switch (play->sceneId) {
             case SCENE_INISIE_N:
@@ -9251,25 +9255,16 @@ void Interface_Draw(PlayState* play) {
         gDPSetCombineLERP(OVERLAY_DISP++, 0, 0, 0, PRIMITIVE, TEXEL0, 0, PRIMITIVE, 0, 0, 0, 0, PRIMITIVE, TEXEL0, 0,
                           PRIMITIVE, 0);
 
-        counterDigits[0] = counterDigits[1] = 0;
-        counterDigits[2] = gSaveContext.save.saveInfo.playerData.rupees;
+        s16 rupeeValue = CLAMP(gSaveContext.save.saveInfo.playerData.rupees, 0, 9999);
+        counterDigits[0] = rupeeValue / 1000;
+        counterDigits[1] = (rupeeValue / 100) % 10;
+        counterDigits[2] = (rupeeValue / 10) % 10;
+        counterDigits[3] = rupeeValue % 10;
 
-        if ((counterDigits[2] > 9999) || (counterDigits[2] < 0)) {
-            counterDigits[2] &= 0xDDD;
-        }
-
-        while (counterDigits[2] >= 100) {
-            counterDigits[0]++;
-            counterDigits[2] -= 100;
-        }
-
-        while (counterDigits[2] >= 10) {
-            counterDigits[1]++;
-            counterDigits[2] -= 10;
-        }
-
-        sp2CC = sRupeeDigitsFirst[CUR_UPG_VALUE(UPG_WALLET)];
-        sp2C8 = sRupeeDigitsCount[CUR_UPG_VALUE(UPG_WALLET)];
+        sp2C8 = !OotmmWallet_HasWallet() ? 0
+                : OotmmWallet_Bottomless() ? 4
+                                           : sRupeeDigitsCount[CUR_UPG_VALUE(UPG_WALLET)];
+        sp2CC = 4 - sp2C8;
 
         magicAlpha = interfaceCtx->magicAlpha;
         if (magicAlpha > 180) {

@@ -50,17 +50,17 @@ const std::vector<Ladder> kLadders = {
     { "SHIELD", { ITEM_SHIELD_HERO, ITEM_SHIELD_MIRROR } },
     { "BOMB_BAG", { ITEM_BOMB_BAG_20, ITEM_BOMB_BAG_30, ITEM_BOMB_BAG_40 } },
     { "BOW", { ITEM_QUIVER_30, ITEM_QUIVER_40, ITEM_QUIVER_50 } },
-    { "HOOKSHOT", { ITEM_HOOKSHOT, ITEM_LONGSHOT } },
-    { "OCARINA", { ITEM_OCARINA_FAIRY, ITEM_OCARINA_OF_TIME } },
+    { "HOOKSHOT_SHORT", { ITEM_LONGSHOT, ITEM_HOOKSHOT } },
+    { "OCARINA_FAIRY", { ITEM_OCARINA_FAIRY, ITEM_OCARINA_OF_TIME } },
     { "NUT_UPGRADE", { ITEM_DEKU_NUT_UPGRADE_30, ITEM_DEKU_NUT_UPGRADE_40 } },
     { "STICK_UPGRADE", { ITEM_DEKU_STICK_UPGRADE_20, ITEM_DEKU_STICK_UPGRADE_30 } },
 };
 
 // Ammo pickups name their own size, e.g. MM_ARROWS_10.
 const std::vector<std::pair<std::string_view, uint8_t>> kAmmoSlots = {
-    { "ARROWS", ITEM_BOW },        { "BOMBS", ITEM_BOMB },
-    { "BOMBCHU", ITEM_BOMBCHU },   { "NUTS", ITEM_DEKU_NUT },
-    { "STICKS", ITEM_DEKU_STICK },
+    { "ARROW", ITEM_BOW },         { "BOMBCHU", ITEM_BOMBCHU },
+    { "BOMB", ITEM_BOMB },         { "NUT", ITEM_DEKU_NUT },
+    { "STICK", ITEM_DEKU_STICK },
 };
 
 const std::unordered_map<std::string, uint8_t> kQuestFlags = {
@@ -248,10 +248,28 @@ const Ladder* FindLadder(std::string_view suffix) {
     return nullptr;
 }
 
-std::vector<uint8_t> LadderTiers(std::string_view suffix) {
+std::vector<uint8_t> LadderTiers(const Ship::OotmmGrantOp& op) {
+    const std::string_view suffix = op.Slot;
+    const auto& state = OotmmSession_GetState();
+    const bool shared = op.Game == Ship::OotmmGrantGame::Shared;
+    if (suffix == "OCARINA") {
+        if (state.GetBoolSetting("fairyOcarinaMm", false)) {
+            return FindLadder("OCARINA_FAIRY")->Tiers;
+        }
+        if (shared) {
+            return { ITEM_NONE, ITEM_OCARINA_OF_TIME };
+        }
+        return { ITEM_OCARINA_OF_TIME };
+    }
+    if (suffix == "HOOKSHOT") {
+        if (state.GetBoolSetting("shortHookshotMm", false)) {
+            return FindLadder("HOOKSHOT_SHORT")->Tiers;
+        }
+        return { ITEM_HOOKSHOT };
+    }
     if (suffix == "WALLET") {
         std::vector<uint8_t> tiers;
-        if (OotmmSession_GetState().GetBoolSetting("childWallets", false)) {
+        if (state.GetBoolSetting("childWallets", false)) {
             tiers.push_back(ITEM_WALLET_DEFAULT);
         }
         tiers.push_back(ITEM_WALLET_ADULT);
@@ -290,14 +308,53 @@ int16_t RupeeValue(std::string_view suffix) {
     return 1;
 }
 
+void RefreshTradeButtons(uint8_t slot, uint8_t removed = ITEM_NONE);
+
+int ProgressiveSlot(uint8_t item) {
+    switch (item) {
+        case ITEM_OCARINA_FAIRY:
+        case ITEM_OCARINA_OF_TIME:
+            return SLOT_OCARINA;
+        case ITEM_LONGSHOT:
+        case ITEM_HOOKSHOT:
+            return SLOT_HOOKSHOT;
+        default:
+            return -1;
+    }
+}
+
+bool Downgrades(uint8_t item) {
+    const auto& items = gSaveContext.save.saveInfo.inventory.items;
+    return (item == ITEM_OCARINA_FAIRY && items[SLOT_OCARINA] == ITEM_OCARINA_OF_TIME) ||
+           (item == ITEM_LONGSHOT && items[SLOT_HOOKSHOT] == ITEM_HOOKSHOT);
+}
+
 void ApplyOnce(PlayState* play, const std::string& key, uint8_t item) {
     sLedger.SetApplied(key, 1);
-    if (item == ITEM_NONE) {
+    if (item == ITEM_NONE || Downgrades(item)) {
+        return;
+    }
+    if (const int slot = ProgressiveSlot(item); slot >= 0) {
+        gSaveContext.save.saveInfo.inventory.items[slot] = item;
+        RefreshTradeButtons(slot);
+        SPDLOG_INFO("[OoTMM grant] gave {} (item {})", key, static_cast<int>(item));
         return;
     }
     // gItemSlots only covers inventory items, so SLOT()/INV_CONTENT() are unusable here.
     Item_Give(play, item);
     SPDLOG_INFO("[OoTMM grant] gave {} (item {})", key, static_cast<int>(item));
+}
+
+bool IsConsumable(uint8_t item) {
+    return item == ITEM_DEKU_STICK || item == ITEM_DEKU_NUT || item == ITEM_BOMB;
+}
+
+void GiveUnits(PlayState* play, const std::string& itemId, uint8_t item, uint32_t already, uint32_t count) {
+    for (uint32_t unit = already; unit < count && unit - already < 255; unit++) {
+        Item_Give(play, item);
+    }
+    sLedger.SetApplied(itemId, count);
+    SPDLOG_INFO("[OoTMM grant] gave {} x{} (item {})", itemId, count - already, static_cast<int>(item));
 }
 
 const std::vector<uint8_t> kDeedTradeItems = {
@@ -336,7 +393,7 @@ bool IsTradeGrantOp(const Ship::OotmmGrantOp& op) {
         case Ship::OotmmGrantKind::Mask:
         case Ship::OotmmGrantKind::Bottle:
             return Ship::OotmmItemGrant::AppliesTo(op, Ship::OotmmGrantGame::Mm) &&
-                   LadderTiers(op.Slot).empty();
+                   LadderTiers(op).empty();
         default:
             return false;
     }
@@ -408,7 +465,7 @@ std::vector<uint8_t> OwnedTradeItems(uint8_t slot) {
     return owned;
 }
 
-void RefreshTradeButtons(uint8_t slot, uint8_t removed = ITEM_NONE) {
+void RefreshTradeButtons(uint8_t slot, uint8_t removed) {
     const auto item = gSaveContext.save.saveInfo.inventory.items[slot];
     auto& equips = gSaveContext.save.saveInfo.equips;
     auto& dpad = gSaveContext.save.shipSaveInfo.dpadEquips;
@@ -577,8 +634,73 @@ bool RestoreSharedResources() {
     return true;
 }
 
+struct WalletState {
+    bool HasWallet = true;
+    uint8_t Level = 0;
+    bool Bottomless = false;
+    uint32_t Owned = 0;
+};
+
+WalletState sWallet;
+
+WalletState ComputeWallet() {
+    const auto& state = OotmmSession_GetState();
+    const auto& inventory = OotmmIpc_GetInventory();
+    WalletState wallet;
+    wallet.Owned = inventory.Count("MM_WALLET") + inventory.Count("SHARED_WALLET");
+    uint32_t upgrades = wallet.Owned;
+    if (state.GetBoolSetting("childWallets", false)) {
+        wallet.HasWallet = upgrades > 0;
+        upgrades = upgrades > 0 ? upgrades - 1 : 0;
+    }
+    const bool colossal = state.GetBoolSetting("colossalWallets", false);
+    const uint32_t maxLevel = colossal ? 3 : 2;
+    wallet.Level = static_cast<uint8_t>(std::min(upgrades, maxLevel));
+    wallet.Bottomless = colossal && state.GetBoolSetting("bottomlessWallets", false) && upgrades > maxLevel;
+    return wallet;
+}
+
+void RefreshWallet() {
+    sWallet = ComputeWallet();
+    gUpgradeCapacities[UPG_WALLET][0] = sWallet.HasWallet ? 99 : 0;
+    gUpgradeCapacities[UPG_WALLET][3] = sWallet.Bottomless ? 9999 : 999;
+    if (CUR_UPG_VALUE(UPG_WALLET) != sWallet.Level) {
+        Inventory_ChangeUpgrade(UPG_WALLET, sWallet.Level);
+    }
+    auto& rupees = gSaveContext.save.saveInfo.playerData.rupees;
+    if (rupees > CUR_CAPACITY(UPG_WALLET)) {
+        rupees = CUR_CAPACITY(UPG_WALLET);
+    }
+}
+
+void ApplyWallet() {
+    RefreshWallet();
+    const bool fill = OotmmSession_GetState().GetBoolSetting("fillWallets", false);
+    for (uint32_t tier = 0; tier < sWallet.Owned; tier++) {
+        const std::string key = "WALLET_TIER:" + std::to_string(tier);
+        if (sLedger.Has(key)) {
+            continue;
+        }
+        sLedger.SetApplied(key, 1);
+        if (fill) {
+            Rupees_ChangeBy(static_cast<s16>(CUR_CAPACITY(UPG_WALLET)));
+        }
+    }
+}
+
 void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
     if (count == 0) {
+        return;
+    }
+    if (OotmmCustomItems_IdForItemId(itemId.c_str()) == ITEM_OOTMM_SLINGSHOT &&
+        OotmmCustomItems_OwnedCount(ITEM_OOTMM_SLINGSHOT) != 0) {
+        const uint32_t already = sLedger.Applied(itemId);
+        for (uint32_t tier = already + 1; tier <= count; ++tier) {
+            OotmmCustomItems_AddSlingshotSeeds(OotmmCustomItems_SlingshotTierMax(tier));
+        }
+        if (count > already) {
+            sLedger.SetApplied(itemId, count);
+        }
         return;
     }
     // Custom items live in the launcher inventory only; nothing is written to MM's save.
@@ -595,6 +717,10 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
             case Ship::OotmmGrantKind::Upgrade:
             case Ship::OotmmGrantKind::Mask:
             case Ship::OotmmGrantKind::Bottle: {
+                if (op.Slot == "WALLET") {
+                    ApplyWallet();
+                    break;
+                }
                 if (op.Slot == "BOMBCHU_BAG") {
                     gSaveContext.save.saveInfo.inventory.items[SLOT_BOMBCHU] = ITEM_BOMBCHU;
                     if (count > already) {
@@ -630,6 +756,20 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                     }
                     break;
                 }
+                if (op.Slot == "STRENGTH") {
+                    const size_t tier = std::min<size_t>(op.Amount, 3);
+                    if (tier == 0) {
+                        break;
+                    }
+                    const std::string key = itemId + ":" + std::to_string(tier - 1);
+                    if (!sLedger.Has(key)) {
+                        sLedger.SetApplied(key, 1);
+                        if (tier > CUR_UPG_VALUE(UPG_STRENGTH)) {
+                            Inventory_ChangeUpgrade(UPG_STRENGTH, static_cast<s16>(tier));
+                        }
+                    }
+                    break;
+                }
                 if (op.Slot == "SCALE") {
                     // MM has no scale item ids; upstream item_add.c writes upgrades.scale
                     // directly (silver = 1, golden = 2), with an optional bronze tier first.
@@ -651,7 +791,7 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                     }
                     break;
                 }
-                const std::vector<uint8_t> tiers = LadderTiers(op.Slot);
+                const std::vector<uint8_t> tiers = LadderTiers(op);
                 if (!tiers.empty()) {
                     const size_t tier = std::min<size_t>(op.Amount, tiers.size()) - 1;
                     const std::string key = itemId + ":" + std::to_string(tier);
@@ -674,6 +814,10 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                                 current = found->second;
                             }
                             sLedger.SetApplied(itemId, count);
+                        }
+                    } else if (IsConsumable(found->second)) {
+                        if (count > already) {
+                            GiveUnits(play, itemId, found->second, already, count);
                         }
                     } else if (already == 0 || EquipmentMissing(found->second)) {
                         ApplyOnce(play, itemId, found->second);
@@ -703,6 +847,12 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                         gSaveContext.save.saveInfo.inventory.ammo[SLOT_BOMBCHU] = static_cast<int8_t>(std::min<uint64_t>(
                             capacity, std::max<int32_t>(0, gSaveContext.save.saveInfo.inventory.ammo[SLOT_BOMBCHU]) + amount));
                     }
+                    sLedger.SetApplied(itemId, count);
+                    break;
+                }
+                if (op.Slot.rfind("DEKU_SEEDS", 0) == 0) {
+                    OotmmCustomItems_AddSlingshotSeeds(
+                        static_cast<int32_t>((count - already) * TrailingNumber(op.Slot, 1)));
                     sLedger.SetApplied(itemId, count);
                     break;
                 }
@@ -945,6 +1095,29 @@ void OotmmItemApply_ResetLedgerForNewSave() {
     sAppliedRevision = 0;
 }
 
+int16_t OotmmWallet_ScaleRupees(int16_t amount) {
+    if (amount <= 0 || !OotmmSession_IsActive() || !OotmmSession_GetState().GetBoolSetting("rupeeScaling", false)) {
+        return amount;
+    }
+    const int extra = (CUR_UPG_VALUE(UPG_WALLET) == 3 ? 1 : 0) + (sWallet.Bottomless ? 1 : 0);
+    int32_t value = amount;
+    if (extra >= 1) {
+        value *= 2;
+    }
+    if (extra >= 2) {
+        value *= 10;
+    }
+    return static_cast<int16_t>(std::min(value, 9999));
+}
+
+int32_t OotmmWallet_HasWallet(void) {
+    return !OotmmSession_IsActive() || sWallet.HasWallet;
+}
+
+int32_t OotmmWallet_Bottomless(void) {
+    return OotmmSession_IsActive() && sWallet.Bottomless;
+}
+
 void OotmmItemApply_Reconcile() {
     if (gPlayState == nullptr || !OotmmSession_IsActive() || OotmmSession_HasPendingInitialSave()) {
         return;
@@ -958,6 +1131,7 @@ void OotmmItemApply_Reconcile() {
         return;
     }
     sRetryMagicApplication = false;
+    RefreshWallet();
     for (const auto& [itemId, count] : inventory.GetValues()) {
         if (Ship::OotmmItemGrant::SuffixOf(itemId) == "BOMB_BAG" ||
             (Ship::OotmmItemGrant::GameOf(itemId) == Ship::OotmmGrantGame::Shared && !SharedReward(itemId))) {

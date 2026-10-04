@@ -35,6 +35,7 @@ Week Event Flags:
 #include "overlays/actors/ovl_En_Gk/z_en_gk.h" // Goron Elder's Son
 #include "overlays/actors/ovl_En_Jg/z_en_jg.h" // Goron Elder
 #include "objects/object_taisou/object_taisou.h"
+#include "2s2h/OotmmStrength.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -510,7 +511,32 @@ u16 EnSGoro_ShrineGoron_NextTextId(EnSGoro* this, PlayState* play) {
 /**
  * Dialogue tree for bomb shop goron. Returns ID of next message to display.
  */
+u16 EnSGoro_BombshopGoron_VanillaNextTextId(EnSGoro* this, PlayState* play);
+
 u16 EnSGoro_BombshopGoron_NextTextId(EnSGoro* this, PlayState* play) {
+    u16 textId = EnSGoro_BombshopGoron_VanillaNextTextId(this, play);
+
+    if (!OotmmStrength_StrongHuman()) {
+        return textId;
+    }
+    s32 hasKeg = INV_CONTENT(ITEM_POWDER_KEG) == ITEM_POWDER_KEG;
+    switch (textId) {
+        case 0x666:
+            return hasKeg ? 0x66F : 0x67C;
+        case 0x66C:
+            this->actionFlags &= ~EN_S_GORO_ACTIONFLAG_LASTMESSAGE;
+            return hasKeg ? 0x679 : 0x681;
+        case 0x66A:
+            return hasKeg ? 0x678 : 0x67F;
+        case 0x66D:
+            this->actionFlags &= ~EN_S_GORO_ACTIONFLAG_LASTMESSAGE;
+            return hasKeg ? 0x67A : 0x683;
+        default:
+            return textId;
+    }
+}
+
+u16 EnSGoro_BombshopGoron_VanillaNextTextId(EnSGoro* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
 
     switch (this->textId) {

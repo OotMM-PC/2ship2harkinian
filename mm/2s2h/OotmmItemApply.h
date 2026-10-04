@@ -7,6 +7,9 @@ extern "C" {
 #endif
 
 int32_t OotmmItemApply_BombchuCapacity(void);
+int16_t OotmmWallet_ScaleRupees(int16_t amount);
+int32_t OotmmWallet_HasWallet(void);
+int32_t OotmmWallet_Bottomless(void);
 void OotmmItemApply_AddBombchuAmmo(int32_t amount);
 int32_t OotmmItemApply_SelectBombDrop(int32_t bombDrop, int32_t bombchuDrop);
 

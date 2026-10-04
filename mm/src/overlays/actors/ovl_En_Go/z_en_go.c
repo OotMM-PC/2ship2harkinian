@@ -21,6 +21,7 @@
 #include "overlays/actors/ovl_Obj_Aqua/z_obj_aqua.h"
 
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
+#include "2s2h/OotmmStrength.h"
 
 #define FLAGS                                                                                  \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -2765,6 +2766,13 @@ MsgScript* EnGo_GetMsgScript(EnGo* this, PlayState* play) {
             return sMsgScriptGoronAsideEldersSon;
 
         case ENGO_MEDIGORON:
+            if (OotmmStrength_KegForStrong()) {
+                static MsgScript sMsgScriptGoronMedigoronStrong[ARRAY_COUNT(sMsgScriptGoronMedigoron)];
+
+                memcpy(sMsgScriptGoronMedigoronStrong, sMsgScriptGoronMedigoron, sizeof(sMsgScriptGoronMedigoron));
+                sMsgScriptGoronMedigoronStrong[0] = MSCRIPT_CMD_ID_JUMP;
+                return sMsgScriptGoronMedigoronStrong;
+            }
             return sMsgScriptGoronMedigoron;
 
         default:

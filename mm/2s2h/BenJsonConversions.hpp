@@ -82,6 +82,7 @@ void to_json(json& j, const ShipSaveInfo& shipSaveInfo) {
         { "ootmmWisps", shipSaveInfo.ootmmWisps },
         { "ootmmBossCycle", shipSaveInfo.ootmmBossCycle },
         { "ootmmBossBeaten", shipSaveInfo.ootmmBossBeaten },
+        { "ootmmSlingshotSeeds", shipSaveInfo.ootmmSlingshotSeeds },
     };
 }
 
@@ -97,6 +98,7 @@ void from_json(const json& j, ShipSaveInfo& shipSaveInfo) {
     shipSaveInfo.ootmmWisps = j.value("ootmmWisps", static_cast<u8>(0));
     shipSaveInfo.ootmmBossCycle = j.value("ootmmBossCycle", static_cast<u8>(0));
     shipSaveInfo.ootmmBossBeaten = j.value("ootmmBossBeaten", static_cast<u8>(0));
+    shipSaveInfo.ootmmSlingshotSeeds = j.value("ootmmSlingshotSeeds", static_cast<u8>(0));
 
     // OOTMM_STRIPPED: the built-in randomizer is removed; its saves cannot be loaded.
     if (shipSaveInfo.saveType == SAVETYPE_RANDO) {

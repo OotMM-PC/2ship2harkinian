@@ -1741,6 +1741,9 @@ bool Player_IsBurningStickInRange(PlayState* play, Vec3f* pos, f32 xzRange, f32 
 }
 
 u8 Player_GetStrength(void) {
+    if ((GET_PLAYER_FORM == PLAYER_FORM_HUMAN) && OotmmSession_BoolSetting("strengthMm")) {
+        return CUR_UPG_VALUE(UPG_STRENGTH);
+    }
     return sPlayerStrengths[GET_PLAYER_FORM];
 }
 

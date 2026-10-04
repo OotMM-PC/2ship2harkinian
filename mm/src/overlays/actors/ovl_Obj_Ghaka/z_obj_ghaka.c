@@ -6,6 +6,7 @@
 
 #include "z_obj_ghaka.h"
 #include "objects/object_ghaka/object_ghaka.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_DRAW_CULLING_DISABLED)
 
@@ -84,7 +85,7 @@ void func_80B3C39C(ObjGhaka* this, PlayState* play) {
     }
 
     if ((this->dyna.pushForce < 0.0f) && !CHECK_WEEKEVENTREG(WEEKEVENTREG_20_20) &&
-        (player->transformation == PLAYER_FORM_GORON)) {
+        (Player_GetStrength() >= PLAYER_STRENGTH_GORON)) {
         func_80B3C2B0(this);
     } else {
         player->stateFlags2 &= ~PLAYER_STATE2_10;
@@ -129,7 +130,7 @@ void func_80B3C4E0(ObjGhaka* this, PlayState* play) {
 
 void func_80B3C624(ObjGhaka* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
-    u8 stepTemp = Math_StepToS(&this->unk_168, 0x64, 1);
+    u8 stepTemp = Math_StepToS(&this->unk_168, 0x64, OotmmSession_IsActive() ? 3 : 1);
 
     this->dyna.actor.world.pos.z = this->dyna.actor.home.pos.z + this->unk_168;
 

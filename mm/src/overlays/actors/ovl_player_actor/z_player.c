@@ -3057,7 +3057,7 @@ s8 sItemItemActions[] = {
     PLAYER_IA_BOW_FIRE,                // ITEM_ARROW_FIRE,
     PLAYER_IA_BOW_ICE,                 // ITEM_ARROW_ICE,
     PLAYER_IA_BOW_LIGHT,               // ITEM_ARROW_LIGHT,
-    PLAYER_IA_PICTOGRAPH_BOX,          // ITEM_OCARINA_FAIRY,
+    PLAYER_IA_OCARINA,                 // ITEM_OCARINA_FAIRY,
     PLAYER_IA_BOMB,                    // ITEM_BOMB,
     PLAYER_IA_BOMBCHU,                 // ITEM_BOMBCHU,
     PLAYER_IA_DEKU_STICK,              // ITEM_DEKU_STICK,
@@ -3069,7 +3069,7 @@ s8 sItemItemActions[] = {
     PLAYER_IA_LENS_OF_TRUTH,           // ITEM_LENS_OF_TRUTH,
     PLAYER_IA_HOOKSHOT,                // ITEM_HOOKSHOT,
     PLAYER_IA_SWORD_TWO_HANDED,        // ITEM_SWORD_GREAT_FAIRY,
-    PLAYER_IA_PICTOGRAPH_BOX,          // ITEM_LONGSHOT, // OoT Leftover
+    PLAYER_IA_HOOKSHOT,                // ITEM_LONGSHOT, // OoT Leftover
     PLAYER_IA_BOTTLE_EMPTY,            // ITEM_BOTTLE,
     PLAYER_IA_BOTTLE_POTION_RED,       // ITEM_POTION_RED,
     PLAYER_IA_BOTTLE_POTION_GREEN,     // ITEM_POTION_GREEN,
@@ -10476,7 +10476,7 @@ s32 Player_ActionHandler_2(Player* this, PlayState* play) {
                         if ((this->heldActor == NULL) || Player_IsHoldingHookshot(this)) {
                             EnBom* bomb = (EnBom*)interactRangeActor;
 
-                            if (((this->transformation != PLAYER_FORM_GORON) &&
+                            if (((Player_GetStrength() < PLAYER_STRENGTH_GORON) &&
                                  (((bomb->actor.id == ACTOR_EN_BOM) && bomb->isPowderKeg) ||
                                   ((interactRangeActor->id == ACTOR_EN_ISHI) && (interactRangeActor->params & 1)) ||
                                   (interactRangeActor->id == ACTOR_EN_MM)))) {

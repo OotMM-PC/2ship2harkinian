@@ -6,6 +6,7 @@
 #include "OotmmFaroresWind.h"
 #include "OotmmSession.h"
 
+#include <algorithm>
 #include <array>
 #include <string>
 #include <string_view>
@@ -289,7 +290,6 @@ namespace {
 int32_t sEquippedBoots = OOTMM_BOOTS_NONE;
 int32_t sEquippedTunic = OOTMM_TUNIC_NONE;
 int32_t sEquippedMask = OOTMM_MASK_NONE;
-int32_t sSlingshotAmmo = -1;
 
 constexpr int32_t kMaxSeeds[4] = { 0, 30, 40, 50 };
 
@@ -400,14 +400,20 @@ extern "C" int32_t OotmmCustomItems_SlingshotMaxAmmo(void) {
 }
 
 extern "C" int32_t OotmmCustomItems_SlingshotAmmo(void) {
+    return std::min<int32_t>(gSaveContext.save.shipSaveInfo.ootmmSlingshotSeeds,
+                             OotmmCustomItems_SlingshotMaxAmmo());
+}
+
+extern "C" void OotmmCustomItems_AddSlingshotSeeds(int32_t count) {
     const int32_t max = OotmmCustomItems_SlingshotMaxAmmo();
-    if (sSlingshotAmmo < 0) {
-        sSlingshotAmmo = max;
+    if (max == 0) {
+        return;
     }
-    if (sSlingshotAmmo > max) {
-        sSlingshotAmmo = max;
-    }
-    return sSlingshotAmmo;
+    OotmmCustomItems_SetSlingshotAmmo(OotmmCustomItems_SlingshotAmmo() + count);
+}
+
+extern "C" int32_t OotmmCustomItems_SlingshotTierMax(uint32_t tier) {
+    return kMaxSeeds[std::min<uint32_t>(tier, 3)];
 }
 
 namespace {
@@ -501,7 +507,7 @@ extern "C" void OotmmCustomItems_SetSlingshotAmmo(int32_t ammo) {
     if (ammo > max) {
         ammo = max;
     }
-    sSlingshotAmmo = ammo;
+    gSaveContext.save.shipSaveInfo.ootmmSlingshotSeeds = static_cast<u8>(ammo);
 }
 
 namespace {
