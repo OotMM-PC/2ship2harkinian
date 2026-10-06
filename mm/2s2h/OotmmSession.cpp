@@ -5,6 +5,7 @@
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/Saving/SavingEnhancements.h"
+#include "OotmmBottles.h"
 #include "OotmmCheckLedger.h"
 #include "OotmmChecks.h"
 #include "OotmmNpcChecks.h"
@@ -651,6 +652,7 @@ void OotmmSession_Init() {
         OotmmItemDescriptions_Init();
         OotmmDekuShield_Init();
         OotmmAgony_Init();
+        OotmmBottles_Init();
         OotmmCsmc_Init();
         OotmmDrops_Init();
         OotmmXflags_Init();
@@ -659,15 +661,15 @@ void OotmmSession_Init() {
         OotmmItemProbe_Init();
         OotmmItemApply_Init();
         OotmmScales_Init();
-        OotmmFaroresWind_Init();
         OotmmStrength_Init();
+        OotmmFaroresWind_Init();
         OotmmAdultLink_Init();
         OotmmPresence_Init();
+        OotmmDeathLink_Init();
         OotmmSpecialConds_Init();
         OotmmRegionState_Init();
         OotmmClockSpeed_Init();
         OotmmCycle_Init();
-        OotmmDeathLink_Init();
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveInit>(
             [](s16) { InitializeSave(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(

@@ -8,6 +8,7 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmSession.h"
 #include "2s2h/OotmmCustomItems.h"
+#include "2s2h/OotmmBottles.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
 
@@ -218,6 +219,12 @@ s32 EnBjt_TakeItem(s32 exchangeItem) {
 
         case PLAYER_IA_LETTER_MAMA:
             Inventory_DeleteItem(ITEM_LETTER_MAMA, SLOT(ITEM_LETTER_MAMA));
+            break;
+
+        case PLAYER_IA_OOTMM_BOTTLE_RUTO_LETTER:
+            if (OotmmBottles_Shared()) {
+                OotmmBottles_UseRutoLetter(gPlayState);
+            }
             break;
 
         default:

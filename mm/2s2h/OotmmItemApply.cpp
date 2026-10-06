@@ -1,4 +1,5 @@
 #include "OotmmItemApply.h"
+#include "OotmmBottles.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/SaveManager/SaveManager.h"
@@ -376,6 +377,33 @@ void ApplyOnce(PlayState* play, const std::string& key, uint8_t item) {
     SPDLOG_INFO("[OoTMM grant] gave {} (item {})", key, static_cast<int>(item));
 }
 
+bool IsNewBottle(const std::string& itemId) {
+    return itemId.find("_BOTTLE_") != std::string::npos || itemId.find("_BOTTLED_") != std::string::npos;
+}
+
+void GiveNewBottles(const std::string& itemId, uint32_t already, uint32_t count) {
+    const auto found = kNativeItems.find(itemId);
+    if (found == kNativeItems.end()) {
+        sUnhandled[itemId] = "BOTTLE (no native item)";
+        return;
+    }
+    for (uint32_t unit = already; unit < count; unit++) {
+        uint8_t* bottle = nullptr;
+        for (int i = 0; i < 6 && bottle == nullptr; i++) {
+            if (gSaveContext.save.saveInfo.inventory.items[SLOT_BOTTLE_1 + i] == ITEM_NONE) {
+                bottle = &gSaveContext.save.saveInfo.inventory.items[SLOT_BOTTLE_1 + i];
+            }
+        }
+        if (bottle == nullptr) {
+            sUnhandled[itemId] = "No free bottle slot";
+            return;
+        }
+        *bottle = unit > 0 && Ship::OotmmIsProgressiveBottle(itemId) ? ITEM_BOTTLE : found->second;
+        sLedger.SetApplied(itemId, unit + 1);
+        SPDLOG_INFO("[OoTMM grant] gave {} (new bottle, item {})", itemId, static_cast<int>(*bottle));
+    }
+}
+
 bool IsConsumable(uint8_t item) {
     return item == ITEM_DEKU_STICK || item == ITEM_DEKU_NUT || item == ITEM_BOMB;
 }
@@ -561,6 +589,15 @@ uint32_t SharedValueLimit(std::string_view key) {
     if (OotmmFaroresWind_IsSharedKey(key)) {
         return 2;
     }
+    if (Ship::OotmmBottleIndex(key) >= 0) {
+        return static_cast<uint32_t>(Ship::OotmmBottleContent::Count) - 1;
+    }
+    if (key == "rutoLetter") {
+        return Ship::kOotmmRutoLetterUsedOot | Ship::kOotmmRutoLetterUsedMm;
+    }
+    if (key == "chateau") {
+        return 1;
+    }
     if (!Ship::OotmmTrapForSetting(key).empty()) {
         return 65535;
     }
@@ -596,6 +633,16 @@ void WriteSharedValue(std::string_view key, uint32_t value) {
         const uint32_t mask = sLedger.Applied("native:bossClears") | value;
         sLedger.SetApplied("native:bossClears", mask);
         ApplyBossClears(mask);
+    } else if (const int bottle = Ship::OotmmBottleIndex(key); bottle >= 0) {
+        OotmmBottles_SetSlot(bottle, value);
+    } else if (key == "rutoLetter") {
+        sLedger.SetApplied("native:rutoLetterUsed", sLedger.Applied("native:rutoLetterUsed") | value);
+    } else if (key == "chateau") {
+        if (value != 0) {
+            SET_WEEKEVENTREG(WEEKEVENTREG_DRANK_CHATEAU_ROMANI);
+        } else {
+            CLEAR_WEEKEVENTREG(WEEKEVENTREG_DRANK_CHATEAU_ROMANI);
+        }
     } else if (key == "bombchu") {
         inventory.ammo[SLOT_BOMBCHU] = static_cast<int8_t>(value);
     } else if (key == "bombchuOwned") {
@@ -825,6 +872,10 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                         SPDLOG_INFO("[OoTMM grant] gave {} (scale {})", key,
                                     static_cast<int>(scaleTiers[tier]));
                     }
+                    break;
+                }
+                if (IsNewBottle(itemId)) {
+                    GiveNewBottles(itemId, already, count);
                     break;
                 }
                 const std::vector<uint8_t> tiers = LadderTiers(op);
@@ -1472,7 +1523,16 @@ uint32_t ReadSharedValue(const nlohmann::json& saveInfo, std::string_view key) {
     if (key == "bossClears") {
         return sLedger.Applied("native:bossClears");
     }
+    if (key == "rutoLetter") {
+        return sLedger.Applied("native:rutoLetterUsed");
+    }
+    if (key == "chateau") {
+        return (saveInfo.at("weekEventReg").at(14).get<uint32_t>() & 0x08) != 0 ? 1u : 0u;
+    }
     const auto& inventory = saveInfo.at("inventory");
+    if (const int bottle = Ship::OotmmBottleIndex(key); bottle >= 0) {
+        return OotmmBottles_ContentOf(inventory.at("items").at(SLOT_BOTTLE_1 + bottle).get<uint8_t>());
+    }
     const auto& playerData = saveInfo.at("playerData");
     const auto ammo = [&](int slot) { return static_cast<uint32_t>(std::max(0, inventory.at("ammo").at(slot).get<int>())); };
     if (key == "bombchu") {
@@ -1607,4 +1667,21 @@ void OotmmItemApply_Init() {
         sLedgerLoaded = true;
         sAppliedRevision = 0;
     });
+}
+
+uint32_t OotmmItemApply_LedgerGet(const std::string& key) {
+    if (!OotmmSession_IsActive()) {
+        return 0;
+    }
+    EnsureLedger();
+    return sLedger.Applied(key);
+}
+
+void OotmmItemApply_LedgerSet(const std::string& key, uint32_t value) {
+    if (!OotmmSession_IsActive()) {
+        return;
+    }
+    EnsureLedger();
+    sLedger.SetApplied(key, value);
+    sLedger.Save(LedgerPath());
 }

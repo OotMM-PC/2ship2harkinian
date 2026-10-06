@@ -1,4 +1,5 @@
 #include "OotmmCustomItems.h"
+#include "OotmmBottles.h"
 
 #include "CustomMessage/CustomMessage.h"
 #include "OotmmIpc.h"
@@ -93,7 +94,14 @@ const CustomItem* Find(uint8_t item) {
     return nullptr;
 }
 
+bool InBottleSlot(uint8_t item) {
+    return item == ITEM_OOTMM_RUTO_LETTER && OotmmBottles_Shared();
+}
+
 uint32_t InventoryCount(const CustomItem& entry) {
+    if (InBottleSlot(entry.Item)) {
+        return static_cast<uint32_t>(OotmmBottles_RutoLetterHeld());
+    }
     const auto& inventory = OotmmIpc_GetInventory();
     const uint32_t own = inventory.Count(std::string(entry.OotmmId));
     if (own != 0) {
@@ -178,7 +186,7 @@ extern "C" uint8_t OotmmCustomItems_IdForItemId(const char* ootmmItemId) {
     }
     const std::string_view id = ootmmItemId;
     for (const auto& entry : kItems) {
-        if (entry.OotmmId == id || (!entry.SharedId.empty() && entry.SharedId == id)) {
+        if ((entry.OotmmId == id || (!entry.SharedId.empty() && entry.SharedId == id)) && !InBottleSlot(entry.Item)) {
             return entry.Item;
         }
     }
@@ -204,7 +212,7 @@ extern "C" int OotmmCustomItems_Owned(uint8_t item) {
 extern "C" int OotmmCustomItems_OwnedItemCount(void) {
     int count = 0;
     for (const auto& entry : kItems) {
-        if (OotmmCustomItems_Owned(entry.Item)) {
+        if (!InBottleSlot(entry.Item) && OotmmCustomItems_Owned(entry.Item)) {
             count++;
         }
     }
@@ -214,7 +222,7 @@ extern "C" int OotmmCustomItems_OwnedItemCount(void) {
 extern "C" uint8_t OotmmCustomItems_OwnedItemAt(int index) {
     int seen = 0;
     for (const auto& entry : kItems) {
-        if (!OotmmCustomItems_Owned(entry.Item)) {
+        if (InBottleSlot(entry.Item) || !OotmmCustomItems_Owned(entry.Item)) {
             continue;
         }
         if (seen == index) {

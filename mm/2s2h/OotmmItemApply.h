@@ -36,6 +36,8 @@ void OotmmItemApply_NoteSaveRead(const std::string& fileName, bool owlSave);
 void OotmmItemApply_RefreshSaveSnapshot();
 nlohmann::json OotmmItemApply_LegacySnapshot(int fileNum);
 
+uint32_t OotmmItemApply_LedgerGet(const std::string& key);
+void OotmmItemApply_LedgerSet(const std::string& key, uint32_t value);
 void OotmmItemApply_Init();
 void OotmmItemApply_RecordBossClear(int dungeonId);
 /// Clears the applied ledger so a fresh file re-receives every item the seed already gave.
