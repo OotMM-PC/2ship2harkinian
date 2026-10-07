@@ -117,6 +117,7 @@ struct PuppetState {
     ColliderCylinder collider{};
     bool colliderReady = false;
     u8 pvpCooldown = 0;
+    Actor* pvpLastProjectile = nullptr;
 };
 
 struct PuppetSlot {
@@ -429,6 +430,17 @@ extern "C" void* OotmmPuppet_MouthTexture(int32_t playerForm, int32_t mouthIndex
 
 namespace {
 
+bool ActorStillSpawned(PlayState* play, const Actor* target) {
+    for (const auto& list : play->actorCtx.actorLists) {
+        for (const Actor* actor = list.first; actor != nullptr; actor = actor->next) {
+            if (actor == target) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 void PuppetActionFunc(Actor* actor, PlayState* play) {
     PuppetState* state = gStateByActor.count(actor) ? gStateByActor[actor] : nullptr;
     if (state == nullptr || !state->hasPose) {
@@ -454,7 +466,16 @@ void PuppetActionFunc(Actor* actor, PlayState* play) {
         if (state->pvpCooldown > 0) {
             state->pvpCooldown--;
         }
-        if ((state->collider.base.acFlags & AC_HIT) && state->pvpCooldown == 0) {
+        if (state->pvpLastProjectile != nullptr && !ActorStillSpawned(play, state->pvpLastProjectile)) {
+            state->pvpLastProjectile = nullptr;
+        }
+        Actor* source = state->collider.base.ac;
+        const bool projectile = source != nullptr && source != &GET_PLAYER(play)->actor;
+        if ((state->collider.base.acFlags & AC_HIT) && state->pvpCooldown == 0 &&
+            !(projectile && source == state->pvpLastProjectile)) {
+            if (projectile) {
+                state->pvpLastProjectile = source;
+            }
             state->pvpCooldown = 8; // one hit per swing, not one per contact frame
             int damage = 4;
             if (state->collider.elem.acHitElem != NULL && state->collider.elem.acHitElem->atDmgInfo.damage > 0) {
@@ -671,7 +692,7 @@ void PresenceTick() {
                 if (const auto it = gPuppets.find(hit.SourcePlayer); it != gPuppets.end() && it->second.actor != nullptr) {
                     source = it->second.actor;
                 }
-                func_800B8D50(gPlayState, source, 6.0f, hit.Yaw, 5.0f, static_cast<u32>(std::max(1, hit.Damage)));
+                func_800B8D50(gPlayState, source, 6.0f, hit.Yaw, 5.0f, static_cast<u32>(std::clamp(hit.Damage, 1, 255)));
             }
         }
     }
@@ -700,6 +721,7 @@ void PresenceTick() {
                 // Take the update over completely: the item logic spins the actor, re-applies the
                 // display hover, and with no pickup flags never calls the actionFunc.
                 slot.actor->update = (ActorFunc)PuppetActionFunc;
+                slot.actor->flags |= ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED;
                 slot.actor->shape.yOffset = 0.0f;
                 gStateByActor[slot.actor] = slot.state.get();
                 Collider_InitCylinder(gPlayState, &slot.state->collider);

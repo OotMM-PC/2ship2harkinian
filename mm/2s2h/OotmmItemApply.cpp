@@ -6,6 +6,7 @@
 #include "OotmmDungeons.h"
 #include "OotmmFaroresWind.h"
 #include "OotmmIpc.h"
+#include "OotmmItemPresentation.h"
 #include "OotmmRegionState.h"
 #include "OotmmSession.h"
 
@@ -32,6 +33,8 @@ extern "C" {
 #include "z64.h"
 
 extern PlayState* gPlayState;
+void func_80833B18(PlayState* play, Player* player, s32 arg2, f32 speed, f32 velocityY, s16 arg5,
+                   s32 invincibilityTimer);
 }
 
 namespace {
@@ -530,6 +533,9 @@ uint32_t SharedValueLimit(std::string_view key) {
     if (OotmmFaroresWind_IsSharedKey(key)) {
         return 2;
     }
+    if (!Ship::OotmmTrapForSetting(key).empty()) {
+        return 65535;
+    }
     if (key == "bossClears") {
         return 0xFFFF;
     }
@@ -556,6 +562,8 @@ void WriteSharedValue(std::string_view key, uint32_t value) {
     auto& inventory = gSaveContext.save.saveInfo.inventory;
     if (OotmmFaroresWind_IsSharedKey(key)) {
         OotmmFaroresWind_WriteShared(key, value);
+    } else if (const auto trap = Ship::OotmmTrapForSetting(key); !trap.empty()) {
+        sLedger.SetApplied(std::string(trap), std::max(sLedger.Applied(std::string(trap)), value));
     } else if (key == "bossClears") {
         const uint32_t mask = sLedger.Applied("native:bossClears") | value;
         sLedger.SetApplied("native:bossClears", mask);
@@ -1038,6 +1046,89 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
     }
 }
 
+constexpr u32 kTrapBlockingStates = PLAYER_STATE1_4 | PLAYER_STATE1_TALKING | PLAYER_STATE1_DEAD | PLAYER_STATE1_200 |
+                                    PLAYER_STATE1_400 | PLAYER_STATE1_800000;
+
+bool InShop(Player* player) {
+    const Actor* actor = player->interactRangeActor;
+    return player->getItemId != GI_NONE && actor != nullptr &&
+           (actor->id == ACTOR_EN_OSSAN || actor->id == ACTOR_EN_TRT || actor->id == ACTOR_EN_SOB1);
+}
+
+void HurtForTrap(Player* player, s32 response, f32 speed, f32 yVelocity, s16 yaw) {
+    player->actor.colChkInfo.damage = 0;
+    func_80833B18(gPlayState, player, response, speed, yVelocity, yaw, 20);
+}
+
+bool ApplyTrap(size_t type, Player* player) {
+    auto& playerData = gSaveContext.save.saveInfo.playerData;
+    switch (type) {
+        case 0:
+            HurtForTrap(player, 3, 0, 0, 0);
+            return true;
+        case 1:
+            if (player->transformation == PLAYER_FORM_GORON ||
+                OotmmCustomItems_EquippedTunic() == OOTMM_TUNIC_GORON) {
+                return true;
+            }
+            HurtForTrap(player, 0, 0, 0, 0);
+            player->bodyIsBurning = true;
+            for (int part = 0; part < PLAYER_BODYPART_MAX; part++) {
+                player->bodyFlameTimers[part] = Rand_S16Offset(0, 200);
+            }
+            return true;
+        case 2:
+            HurtForTrap(player, 4, 0, 0, 0);
+            return true;
+        case 3:
+            playerData.health = 1;
+            HurtForTrap(player, 0, 0, 0, 0);
+            return true;
+        case 4:
+            playerData.magic = 0;
+            CLEAR_WEEKEVENTREG(WEEKEVENTREG_DRANK_CHATEAU_ROMANI);
+            HurtForTrap(player, 0, 0, 0, 0);
+            return true;
+        case 5:
+            HurtForTrap(player, 1, Rand_ZeroFloat(20.0f), Rand_ZeroFloat(15.0f), static_cast<s16>(Rand_Next() & 0xFFFF));
+            return true;
+        case 6:
+            Rupees_ChangeBy(-10);
+            return true;
+        default:
+            return false;
+    }
+}
+
+void UpdateTraps() {
+    if (gPlayState == nullptr || !OotmmSession_IsActive() || !sLedgerValid ||
+        gSaveContext.gameMode != GAMEMODE_NORMAL || gPlayState->pauseCtx.state != 0 ||
+        gPlayState->msgCtx.msgMode != MSGMODE_NONE || OotmmItemPresentation_IsPending()) {
+        return;
+    }
+    const auto& inventory = OotmmIpc_GetInventory();
+    if (inventory.GetRevision() != sAppliedRevision) {
+        return;
+    }
+    for (size_t type = 0; type < Ship::kOotmmTraps.size(); type++) {
+        const std::string id(Ship::kOotmmTraps[type].first);
+        const uint32_t applied = sLedger.Applied(id);
+        if (inventory.Count(id) <= applied) {
+            continue;
+        }
+        Player* player = GET_PLAYER(gPlayState);
+        if (player == nullptr || (player->stateFlags1 & kTrapBlockingStates) || player->invincibilityTimer != 0 ||
+            InShop(player)) {
+            return;
+        }
+        if (ApplyTrap(type, player)) {
+            sLedger.SetApplied(id, applied + 1);
+            sLedger.Save(LedgerPath());
+        }
+        return;
+    }
+}
+
 } // namespace
 
 extern "C" int32_t OotmmItemApply_BombchuCapacity(void) {
@@ -1351,6 +1442,9 @@ uint32_t ReadSharedValue(const nlohmann::json& saveInfo, std::string_view key) {
     if (OotmmFaroresWind_IsSharedKey(key)) {
         return OotmmFaroresWind_ReadShared(key);
     }
+    if (const auto trap = Ship::OotmmTrapForSetting(key); !trap.empty()) {
+        return sLedger.Applied(std::string(trap));
+    }
     if (key == "bossClears") {
         return sLedger.Applied("native:bossClears");
     }
@@ -1470,6 +1564,7 @@ void OotmmItemApply_RecordBossClear(int dungeonId) {
 void OotmmItemApply_Init() {
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(
         OotmmItemApply_Reconcile);
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(UpdateTraps);
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>([](s16) {
         sAppliedRevision = 0;
         sLedgerLoaded = false;

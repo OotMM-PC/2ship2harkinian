@@ -1,4 +1,5 @@
 #include "OotmmSession.h"
+#include "OotmmDeathLink.h"
 #include "SaveManager/SaveManager.h"
 #include "BenGui/Notification.h"
 
@@ -672,6 +673,7 @@ void OotmmSession_Init() {
         OotmmRegionState_Init();
         OotmmClockSpeed_Init();
         OotmmCycle_Init();
+        OotmmDeathLink_Init();
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveInit>(
             [](s16) { InitializeSave(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(

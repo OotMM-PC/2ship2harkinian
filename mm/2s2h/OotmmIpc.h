@@ -23,6 +23,7 @@ bool OotmmIpc_IsConnected();
 bool OotmmIpc_PresenceActive();
 bool OotmmIpc_SendPlayerPose(const Ship::OotmmPlayerPose& pose);
 bool OotmmIpc_SendPvpHit(const Ship::OotmmPvpHit& hit);
+bool OotmmIpc_SendDeathLink();
 bool OotmmIpc_TakeRemotePresence(std::vector<Ship::OotmmPlayerPose>& poses,
                                  std::vector<Ship::OotmmPvpHit>& hits);
 

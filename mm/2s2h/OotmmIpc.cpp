@@ -1,4 +1,5 @@
 #include "OotmmIpc.h"
+#include "OotmmDeathLink.h"
 #include "OotmmSession.h"
 #include <nlohmann/json.hpp>
 #include <ship/Context.h>
@@ -48,6 +49,10 @@ void OotmmIpc_Pump() {
     std::string response;
     while (sSession.TryReceive(response)) {
         auto parsed = nlohmann::json::parse(response, nullptr, false);
+        if (parsed.is_object() && parsed.contains("type") && parsed["type"] == "deathLink") {
+            OotmmDeathLink_Receive();
+            continue;
+        }
         if (!parsed.is_object() || !parsed.contains("type") || parsed["type"] != "nativeSaveResult" ||
             !parsed.contains("version") || parsed["version"] != 1 || !sPendingSaveRequest ||
             !parsed.contains("requestId") || !parsed["requestId"].is_number_unsigned() ||
@@ -116,6 +121,10 @@ bool OotmmIpc_SendPlayerPose(const Ship::OotmmPlayerPose& pose) {
 
 bool OotmmIpc_SendPvpHit(const Ship::OotmmPvpHit& hit) {
     return sSession.SendPvpHit(hit);
+}
+
+bool OotmmIpc_SendDeathLink() {
+    return sSession.Send(nlohmann::json{ { "type", "deathLink" }, { "death", nlohmann::json::object() } }.dump());
 }
 
 bool OotmmIpc_TakeRemotePresence(std::vector<Ship::OotmmPlayerPose>& poses,
