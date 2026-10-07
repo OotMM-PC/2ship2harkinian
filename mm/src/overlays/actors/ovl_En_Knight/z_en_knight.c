@@ -4364,6 +4364,18 @@ void EnKnight_UpdateEffects(EnKnight* this, PlayState* play) {
     }
 }
 
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+void EnKnight_DebugFinish(Actor* thisx, PlayState* play) {
+    EnKnight* this = (EnKnight*)thisx;
+
+    if (this->actionFunc == EnKnight_FallOver) {
+        this->damageFlashTimer = 15;
+        this->invincibilityTimer = 1000;
+        EnKnight_SetupDie(this, play);
+    }
+}
+#endif
+
 void EnKnight_DrawEffects(EnKnight* this, PlayState* play) {
     GraphicsContext* gfxCtx = play->state.gfxCtx;
     s16 i;

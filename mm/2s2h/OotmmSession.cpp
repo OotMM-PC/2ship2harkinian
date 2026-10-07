@@ -41,6 +41,10 @@
 #include <cstring>
 #include <fstream>
 #include <libultraship/bridge/consolevariablebridge.h>
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+#include <cstdlib>
+#include <libultraship/bridge/OotmmRuntimeTest.h>
+#endif
 #include <optional>
 #include <string>
 #include <utility>
@@ -102,7 +106,6 @@ void QueueCrossGameRetry(const Ship::OotmmEntranceMapping& mapping, const char* 
 }
 
 
-// respawnFlag values: reload the entrance only, restore respawn[TOP], restore the grotto slot.
 constexpr int32_t kRespawnSceneEntrance = -2;
 constexpr int32_t kRespawnFromOwlSave = -6;
 constexpr int32_t kRespawnGrottoPopOut = 4;
@@ -403,8 +406,6 @@ void ApplySaveFlags() {
     gSaveContext.save.isFirstCycle = true;
     SET_WEEKEVENTREG(WEEKEVENTREG_59_04);
 
-    // Refill form B slots emptied by the old swordless start: an empty form B triggers the
-    // "Weird B" bug, where attacking uses the item sharing the do-action label's id.
     if (BUTTON_ITEM_EQUIP(PLAYER_FORM_GORON, EQUIP_SLOT_B) == ITEM_NONE) {
         BUTTON_ITEM_EQUIP(PLAYER_FORM_GORON, EQUIP_SLOT_B) = ITEM_SWORD_KOKIRI;
     }
@@ -484,9 +485,6 @@ void InitializeSave() {
     gSaveContext.save.linkAge = 0;
     gSaveContext.save.hasTatl = true;
     gSaveContext.save.entrance = ENTRANCE(SOUTH_CLOCK_TOWN, 0);
-    // The seed hands out MM's sword and shield; Fierce Deity's own blade is part of the form.
-    // Only the human row's B goes empty: the form rows must keep their vanilla items (the Zora
-    // one doubles as the fin-throw item action) or the Weird B bug fires on form attacks.
     SET_EQUIP_VALUE(EQUIP_TYPE_SWORD, EQUIP_VALUE_SWORD_NONE);
     SET_EQUIP_VALUE(EQUIP_TYPE_SHIELD, EQUIP_VALUE_SHIELD_NONE);
     if (BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_B) == ITEM_SWORD_KOKIRI) {
@@ -918,7 +916,6 @@ void OotmmSession_Init() {
         if (sGameState.GetBoolSetting("mmHyperEnemies", false)) {
             GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorUpdate>(UpdateHyperEnemy);
         }
-        // The seed owns the Blast Mask cooldown; vanilla hardcodes it to 310 frames.
         COND_VB_SHOULD(VB_SET_BLAST_MASK_COOLDOWN_TIMER, true, {
             *should = false;
             GET_PLAYER(gPlayState)->blastMaskTimer =
@@ -1079,6 +1076,11 @@ extern "C" int32_t OotmmSession_TryBootDirectly(void* gameState) {
         return 1;
     }
 
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+    if (Ship::OotmmRuntimeTest::Get().Enabled() && std::getenv("OOTMM_RUNTIME_FILE_SELECT") != nullptr) {
+        return 0;
+    }
+#endif
     if (!OotmmSession_IsActive() || sBootedIntoGame || gameState == nullptr) {
         return 0;
     }
@@ -1122,7 +1124,6 @@ extern "C" int32_t OotmmSession_ReturnToSpawn(void) {
     if (!OotmmSession_IsActive() || gPlayState == nullptr) {
         return 0;
     }
-    // MM has no spawn of its own in the seed, so the arrival entrance is where Link came in.
     const auto& boot = sGameState.GetBootConfig();
     if (!boot.BootEntrance.has_value()) {
         return 0;
@@ -1282,8 +1283,6 @@ extern "C" void OotmmSession_RedirectMoonCrashRespawn(void) {
     if (!OotmmSession_IsActive()) {
         return;
     }
-    // Upstream play.c sends the Clock Tower moon-crash respawn to Clock Town, or with any entrance
-    // shuffle to the entrance MM was entered from.
     if (static_cast<uint16_t>(gSaveContext.save.entrance) != ENTRANCE(CLOCK_TOWER_INTERIOR, 3)) {
         return;
     }

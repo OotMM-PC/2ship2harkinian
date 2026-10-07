@@ -60,7 +60,6 @@ const std::vector<Ladder> kLadders = {
     { "STICK_UPGRADE", { ITEM_DEKU_STICK_UPGRADE_20, ITEM_DEKU_STICK_UPGRADE_30 } },
 };
 
-// Ammo pickups name their own size, e.g. MM_ARROWS_10.
 const std::vector<std::pair<std::string_view, uint8_t>> kAmmoSlots = {
     { "ARROW", ITEM_BOW },         { "BOMBCHU", ITEM_BOMBCHU },
     { "BOMB", ITEM_BOMB },         { "NUT", ITEM_DEKU_NUT },
@@ -85,7 +84,6 @@ const std::unordered_map<std::string, uint8_t> kQuestFlags = {
     { "MM_SONG_ZORA", QUEST_SONG_BOSSA_NOVA },
     { "MM_SONG_ORDER", QUEST_SONG_OATH },
     { "MM_SONG_EMPTINESS", QUEST_SONG_ELEGY },
-    // MM's engine carries a full, dormant Sun's Song; the quest bit switches it on.
     { "MM_SONG_SUN", QUEST_SONG_SUN },
     { "SHARED_SONG_TIME", QUEST_SONG_TIME },
     { "SHARED_SONG_EPONA", QUEST_SONG_EPONA },
@@ -222,8 +220,6 @@ bool sLedgerValid = true;
 std::chrono::steady_clock::time_point sLedgerRetryAt{};
 std::unordered_map<std::string, bool> sReadSnapshots;
 
-// Keyed per-game and per-save-tag: the other game's fresh-save reset cannot erase these records,
-// and a save recreated under a new tag starts from an empty ledger and re-grants everything.
 std::string LedgerPathFor(int fileNum) {
     const auto& state = OotmmSession_GetState();
     return state.GetBootConfig().StatePath + ".applied.mm-" + state.GetNativeSaveTag() + "." +
@@ -245,7 +241,6 @@ void EnsureLedger() {
     }
     sLedgerValid = false;
     sLedgerRetryAt = std::chrono::steady_clock::now() + std::chrono::seconds(1);
-    // Older sessions shared one ledger between both games; adopt it once, then stay per-game.
     const bool legacyValid = sLedger.LoadLegacy(LedgerPath(), LegacyLedgerPath());
     nlohmann::json save;
     const auto file = SaveManager_GetFileName(gSaveContext.fileNum + 1);
@@ -403,7 +398,6 @@ void ApplyOnce(PlayState* play, const std::string& key, uint8_t item) {
         SPDLOG_INFO("[OoTMM grant] gave {} (item {})", key, static_cast<int>(item));
         return;
     }
-    // gItemSlots only covers inventory items, so SLOT()/INV_CONTENT() are unusable here.
     Item_Give(play, item);
     SPDLOG_INFO("[OoTMM grant] gave {} (item {})", key, static_cast<int>(item));
 }
@@ -489,8 +483,6 @@ bool IsTradeGrantOp(const Ship::OotmmGrantOp& op) {
     }
 }
 
-// Swords and shields live in the save rather than the ledger, so a file that was never written
-// after its grant would otherwise stay empty for good.
 bool EquipmentMissing(uint8_t item) {
     if (item >= ITEM_SWORD_KOKIRI && item <= ITEM_SWORD_GILDED) {
         return GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SWORD) <
@@ -529,7 +521,6 @@ std::vector<uint8_t> OwnedTradeItems(uint8_t slot) {
         return {};
     }
     const uint8_t current = gSaveContext.save.saveInfo.inventory.items[slot];
-    // Grants overwrite the slot, so remember natively obtained occupants before they vanish.
     if (std::find(candidates->begin(), candidates->end(), current) != candidates->end() &&
         !sLedger.Has(NativeTradeKey(current)) && !sLedger.Has(ConsumedTradeKey(current))) {
         sLedger.SetApplied(NativeTradeKey(current), 1);
@@ -817,7 +808,6 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
         }
         return;
     }
-    // Custom items live in the launcher inventory only; nothing is written to MM's save.
     if (OotmmCustomItems_IdForItemId(itemId.c_str()) != ITEM_NONE) {
         return;
     }
@@ -885,8 +875,6 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                     break;
                 }
                 if (op.Slot == "SCALE") {
-                    // MM has no scale item ids; upstream item_add.c writes upgrades.scale
-                    // directly (silver = 1, golden = 2), with an optional bronze tier first.
                     std::vector<uint8_t> scaleTiers;
                     if (OotmmSession_GetState().GetBoolSetting("bronzeScale", false)) {
                         scaleTiers.push_back(0);
@@ -1394,7 +1382,6 @@ void OotmmItemApply_Reconcile() {
     if (!sRetryMagicApplication) {
         sAppliedRevision = inventory.GetRevision();
     }
-    // Sun's Song is the one native quest song with note-shuffle pieces (6 notes).
     if (inventory.Count("MM_SONG_NOTE_SUN") + inventory.Count("SHARED_SONG_NOTE_SUN") >= 6) {
         SET_QUEST_ITEM(QUEST_SONG_SUN);
     }
@@ -1475,7 +1462,6 @@ extern "C" void OotmmItemApply_SetTradeItemOwned(uint8_t slot, uint8_t item, int
     }
     if (gSaveContext.save.saveInfo.inventory.items[slot] == item) {
         gSaveContext.save.saveInfo.inventory.items[slot] = ITEM_NONE;
-        // The debug-clear is asynchronous, so the removed item may still look granted.
         for (const uint8_t replacement : OwnedTradeItems(slot)) {
             if (replacement != item) {
                 gSaveContext.save.saveInfo.inventory.items[slot] = replacement;
@@ -1720,6 +1706,16 @@ void OotmmItemApply_RecordBossClear(int dungeonId) {
     if (dungeonId >= kFirstMmDungeon) {
         sLedger.SetApplied("native:bossClearsApplied", sLedger.Applied("native:bossClearsApplied") | bit);
     }
+}
+
+nlohmann::json OotmmItemApply_TrapsApplied() {
+    nlohmann::json applied = nlohmann::json::object();
+    if (sLedgerValid) {
+        for (const auto& [id, setting] : Ship::kOotmmTraps) {
+            applied[std::string(id)] = sLedger.Applied(std::string(id));
+        }
+    }
+    return applied;
 }
 
 void OotmmItemApply_Init() {

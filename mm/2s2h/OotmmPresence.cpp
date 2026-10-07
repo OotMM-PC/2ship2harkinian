@@ -44,6 +44,9 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
 }
 
 const char* gOotmmEquipDlCapture[4] = { NULL, NULL, NULL, NULL };
+int32_t gOotmmPvpHitsSent = 0;
+int32_t gOotmmPvpHitsReceived = 0;
+int32_t gOotmmPvpHitsApplied = 0;
 static int32_t sCustomHandCapture[2] = { 0, 0 };
 
 extern "C" void OotmmPresence_CaptureCustomHand(int32_t index, int32_t which) {
@@ -69,7 +72,7 @@ namespace {
 
 constexpr int kLimbBuf = 24;
 
-int32_t gPuppetForm = -1; // puppet form during a puppet draw, -1 otherwise
+int32_t gPuppetForm = -1;
 int32_t gPuppetMoveFlags = 0;
 const char* gPuppetEquipDl[4] = { NULL, NULL, NULL, NULL };
 uint8_t gPuppetMask = 0;
@@ -80,9 +83,9 @@ u8 gPuppetSheathType = 0;
 u8 gPuppetRightHandType = 0;
 bool gPuppetDekuShield = false;
 s32 gPuppetCustomHand[2] = { 0, 0 };
-int32_t gPuppetPlayerId = 0;   // drawing puppet's owner during a puppet draw, 0 otherwise
-int32_t gPuppetHumanModel = 0; // that puppet's human-form model source (pose "hm")
-int32_t gPuppetTunic = 0;      // that puppet's synced tunic (colors ported cloth via ENV)
+int32_t gPuppetPlayerId = 0;
+int32_t gPuppetHumanModel = 0;
+int32_t gPuppetTunic = 0;
 
 struct PuppetState {
     SkelAnime skelAnime{};
@@ -97,8 +100,6 @@ struct PuppetState {
     uint16_t playerId = 0;
     bool hasPose = false;
     bool skeletonReady = false;
-    // Backs the FlexSkeletonHeader* handed to SkelAnime whenever the puppet wears a
-    // namespaced skeleton; the string must outlive the SkelAnime that points into it.
     std::string skelPath;
     std::string dlLeftHand;
     std::string dlRightHand;
@@ -161,8 +162,6 @@ ColliderCylinderInit sPuppetCylinderInit = {
     { 20, 60, 0, { 0, 0, 0 } },
 };
 
-// Composes "__OTR__pNNobjs/…" for a canonical objects/ path when player N's synced
-// namespace provides it; the caller's buffer holds the result.
 const char* PuppetNamespaced(char* buf, size_t cap, uint16_t playerId, const char* canonical) {
     if (playerId == 0 || canonical == nullptr || std::strncmp(canonical, "objects/", 8) != 0) {
         return nullptr;
@@ -182,8 +181,6 @@ Gfx* PuppetLoadGfx(const char* name) {
     return ResourceMgr_FileExists(name) ? ResourceMgr_LoadGfxByName(name) : nullptr;
 }
 
-// The human form draws whichever model the sender reported; the sender's synced pNN
-// namespace overrides any form, and an unparseable resource falls back before SkelAnime.
 FlexSkeletonHeader* PuppetSkeleton(PuppetState* state, u8 form) {
     const char* canonical = nullptr;
     if (form == PLAYER_FORM_HUMAN) {
@@ -198,8 +195,6 @@ FlexSkeletonHeader* PuppetSkeleton(PuppetState* state, u8 form) {
     char ns[96];
     const char* path = PuppetNamespaced(ns, sizeof(ns), state->playerId, canonical);
     if (path == nullptr && form == PLAYER_FORM_HUMAN && state->humanModel != 0) {
-        // Nothing synced: the canonical ported object (ootmm_assets' vanilla OoT Link)
-        // still matches the sender better than this machine's human model.
         std::snprintf(ns, sizeof(ns), "__OTR__%s", canonical);
         path = ResourceMgr_FileExists(ns + 7) ? ns : nullptr;
     }
@@ -225,8 +220,6 @@ void PuppetInitSkeleton(PuppetState* state, PlayState* play, u8 form) {
 
 } // namespace
 
-// The joint table omits the root-limb scaling the draw applies per form and movement flag, and the
-// four equipment limbs are always substituted, so both are replayed from the sender.
 extern "C" s32 OotmmPuppet_OverrideLimbDraw(PlayState* play, s32 limbIndex, Gfx** dList, Vec3f* pos, Vec3s* rot,
                                             Actor* actor) {
     (void)play;
@@ -234,8 +227,6 @@ extern "C" s32 OotmmPuppet_OverrideLimbDraw(PlayState* play, s32 limbIndex, Gfx*
     (void)actor;
     if (limbIndex == PLAYER_LIMB_ROOT && gPuppetForm >= 0 && gPuppetForm < PLAYER_FORM_MAX &&
         gPuppetForm != PLAYER_FORM_FIERCE_DEITY) {
-        // The sender's human height depends on THEIR mapper state, never this client's
-        // tables — locally the human row holds adult metrics while our own mapper is on.
         const f32 scale =
             gPuppetForm == PLAYER_FORM_HUMAN
                 ? (gPuppetHumanModel == 2 ? sPlayerAgeProperties[PLAYER_FORM_ZORA].unk_08
@@ -293,15 +284,11 @@ extern "C" s32 OotmmPuppet_OverrideLimbDraw(PlayState* play, s32 limbIndex, Gfx*
     return false;
 }
 
-// A transformed sender keeps currentMask set to its own transformation mask, which the real draw
-// skips because the face already is that mask; only other masks are held up.
 extern "C" void OotmmPuppet_PostLimbDraw(PlayState* play, s32 limbIndex, Gfx** dList1, Gfx** dList2, Vec3s* rot,
                                          Actor* actor) {
     (void)dList2;
     (void)rot;
     (void)actor;
-    // The shield on the back is pushed here rather than through *dList, so it needs its own
-    // replay alongside the four synced equipment limbs.
     if (limbIndex == PLAYER_LIMB_SHEATH && dList1 != NULL && *dList1 != NULL &&
         gPuppetForm == PLAYER_FORM_HUMAN && gPuppetShield != PLAYER_SHIELD_NONE &&
         (gPuppetSheathType == PLAYER_MODELTYPE_SHEATH_14 || gPuppetSheathType == PLAYER_MODELTYPE_SHEATH_15)) {
@@ -316,7 +303,6 @@ extern "C" void OotmmPuppet_PostLimbDraw(PlayState* play, s32 limbIndex, Gfx** d
             CLOSE_DISPS(play->state.gfxCtx);
         }
     }
-    // Cross-game masks come from their own resource path, not MM's mask table.
     if (limbIndex == PLAYER_LIMB_HEAD && gPuppetCustomMask != 0) {
         const char* path = OotmmCustomItems_MaskDList(gPuppetCustomMask);
         if (path != NULL) {
@@ -341,8 +327,6 @@ extern "C" void OotmmPuppet_PostLimbDraw(PlayState* play, s32 limbIndex, Gfx** d
 
 namespace {
 
-// Face symbol families per human-form model, mirroring the mapper tables; the human table
-// rows cannot be read live because the local mappers overwrite them.
 const char* const kPuppetHumanEyes[PLAYER_EYES_MAX] = {
     "gLinkHumanEyesOpenTex", "gLinkHumanEyesHalfTex", "gLinkHumanEyesClosedTex",
     "gLinkHumanEyesRightTex", "gLinkHumanEyesLeftTex", "gLinkHumanEyesUpTex",
@@ -386,8 +370,6 @@ void* PuppetFaceTexture(char* buf, size_t cap, bool eyes, int32_t playerForm, in
                                      : (eyes ? kPuppetHumanEyes[index] : kPuppetHumanMouths[index]);
         std::snprintf(canonical, sizeof(canonical), "objects/%s/%s", dir, name);
     } else {
-        // Non-human rows never get remapped locally, so the live entry names the canonical
-        // texture; a null row (a form without that texture) stays as-is.
         const char* live = static_cast<const char*>(fallback);
         if (live == nullptr || std::strncmp(live, "__OTR__", 7) != 0) {
             return fallback;
@@ -410,7 +392,6 @@ void* PuppetFaceTexture(char* buf, size_t cap, bool eyes, int32_t playerForm, in
 } // namespace
 
 extern "C" void OotmmPuppet_SetTunicColor(PlayState* play) {
-    // Ported cloth reads the tunic from ENV color; emit the SENDER's synced tunic, not ours.
     if (gPuppetForm != PLAYER_FORM_HUMAN || gPuppetHumanModel == 0) {
         return;
     }
@@ -472,10 +453,9 @@ void PuppetActionFunc(Actor* actor, PlayState* play) {
     }
     Math_ScaledStepToS(&actor->shape.rot.y, state->targetYaw, 0x1800);
     actor->world.rot.y = actor->shape.rot.y;
-    actor->shape.yOffset = 0.0f; // EnItem00 logic re-applies the display hover; keep grounded
+    actor->shape.yOffset = 0.0f;
     std::memcpy(state->skelAnime.jointTable, state->netJoints, sizeof(state->netJoints));
 
-    // The hit is attacker-authoritative: the victim's game applies it when the relay delivers it.
     if (gPvpEnabled && state->colliderReady) {
         if (state->pvpCooldown > 0) {
             state->pvpCooldown--;
@@ -490,7 +470,7 @@ void PuppetActionFunc(Actor* actor, PlayState* play) {
             if (projectile) {
                 state->pvpLastProjectile = source;
             }
-            state->pvpCooldown = 8; // one hit per swing, not one per contact frame
+            state->pvpCooldown = 8;
             int damage = 4;
             if (state->collider.elem.acHitElem != NULL && state->collider.elem.acHitElem->atDmgInfo.damage > 0) {
                 damage = state->collider.elem.acHitElem->atDmgInfo.damage;
@@ -512,8 +492,6 @@ void PuppetDrawFunc(Actor* actor, PlayState* play) {
     if (state == nullptr || !state->hasPose || !state->skeletonReady) {
         return;
     }
-    // Rebuilt from scratch because the EnItem00 shell's matrix carries an item hover, and yOffset
-    // is deliberately not replayed: MM's player draw compensates most of it back out.
     Matrix_Translate(actor->world.pos.x, actor->world.pos.y, actor->world.pos.z, MTXMODE_NEW);
     Matrix_RotateYS(actor->shape.rot.y, MTXMODE_APPLY);
     Matrix_Scale(0.01f, 0.01f, 0.01f, MTXMODE_APPLY);
@@ -618,7 +596,6 @@ void PresenceTick() {
     if (gPlayState == nullptr || !OotmmSession_IsActive()) {
         return;
     }
-    // Solo sessions never get a roster, so presence costs them nothing.
     if (!OotmmIpc_PresenceActive()) {
         return;
     }
@@ -701,12 +678,14 @@ void PresenceTick() {
             hit.Yaw = pending.yaw;
             hit.Seq = ++pvpHitSeq;
             OotmmIpc_SendPvpHit(hit);
+            gOotmmPvpHitsSent++;
         }
         gPendingPvpHits.clear();
     }
 
     {
         for (const Ship::OotmmPvpHit& hit : pvpHits) {
+            gOotmmPvpHitsReceived++;
             if (hit.TargetPlayer != localPlayer || !gPvpEnabled) {
                 continue;
             }
@@ -717,11 +696,11 @@ void PresenceTick() {
                     source = it->second.actor;
                 }
                 func_800B8D50(gPlayState, source, 6.0f, hit.Yaw, 5.0f, static_cast<u32>(std::clamp(hit.Damage, 1, 255)));
+                gOotmmPvpHitsApplied++;
             }
         }
     }
 
-    // Without a fresh roster the puppets simply keep their last pose; only a roster retires them.
     if (!freshRoster) {
         return;
     }
@@ -735,15 +714,13 @@ void PresenceTick() {
             slot.state = std::make_unique<PuppetState>();
         }
         if (slot.actor != nullptr && remote.Seq != 0 && remote.Seq == slot.lastSeq) {
-            slot.staleTicks--; // unchanged sample; keep alive but don't reset freshness fully
+            slot.staleTicks--;
         }
         if (slot.actor == nullptr) {
             EnItem00* shell = CustomItem::Spawn(remote.Pos[0], remote.Pos[1], remote.Pos[2], remote.Yaw, 0, 0,
                                                 (ActorFunc)PuppetActionFunc, (ActorFunc)PuppetDrawFunc);
             if (shell != nullptr) {
                 slot.actor = &shell->actor;
-                // Take the update over completely: the item logic spins the actor, re-applies the
-                // display hover, and with no pickup flags never calls the actionFunc.
                 slot.actor->update = (ActorFunc)PuppetActionFunc;
                 slot.actor->flags |= ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED;
                 slot.actor->shape.yOffset = 0.0f;
@@ -765,7 +742,6 @@ void PresenceTick() {
             if (wanted != slot.taggedName) {
                 NameTag_RemoveAllForActor(slot.actor);
                 if (!wanted.empty()) {
-                    // Above the head; world.pos is at the feet.
                     NameTagOptions options = {};
                     options.tag = "ootmm_coop";
                     options.yOffset = 44;
@@ -801,7 +777,6 @@ extern "C" void OotmmPresence_RefreshPuppetModel(uint16_t playerId) {
 
 extern "C" void OotmmPresence_Init(void) {
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>([]() { PresenceTick(); });
-    // Scene loads destroy every actor; drop the now-dangling puppet pointers with them.
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSceneInit>([](s16, s8) {
         for (auto& [id, slot] : gPuppets) {
             if (slot.state != nullptr) {

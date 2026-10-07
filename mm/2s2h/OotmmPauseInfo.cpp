@@ -114,3 +114,10 @@ extern "C" int OotmmPauseInfo_Draw(PlayState* play) {
     return 1;
 }
 
+extern "C" int OotmmPauseInfo_Screen(void) {
+    return sMenu.Screen();
+}
+
+extern "C" int OotmmPauseInfo_Cursor(void) {
+    return sMenu.Cursor();
+}

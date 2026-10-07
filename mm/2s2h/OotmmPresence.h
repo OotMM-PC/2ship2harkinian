@@ -9,9 +9,11 @@ extern "C" {
 
 void OotmmPresence_Init(void);
 
-// What the local player's draw chose for the four equipment limbs this frame.
+extern int32_t gOotmmPvpHitsSent;
+extern int32_t gOotmmPvpHitsReceived;
+extern int32_t gOotmmPvpHitsApplied;
+
 extern const char* gOotmmEquipDlCapture[4];
-// Which custom model a hand limb drew; loaded display lists have no resource path to sync.
 typedef enum OotmmCustomHandDl {
     OOTMM_CUSTOM_HAND_NONE,
     OOTMM_CUSTOM_HAND_HAMMER,
@@ -21,16 +23,12 @@ typedef enum OotmmCustomHandDl {
 } OotmmCustomHandDl;
 
 void OotmmPresence_CaptureCustomHand(int32_t index, int32_t which);
-/// Stores slot i when the pointer is a resource path; composed DLs fall back to the bare limb.
 void OotmmPresence_CaptureEquipDl(int32_t index, void* dl);
 
-/// The face texture for the current draw: the drawing puppet's own (synced or ported)
-/// face when one resolves, else the vanilla table entry.
 void* OotmmPuppet_EyeTexture(int32_t playerForm, int32_t eyeIndex);
 void* OotmmPuppet_MouthTexture(int32_t playerForm, int32_t mouthIndex);
 
 struct PlayState;
-/// Emits the drawing puppet's synced tunic as ENV color when it wears ported OoT cloth.
 void OotmmPuppet_SetTunicColor(struct PlayState* play);
 
 #ifdef __cplusplus

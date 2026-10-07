@@ -11,6 +11,11 @@
 #include <map>
 #include <set>
 #include <string_view>
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+#include <chrono>
+#include <thread>
+#include <libultraship/bridge/OotmmRuntimeTest.h>
+#endif
 #include <atomic>
 #include <cstring>
 #include <unordered_map>
@@ -58,6 +63,9 @@ bool IsOotmmCycleSave() {
 std::atomic<bool> sCopyActive{false};
 std::atomic<bool> sCopyFailed{false};
 bool sCopyRecoveryNotified = false;
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+std::atomic<bool> sCopyTestPaused{false};
+#endif
 
 struct CopyOriginal {
     std::optional<std::string> bytes;
@@ -481,6 +489,20 @@ bool SaveManager_WriteSaveFile(const std::filesystem::path& fileName, nlohmann::
         }
         if (copyDestination) {
             sCopyOriginals.at(filePath.string()).written = true;
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+            if (Ship::OotmmRuntimeTest::Get().Enabled() && std::getenv("OOTMM_RUNTIME_COPY_PAUSE") != nullptr &&
+                fileName == SaveManager_GetFileName(gFileSelectState->copyDestFileIndex + 1) &&
+                !sCopyTestPaused.exchange(true)) {
+                const auto marker = folder / ".ootmm-copy-write-test";
+                std::ofstream ready(marker);
+                ready << fileName.string();
+                ready.close();
+                const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(30);
+                while (std::filesystem::exists(marker) && std::chrono::steady_clock::now() < deadline) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
+            }
+#endif
         }
         notifiedFailures.erase(filePath.string());
         if (IsOotmmCycleSave() && fileName == SaveManager_GetFileName(gSaveContext.fileNum + 1)) {
@@ -856,7 +878,24 @@ static s32 WriteSaveData(u8* saveBuffer, u32 pageNum, u32 pageCount, bool initia
                     const auto bytes = j.dump(4) + "\n";
                     const bool written = Ship::WriteSavePairAtomically(folder / fileName,
                         folder / SaveManager_GetFileName(*boot.LogicalSlot + 1, true), bytes, bytes,
-                        boot.SaveId, *boot.LogicalSlot, error, [](Ship::SavePairStage) {}, [&](const std::string& contents, std::string& reason) {
+                        boot.SaveId, *boot.LogicalSlot, error, [&](Ship::SavePairStage stage) {
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+                            const char* pause = std::getenv("OOTMM_RUNTIME_PAIR_PAUSE");
+                            const char* name = stage == Ship::SavePairStage::Prepared ? "prepared" :
+                                stage == Ship::SavePairStage::BackupWritten ? "backup" :
+                                stage == Ship::SavePairStage::PrimaryWritten ? "primary" : "committed";
+                            if (Ship::OotmmRuntimeTest::Get().Enabled() && pause != nullptr && std::string_view(pause) == name) {
+                                const auto marker = folder / ".ootmm-pair-write-test";
+                                std::ofstream ready(marker);
+                                ready << name;
+                                ready.close();
+                                const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(300);
+                                while (std::filesystem::exists(marker) && std::chrono::steady_clock::now() < deadline) {
+                                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                                }
+                            }
+#endif
+                        }, [&](const std::string& contents, std::string& reason) {
                             nlohmann::json validated;
                             return SaveManager_ValidateOotmmRecovery(contents, boot.SaveId, *boot.LogicalSlot, validated, reason);
                         });
@@ -962,6 +1001,9 @@ extern "C" s32 SaveManager_SysFlashrom_WriteData(u8* saveBuffer, u32 pageNum, u3
 }
 
 extern "C" void SaveManager_BeginCopy(void) {
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+    sCopyTestPaused.store(false);
+#endif
     const bool restored = RestoreFailedCopy();
     sCopyFailed.store(!restored);
     sCopyActive.store(OotmmSession_IsActive() != 0);

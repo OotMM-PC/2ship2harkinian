@@ -670,6 +670,12 @@ int64_t OotmmXflags_NativeId(Actor* actor) {
     return xf.has_value() ? (static_cast<int64_t>(xf->Scene) << 32) | NativeId(*xf) : -1;
 }
 
+int64_t OotmmXflags_GrassElementNativeId(Actor* manager, int group, int element) {
+    auto* grass = reinterpret_cast<ObjGrass*>(manager);
+    const auto xf = GrassElementXflag(grass, &grass->grassGroups[group].elements[element]);
+    return xf.has_value() ? (static_cast<int64_t>(xf->Scene) << 32) | NativeId(*xf) : -1;
+}
+
 extern "C" int OotmmXflags_DropAt(Actor* actor, PlayState* play, float x, float y, float z) {
     return DropPlacement(Pending(Resolve(actor)), play, x, y, z);
 }

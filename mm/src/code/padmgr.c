@@ -1,3 +1,4 @@
+#include "2s2h/OotmmDebugChecks.h"
 /**
  * @file padmgr.c
  *
@@ -740,6 +741,20 @@ void PadMgr_GetInput2(Input* inputs, s32 gameRequest) {
     PadMgr_LockPadData();
     PadMgr_GetInputNoLock(inputs, gameRequest);
     PadMgr_UnlockPadData();
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+    if (!gameRequest) {
+        uint16_t buttons;
+        int8_t x;
+        int8_t y;
+        if (OotmmDebugChecks_ReadRuntimePad(&buttons, &x, &y)) {
+            inputs[0] = (Input){0};
+            inputs[0].cur.button = buttons;
+            inputs[0].cur.stick_x = x;
+            inputs[0].cur.stick_y = y;
+            PadUtils_UpdateRelXY(&inputs[0]);
+        }
+    }
+#endif
 }
 
 void PadMgr_ThreadEntry() {

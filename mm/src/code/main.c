@@ -63,7 +63,8 @@ void SDL_main(int argc, char** argv /* void* arg*/) {
 
 // Attach console for windows so we can conditionally display it when running the extractor
 #ifdef _WIN32
-    if (GetEnvironmentVariableA("OOTMM_PARENT_HWND", NULL, 0) == 0) {
+    if (GetEnvironmentVariableA("OOTMM_PARENT_HWND", NULL, 0) == 0 &&
+        GetEnvironmentVariableA("OOTMM_RUNTIME_TEST_DIR", NULL, 0) == 0) {
         AllocConsole();
         (void)freopen("CONIN$", "r", stdin);
         (void)freopen("CONOUT$", "w", stdout);

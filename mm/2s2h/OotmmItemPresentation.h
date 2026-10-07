@@ -11,6 +11,9 @@ bool OotmmItemPresentation_IsDelivering(const std::string& checkId);
 bool OotmmItemPresentation_PlayerReceiving(const Player* player);
 
 void OotmmItemPresentation_Update();
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+int OotmmItemPresentation_DebugLastFanfare();
+#endif
 
 extern "C" {
 #endif

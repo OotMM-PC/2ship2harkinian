@@ -177,6 +177,12 @@ set(ALL_FILES
 # Target
 ################################################################################
 add_executable(${PROJECT_NAME} ${ALL_FILES})
+option(OOTMM_RUNTIME_TEST "Enable automated gameplay controls for test builds" OFF)
+if(OOTMM_RUNTIME_TEST)
+    set_property(SOURCE 2s2h/OotmmDebugChecks.cpp 2s2h/OotmmSession.cpp
+        2s2h/SaveManager/SaveManager.cpp src/code/padmgr.c
+        APPEND PROPERTY COMPILE_DEFINITIONS OOTMM_RUNTIME_TEST)
+endif()
 
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 use_props(${PROJECT_NAME} "${CMAKE_CONFIGURATION_TYPES}" "${DEFAULT_CXX_PROPS}")

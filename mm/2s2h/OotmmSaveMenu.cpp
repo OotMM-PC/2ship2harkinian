@@ -80,6 +80,10 @@ extern "C" int OotmmSaveMenu_Active(void) {
     return sActive ? 1 : 0;
 }
 
+extern "C" int OotmmSaveMenu_SaveSucceeded(void) {
+    return sSaveSucceeded ? 1 : 0;
+}
+
 extern "C" int OotmmSaveMenu_Update(struct PlayState* play) {
     if (!sActive) {
         return 1;

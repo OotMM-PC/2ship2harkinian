@@ -38,6 +38,9 @@ std::unordered_set<int16_t> sPendingPresentations;
 int32_t sNextPresentation = 1;
 std::unordered_map<std::string, uint32_t> sDeliveredChecks;
 std::optional<Ship::GameIpcItemPresentation> sCutscenePresentation;
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+int sLastFanfare = -1;
+#endif
 
 const Ship::GameIpcItemPresentation* FindPresentation(int16_t id) {
     const auto presentation = sPresentations.find(id);
@@ -176,6 +179,9 @@ void PlayItemFanfare(const Ship::GameIpcItemPresentation& presentation, bool isS
         presentation.ItemId, isShort,
         [&inventory](std::string_view id) { return inventory.Count(std::string(id)); },
         static_cast<uint32_t>(OotmmSession_GetState().GetIntSetting("strayFairyRewardCount", 15)));
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+    sLastFanfare = static_cast<int>(fanfare);
+#endif
     switch (fanfare) {
         case Ship::OotmmFanfare::None:
             break;
@@ -229,6 +235,12 @@ void GivePresentation(Actor* actor, PlayState* play) {
 }
 
 } // namespace
+
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+int OotmmItemPresentation_DebugLastFanfare() {
+    return sLastFanfare;
+}
+#endif
 
 extern "C" void OotmmItemPresentation_PlayGetItemFanfare(void) {
     if (!sCutscenePresentation.has_value()) {
