@@ -1,4 +1,3 @@
-// Generated: OoTMM item id -> native item constant.
     { "MM_ARROW_FIRE", ITEM_ARROW_FIRE },
     { "MM_ARROW_ICE", ITEM_ARROW_ICE },
     { "MM_ARROW_LIGHT", ITEM_ARROW_LIGHT },

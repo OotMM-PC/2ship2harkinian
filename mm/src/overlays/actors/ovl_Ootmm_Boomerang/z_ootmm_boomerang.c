@@ -1,8 +1,3 @@
-/*
- * File: z_ootmm_boomerang.c
- * Overlay: ovl_Ootmm_Boomerang
- * Description: Human Link's boomerang, ported from Ocarina of Time for OoTMM
- */
 
 #include "z_ootmm_boomerang.h"
 

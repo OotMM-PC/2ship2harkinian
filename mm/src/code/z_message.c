@@ -3709,7 +3709,6 @@ void Message_DisplayOcarinaStaffImpl(PlayState* play, u16 ocarinaAction) {
     s32 k;
     u32 i;
 
-    // A song pad turns free play into a guided prompt for its asked song.
     ocarinaAction = OotmmSongEvents_PromptAction(play, ocarinaAction);
 
     msgCtx->ocarinaAvailableSongs = 0;
@@ -3777,7 +3776,6 @@ void Message_DisplayOcarinaStaffImpl(PlayState* play, u16 ocarinaAction) {
     } else if ((ocarinaAction >= OCARINA_ACTION_PROMPT_OOTMM_MINUET) &&
                (ocarinaAction <= OCARINA_ACTION_PROMPT_OOTMM_SARIA)) {
         noStop = true;
-        // Cross-game prompts only ever come from pads, so the text advertises B to Stop.
         OotmmSongEvents_OpenPadPromptText(play);
         func_80150A84(play);
     } else if ((ocarinaAction == OCARINA_ACTION_FREE_PLAY) || (ocarinaAction >= OCARINA_ACTION_CHECK_TIME)) {
@@ -3794,7 +3792,6 @@ void Message_DisplayOcarinaStaffImpl(PlayState* play, u16 ocarinaAction) {
     } else {
         noStop = true;
         if (ocarinaAction >= OCARINA_ACTION_PROMPT_SONATA) {
-            // A pad prompt advertises B to Stop like free play; NPC prompts keep the vanilla text.
             if (OotmmSongEvents_IsPadPrompt(play)) {
                 OotmmSongEvents_OpenPadPromptText(play);
             } else {
@@ -3824,7 +3821,6 @@ void Message_DisplayOcarinaStaffImpl(PlayState* play, u16 ocarinaAction) {
     msgCtx->textboxColorAlphaCurrent = msgCtx->textboxColorAlphaTarget;
     msgCtx->textboxColorAlphaCurrent = msgCtx->textboxColorAlphaTarget;
 
-    // A pad prompt keeps free play's B=Stop label; it is voluntary and B backs out.
     if (!noStop || OotmmSongEvents_IsPadPrompt(play)) {
         Interface_SetBButtonInterfaceDoAction(play, DO_ACTION_STOP);
         noStop = gSaveContext.hudVisibility;
@@ -4617,8 +4613,6 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                     } else {
                         if ((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_OOTMM_MINUET) &&
                             (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_OOTMM_SARIA)) {
-                            // The message code owns cross-game verification; the engine only records
-                            // notes, and check mode with no checkable songs never advances the staff.
                             AudioOcarina_StartDefault(0xC0000000);
                             AudioOcarina_SetOotmmAvailSongs(0);
                         } else if ((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) &&
@@ -4937,15 +4931,12 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                         gHorsePlayedEponasSong = true;
                     }
 
-                    // A pad prompt has no owning actor; it must resolve as a completed free-play
-                    // song, which sets both played-song fields together.
                     if (OotmmSongEvents_IsPadPrompt(play)) {
                         msgCtx->ocarinaAction = OCARINA_ACTION_FREE_PLAY_DONE;
                         msgCtx->lastPlayedSong = msgCtx->songPlayed;
                     }
 
                     if (OotmmSongs_Played() != OOTMM_SONG_NONE) {
-                        // 2S2H [OoTMM] The out-of-range song id must not reach the ocarina-mode derivation.
                         if (msgCtx->ocarinaAction == OCARINA_ACTION_FREE_PLAY_DONE) {
                             play->msgCtx.ocarinaMode = OCARINA_MODE_EVENT;
                         } else {
@@ -5084,7 +5075,6 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                     } else {
                         msgCtx->songPlayed = msgCtx->ocarinaStaff->state;
                         msgCtx->msgMode = MSGMODE_SONG_PROMPT_SUCCESS;
-                        // The seed's item pipeline owns songs, so prompts must not teach them.
                         if (!OotmmSession_IsActive()) {
                             if (msgCtx->ocarinaStaff->state == OCARINA_SONG_GORON_LULLABY_INTRO) {
                                 Item_Give(play, ITEM_SONG_LULLABY_INTRO);
@@ -5309,7 +5299,6 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                 if (msgCtx->ocarinaStaff->state <= OCARINA_SONG_SCARECROW_SPAWN) {
                     msgCtx->songPlayed = msgCtx->ocarinaStaff->state;
                     msgCtx->msgMode = MSGMODE_37;
-                    // The seed's item pipeline owns songs, so prompts must not teach them.
                     if (!OotmmSession_IsActive()) {
                         Item_Give(play, (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
                     } else {
@@ -6260,7 +6249,6 @@ void Message_Update(PlayState* play) {
             break;
 
         case MSGMODE_SONG_PROMPT:
-            // A pad prompt is voluntary, so B backs out where a teaching prompt would not.
             if (OotmmSongEvents_IsPadPrompt(play) && CHECK_BTN_ALL(input->press.button, BTN_B)) {
                 AudioOcarina_SetInstrument(OCARINA_INSTRUMENT_OFF);
                 play->msgCtx.ocarinaMode = OCARINA_MODE_END;

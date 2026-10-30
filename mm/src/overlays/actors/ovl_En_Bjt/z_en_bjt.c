@@ -12,7 +12,6 @@
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
 
-// 2S2H [OoTMM] The launcher owns the OoTMM inventory, so the letter cannot be consumed or handed back.
 static s32 EnBjt_OotmmIsRutoLetter(PlayerItemAction itemAction) {
     return OotmmSession_IsActive() && (itemAction == PLAYER_IA_OOTMM_BOTTLE_RUTO_LETTER) &&
            OotmmCustomItems_Owned(ITEM_OOTMM_RUTO_LETTER);

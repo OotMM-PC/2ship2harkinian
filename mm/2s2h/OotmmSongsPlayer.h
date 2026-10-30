@@ -2,25 +2,19 @@
 
 #include <stdint.h>
 
-// PlayState and Player are anonymous typedefs, so include this after z64.h.
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/// Records the OoT song the ocarina just matched.
 void OotmmSongs_NotePlayed(int32_t song);
-/// Button sequence for a cross-game song, or NULL when out of range.
 const OcarinaSongButtons* AudioOcarina_OotmmSongButtons(int32_t song);
-/// Restricts which cross-game songs the engine may match until the next ocarina start.
 void AudioOcarina_SetOotmmAvailSongs(uint16_t mask);
 int32_t OotmmSongs_Played(void);
 void OotmmSongs_ClearPlayed(void);
 
-/// Whether the "You played" textbox needs the custom text path (OoT songs and MM's empty Sun's Song entry).
 int32_t OotmmSongs_ShouldOverridePlayedText(PlayState* play);
 void OotmmSongs_ShowPlayedText(PlayState* play);
-/// Ocarina effect actor for the song just played, or -1 when it has none.
 int32_t OotmmSongs_EffectActorId(void);
 uint16_t OotmmSongs_EffectActorParams(void);
 

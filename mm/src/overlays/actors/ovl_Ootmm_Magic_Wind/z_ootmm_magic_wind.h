@@ -12,7 +12,6 @@ typedef struct OotmmMagicWind {
     /* 0x144 */ SkelCurve skelCurve;
     /* 0x164 */ OotmmMagicWindActionFunc actionFunc;
     /* 0x168 */ s16 timer;
-    /* marker (params 2) state */
     s16 markerAlpha;
     f32 markerRatio;
     f32 markerDrift;

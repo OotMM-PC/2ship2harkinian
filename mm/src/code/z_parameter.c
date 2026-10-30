@@ -3380,7 +3380,6 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                 //! the status of empty C-buttons - for most forms, the C-buttons are enabled when empty, however for
                 //! Deku Link only, empty C-buttons are disabled.
                 ItemId itemId = GET_CUR_FORM_BTN_ITEM(i);
-                // 2S2H [OoTMM] Custom item ids sit past the end of gPlayerFormItemRestrictions.
                 u8 restricted = OotmmCustomItems_IsCustomItem(itemId)
                                     ? !OotmmCustomItems_UsableNow(itemId)
                                     : !gPlayerFormItemRestrictions[GET_PLAYER_FORM][itemId];
@@ -3531,7 +3530,6 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
             for (s16 j = EQUIP_SLOT_D_RIGHT; j <= EQUIP_SLOT_D_UP; j++) {
                 // Individual D button
                 ItemId itemId = DPAD_GET_CUR_FORM_BTN_ITEM(j);
-                // 2S2H [OoTMM] Custom item ids sit past the end of gPlayerFormItemRestrictions.
                 u8 restricted = OotmmCustomItems_IsCustomItem(itemId)
                                     ? !OotmmCustomItems_UsableNow(itemId)
                                     : !gPlayerFormItemRestrictions[GET_PLAYER_FORM][itemId];
@@ -4054,7 +4052,6 @@ void Interface_InitMinigame(PlayState* play) {
 void Interface_Dpad_LoadItemIconImpl(PlayState* play, u8 btn) {
     InterfaceContext* interfaceCtx = &play->interfaceCtx;
 
-    // 2S2H [OoTMM] Custom item ids sit past the end of gItemIcons.
     const char* ootmmIcon = OotmmCustomItems_IconPath(DPAD_GET_CUR_FORM_BTN_ITEM(btn));
 
     if (ootmmIcon != NULL) {
@@ -4099,7 +4096,6 @@ void Interface_LoadItemIconImpl(PlayState* play, u8 btn) {
     // #region 2S2H [Port]
     // CmpDma_LoadFile(SEGMENT_ROM_START(icon_item_static_yar), GET_CUR_FORM_BTN_ITEM(btn),
     //             &interfaceCtx->iconItemSegment[(u32)btn * ICON_ITEM_TEX_SIZE], ICON_ITEM_TEX_SIZE);
-    // 2S2H [OoTMM] Custom item ids sit past the end of gItemIcons.
     const char* ootmmIcon = OotmmCustomItems_IconPath(GET_CUR_FORM_BTN_ITEM(btn));
 
     if (ootmmIcon != NULL) {
@@ -6745,7 +6741,6 @@ void Interface_DrawPauseMenuEquippingIcons(PlayState* play) {
         pauseCtx->cursorVtx[18].v.ob[1] = pauseCtx->cursorVtx[19].v.ob[1] =
             pauseCtx->cursorVtx[16].v.ob[1] - (pauseCtx->equipAnimScale / 10);
 
-        // 2S2H [OoTMM] Only the magic arrow ids 0xB5..0xB7 use the glowing orb effect.
         if ((pauseCtx->equipTargetItem < 0xB5) || (pauseCtx->equipTargetItem >= 0xB8)) {
             // Normal Equip (icon goes from the inventory slot to the C button when equipping it)
             gDPSetPrimColor(OVERLAY_DISP++, 0, 0, 255, 255, 255, pauseCtx->equipAnimAlpha);
@@ -9694,7 +9689,6 @@ void Interface_Update(PlayState* play) {
     LifeMeter_UpdateSizeAndBeep(play);
 
     // Update environmental hazard (remnant of OoT)
-    // 2S2H [OoTMM]
     sEnvHazard = Player_GetEnvironmentalHazard(play);
     if (sEnvHazard == PLAYER_ENV_HAZARD_HOTROOM) {
         if ((GET_CUR_EQUIP_VALUE(EQUIP_TYPE_TUNIC) == EQUIP_VALUE_TUNIC_GORON) ||
@@ -9911,7 +9905,6 @@ void Interface_Update(PlayState* play) {
     }
 
     // Update environmental hazard timer
-    // 2S2H [OoTMM]
     if (gSaveContext.timerStates[TIMER_ID_ENV_HAZARD] == TIMER_STATE_OFF) {
         if ((sEnvHazard == PLAYER_ENV_HAZARD_HOTROOM) || (sEnvHazard == PLAYER_ENV_HAZARD_UNDERWATER_FREE) ||
             ((sEnvHazard == PLAYER_ENV_HAZARD_UNDERWATER_FLOOR) && (CUR_FORM != PLAYER_FORM_ZORA))) {

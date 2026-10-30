@@ -62,7 +62,6 @@ RegisterShipInitFunc sInit([]() {
 } // namespace
 
 extern "C" void OotmmClocks_FixupSpawnTime(void) {
-    // The day-0 workaround applies to every seed; clocks only change which half-day comes first.
     if (!OotmmSession_IsActive()) {
         return;
     }
@@ -83,7 +82,6 @@ extern "C" void OotmmClocks_FixupSpawnTime(void) {
     }
 
     if (firstHalfDay == 0) {
-        // Day-0 spawns anywhere but the clock tower exit break the vanilla dawn sequence.
         if (static_cast<uint16_t>(gSaveContext.save.entrance) != ENTRANCE(SOUTH_CLOCK_TOWN, 0)) {
             gSaveContext.save.day = 1;
             gSaveContext.save.time = CLOCK_TIME(6, 1);

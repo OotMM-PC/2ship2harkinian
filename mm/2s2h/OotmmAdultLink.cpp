@@ -49,7 +49,6 @@ extern PlayerAnimationHeader* D_8085BE84[PLAYER_ANIMGROUP_MAX][PLAYER_ANIMTYPE_M
 
 namespace {
 
-// The interpreter, skeleton loader and segment resolver all accept path pointers as resources.
 #define ADULT_SYM(name) \
     alignas(4) constexpr char name[] = "__OTR__objects/ot_obj_link_boy/" #name
 ADULT_SYM(gLinkAdultSkel);
@@ -82,14 +81,11 @@ ADULT_SYM(gLinkAdultMouth4Tex);
 
 #define ADULT_DL(name) ((Gfx*)(name))
 
-// OoT's player draw binds segment 0x0C to this; vanilla OoT limb DLs jump through it
-// for their cull mode, so it must be bound whenever ported OoT geometry draws in MM.
 alignas(8) Gfx sCullBackDL[] = {
     gsSPSetGeometryMode(G_CULL_BACK),
     gsSPEndDisplayList(),
 };
 
-// Slots with no adult counterpart show nothing rather than child-scaled geometry.
 alignas(8) Gfx sAdultEmptyDL[] = {
     gsSPEndDisplayList(),
 };
@@ -115,8 +111,6 @@ struct DlPatch {
     Gfx* Value;
 };
 
-// MM's equipment meshes stay authoritative: sheathed gear is native, and hand-held gear is
-// rebuilt around the ported fist by the hold patches below.
 const DlPatch kDlPatches[] = {
     { &gPlayerWaistDLs[kHumanNear], ADULT_DL(gLinkAdultWaistNearDL) },
     { &gPlayerWaistDLs[kHumanFar], ADULT_DL(gLinkAdultWaistNearDL) },
@@ -145,13 +139,10 @@ const DlPatch kDlPatches[] = {
     { &sPlayerFirstPersonLeftForearmDLs[kHuman], sAdultEmptyDL },
     { &sPlayerFirstPersonLeftHandDLs[kHuman], ADULT_DL(gLinkAdultLeftHandClosedNearDL) },
     { &sPlayerFirstPersonRightShoulderDLs[kHuman], ADULT_DL(gLinkAdultRightShoulderNearDL) },
-    // Must be OoT's dedicated first-person weapon meshes: the third-person ones sit at the wrong
-    // depth and angle under MM's first-person limb override.
     { &sPlayerFirstPersonRightHandDLs[kHuman], ADULT_DL(gLinkAdultRightHandHoldingBowFirstPersonDL) },
     { &sPlayerFirstPersonRightHandHookshotDLs[kHuman], ADULT_DL(gLinkAdultRightHandHoldingHookshotFarDL) },
 };
 
-// MM's hand-holding composites rebuilt around the ported fist, so hands stay the model's.
 struct HoldPatch {
     Gfx** Slot;
     const char* Native;
@@ -178,7 +169,6 @@ const HoldPatch kHoldPatches[] = {
 constexpr size_t kHoldCount = sizeof(kHoldPatches) / sizeof(kHoldPatches[0]);
 Gfx* sHoldBackups[kHoldCount];
 
-// OoT has no up/down eye textures; Unk1/Unk2 take those slots and shock stands in for wincing.
 const TexturePtr kAdultEyes[PLAYER_EYES_MAX] = {
     (TexturePtr)gLinkAdultEyesOpenTex,      (TexturePtr)gLinkAdultEyesHalfTex,
     (TexturePtr)gLinkAdultEyesClosedfTex,   (TexturePtr)gLinkAdultEyesRollRightTex,
@@ -193,8 +183,6 @@ const TexturePtr kAdultMouth[PLAYER_MOUTH_MAX] = {
     (TexturePtr)gLinkAdultMouth4Tex,
 };
 
-// Zora metrics with Fierce Deity's ledge offsets, composed from the live entries so animation
-// pointers stay identical to what z_player.c compares against.
 void BuildAdultAgeProperties(PlayerAgeProperties* out) {
     const PlayerAgeProperties* zora = &sPlayerAgeProperties[PLAYER_FORM_ZORA];
     const PlayerAgeProperties* fd = &sPlayerAgeProperties[PLAYER_FORM_FIERCE_DEITY];
@@ -226,16 +214,12 @@ void ApplyAdultLink() {
         return;
     }
 
-    // A model archive can shadow the skeleton with a resource this build cannot parse;
-    // SkelAnime dereferences whatever this resolves to. Failing stays un-applied, so
-    // Active/Restore never act on a swap that did not happen.
     auto adultSkel = Ship::Context::GetInstance()->GetResourceManager()->LoadResource(
         (const char*)gLinkAdultSkel + 7);
     if (adultSkel == nullptr) {
         SPDLOG_WARN("[OoTMM] adult skeleton failed to load; keeping the MM human model");
         return;
     }
-    // A model pack's skeleton keeps its own waist limb, mirroring SoH's custom-model rule.
     sCustomModel = adultSkel->GetInitData()->IsCustom;
     sApplied = true;
 
@@ -255,7 +239,6 @@ void ApplyAdultLink() {
         std::memcpy(sBackupDoorB, D_8085BE84[PLAYER_ANIMGROUP_doorB], sizeof(sBackupDoorB));
     }
 
-    // Same 21-limb layout as the child skeleton, so MM's human animations drive it directly.
     gPlayerSkeletons[kHuman] = (FlexSkeletonHeader*)gLinkAdultSkel;
 
     for (const DlPatch& p : kDlPatches) {
@@ -275,7 +258,6 @@ void ApplyAdultLink() {
 
     BuildAdultAgeProperties(&sPlayerAgeProperties[kHuman]);
 
-    // OoTMM's adult-height door animation is not extractable; the tall-form rows stand in.
     for (int t = 0; t < PLAYER_ANIMTYPE_MAX; t++) {
         D_8085BE84[PLAYER_ANIMGROUP_doorA][t] = D_8085BE84[PLAYER_ANIMGROUP_doorA_free][t];
         D_8085BE84[PLAYER_ANIMGROUP_doorB][t] = D_8085BE84[PLAYER_ANIMGROUP_doorB_free][t];
@@ -360,8 +342,6 @@ extern "C" Gfx* OotmmAdultLink_CullSegmentDL(void) {
 
 extern "C" void OotmmAdultLink_Init(void) {
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>([](s16) {
-        // Three states own the human form: adult, ported OoT child, vanilla. The current
-        // mapper restores before the next applies, so a backup can never capture a mapped state.
         if (ComputeIsAdult()) {
             OotmmChildLink::Restore();
             ApplyAdultLink();

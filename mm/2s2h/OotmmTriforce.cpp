@@ -27,7 +27,6 @@ Ship::OotmmAppliedLedger sLedger;
 bool sLedgerLoaded = false;
 uint8_t sSafeFrames = 0;
 
-// Keyed per-save-tag like the applied ledger: a new tag must not inherit an older save's win state.
 std::string LedgerPathFor(int fileNum) {
     const auto& state = OotmmSession_GetState();
     return state.GetBootConfig().StatePath + ".triforce.mm-" + state.GetNativeSaveTag() + "." +

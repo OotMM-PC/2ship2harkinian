@@ -1,8 +1,3 @@
-/*
- * File: z_ootmm_magic_fire.c
- * Overlay: ovl_Ootmm_Magic_Fire
- * Description: Din's Fire, ported from Ocarina of Time for OoTMM
- */
 
 #include "z_ootmm_magic_fire.h"
 

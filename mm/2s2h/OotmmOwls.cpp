@@ -22,7 +22,6 @@ struct OwlDef {
     const char* PreActivatedFlag;
 };
 
-// Indexed by OwlWarpId (OWL_WARP_GREAT_BAY_COAST .. OWL_WARP_STONE_TOWER).
 constexpr std::array<OwlDef, 10> kOwls = { {
     { "MM_OWL_GREAT_BAY", "greatbay" },
     { "MM_OWL_ZORA_CAPE", "zoracape" },

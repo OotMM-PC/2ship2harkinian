@@ -32,8 +32,6 @@ struct TierNames {
     std::vector<const char*> Names;
 };
 
-// ProgressiveRecipe picks models by display-name substring, so every tier name is
-// its own resolution path and has to be probed separately.
 const std::vector<TierNames> kTiers = {
     { "_OCARINA", { "Fairy Ocarina", "Ocarina of Time" } },
     { "_BOMB_BAG", { "Bomb Bag", "Big Bomb Bag", "Biggest Bomb Bag" } },

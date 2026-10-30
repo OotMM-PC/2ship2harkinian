@@ -95,7 +95,6 @@ extern "C" int OotmmItemPage_ConsumePageToggle(PlayState* play) {
         return 0;
     }
 
-    // L also opens the debug inventory editor, so leave it alone while that is up.
     if (pauseCtx->state != PAUSE_STATE_MAIN || pauseCtx->mainState != PAUSE_MAIN_STATE_IDLE ||
         pauseCtx->itemDescriptionOn || pauseCtx->debugEditor != DEBUG_EDITOR_NONE) {
         return 0;
@@ -117,7 +116,6 @@ extern "C" int OotmmItemPage_ConsumePageToggle(PlayState* play) {
     if (pages > 1 && CHECK_BTN_ALL(CONTROLLER1(&play->state)->press.button, BTN_L)) {
         sPage = (sPage + 1) % pages;
         sCursor = 0;
-        // UpdateCursor skips this frame, so clear the arrow park here or the next toggle leaves the page.
         if (sPage != 0) {
             pauseCtx->cursorSpecialPos = 0;
         }
@@ -168,7 +166,6 @@ extern "C" void OotmmItemPage_UpdateCursor(PlayState* play) {
         sCursor = onPage - 1;
     }
 
-    // An empty vanilla inventory parks the cursor on a page-turn arrow, which blocks ours.
     pauseCtx->cursorSpecialPos = 0;
 
     const bool idle = pauseCtx->state == PAUSE_STATE_MAIN && pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE &&

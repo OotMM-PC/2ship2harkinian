@@ -27,7 +27,6 @@ static const ALIGN_ASSET(2) char sOtHoverCircleTex[] = "__OTR__objects/ot_gamepl
 #define OT_LEFT_HAND_BOOMERANG_DL "__OTR__objects/ot_obj_link_child/gLinkChildLeftFistAndBoomerangNearDL"
 #define OT_RIGHT_HAND_SLINGSHOT_DL "__OTR__objects/ot_obj_link_child/gLinkChildRightHandHoldingSlingshotNearDL"
 #define OT_FP_SLINGSHOT_ARM_DL "__OTR__objects/ot_obj_link_child/gLinkChildRightArmStretchedSlingshotDL"
-// "Slinghot" is the decomp's own typo in the extracted resource name.
 #define OT_SLINGSHOT_STRING_DL "__OTR__objects/ot_obj_link_child/gLinkChildSlinghotStringDL"
 #define OT_BOOMERANG_FLIGHT_DL "__OTR__objects/ot_gameplay_keep/gBoomerangDL"
 
@@ -42,8 +41,6 @@ static Vtx sIronBootsVtx[87] = {
 #include "sIronBootsVtx.vtx.inc"
 };
 
-// LUS resolves a Gfx address as segmented only when its low bit is set; even values are
-// raw host pointers. The 0x0D matrices are the flex skeleton's right/left foot entries.
 
 static Gfx sLeftIronBootDL[] = {
     gsSPMatrix(0x0D000181, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_MODELVIEW),
@@ -273,7 +270,6 @@ typedef struct {
     int index;
 } TunicPatchSlot;
 
-// Human Link's cloth materials bake the tunic green as an in-DL prim color; these are those slots.
 static const TunicPatchSlot sTunicPatchSlots[] = {
     { "objects/object_link_child/gLinkHumanWaistDL", "ootmmTunic", 5 },
     { "objects/object_link_child/gLinkHumanRightThighDL", "ootmmTunic", 10 },
@@ -288,8 +284,6 @@ static const TunicPatchSlot sTunicPatchSlots[] = {
     { "objects/object_link_child/gLinkHumanTorsoDL", "ootmmTunic", 5 },
 };
 
-// Slot indices are authored against the vanilla cloth DLs; a model pack's own lists put anything
-// (or nothing) at them, so a slot is patched only while it still holds the baked prim color.
 static int TunicSlotPatchable(const TunicPatchSlot* slot) {
     Gfx* dl = ResourceMgr_LoadGfxByName(slot->path);
     size_t count = ResourceMgr_GetGfxCountByName(slot->path);
@@ -300,8 +294,6 @@ static int TunicSlotPatchable(const TunicPatchSlot* slot) {
     return (dl[slot->index].words.w0 >> 24) == G_SETPRIMCOLOR;
 }
 
-// Patched in place per slot; no segment indirection (0x0C and friends are contended by
-// z_actor/z_scene_proc, and an unresolved segment call executes as a raw address).
 void OotmmEquipment_UpdateTunicTint(void) {
     static int sAppliedTunic = -2;
     static int sVerified = 0;
@@ -469,8 +461,6 @@ void OotmmEquipment_DrawSlingshotString(PlayState* play, Player* player) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
-// OoT authored these in child-Link limb space, which MM's human Link shares; the back list even
-// carries its own offset matrix, so neither needs any transform here.
 Gfx* OotmmEquipment_DekuShieldBackDList(void) {
     return LoadOptionalGfx("__OTR__objects/ot_obj_link_child/gLinkChildDekuShieldWithMatrixDL");
 }

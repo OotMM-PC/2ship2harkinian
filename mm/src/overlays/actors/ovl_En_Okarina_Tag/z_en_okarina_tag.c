@@ -10,7 +10,6 @@
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_UPDATE_DURING_OCARINA | ACTOR_FLAG_LOCK_ON_DISABLED)
 
-// Params bit marking a spawned OoTMM song tag; the low bits carry the event id and room.
 #define OOTMM_SONG_TAG 0x4000
 
 void EnOkarinaTag_Init(Actor* thisx, PlayState* play);
@@ -28,8 +27,6 @@ typedef struct {
     Color_RGB8 color;
 } OotmmSongTagStyle;
 
-// The launcher bakes OoTMM's song-glyph art into ootmm_assets.o2r, indexed by the
-// seed's song-event song ids. The resource system only resolves asset-aligned names.
 static const ALIGN_ASSET(2) char sSongTagLullabyTex[] = "__OTR__objects/ootmm_song_tags/gSongTagLullabyTex";
 static const ALIGN_ASSET(2) char sSongTagEponaTex[] = "__OTR__objects/ootmm_song_tags/gSongTagEponaTex";
 static const ALIGN_ASSET(2) char sSongTagSariaTex[] = "__OTR__objects/ootmm_song_tags/gSongTagSariaTex";

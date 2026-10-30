@@ -54,8 +54,6 @@ void UpdatePlayAsKafei() {
         ResourceMgr_UnpatchGfxByName(gLinkHumanWaistDL, "gLinkHumanWaistDL0");
         ResourceMgr_UnpatchGfxByName(gLinkHumanWaistDL, "gLinkHumanWaistDL1");
 
-        // The OoTMM mappers own the human face tables while a ported OoT model is applied;
-        // restoring vanilla here would stomp them on every scene teardown.
         if (!OotmmAdultLink_IsAdult() && !OotmmChildLink_Active()) {
             sPlayerEyesTextures[PLAYER_FORM_HUMAN][0] = (TexturePtr)gLinkHumanEyesOpenTex;
             sPlayerEyesTextures[PLAYER_FORM_HUMAN][1] = (TexturePtr)gLinkHumanEyesHalfTex;

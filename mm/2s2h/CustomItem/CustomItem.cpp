@@ -181,7 +181,6 @@ void CustomItem00_Update(Actor* actor, PlayState* play) {
                     height = 60.0f;
                     break;
                 case PLAYER_FORM_HUMAN:
-                    // The ported OoT adult stands between child and Zora height.
                     if (OotmmAdultLink_IsAdult()) {
                         height = 56.0f;
                     }
@@ -240,7 +239,6 @@ void CustomItem00_Update(Actor* actor, PlayState* play) {
                         height = 75.0f;
                         break;
                     case PLAYER_FORM_HUMAN:
-                        // The ported OoT adult stands between child and Zora height.
                         if (OotmmAdultLink_IsAdult()) {
                             height = 66.0f;
                         }

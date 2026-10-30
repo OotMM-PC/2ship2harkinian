@@ -159,7 +159,6 @@ extern "C" void* OotmmCustomItems_ButtonIcon(uint8_t item) {
 }
 
 extern "C" const char* OotmmCustomItems_NameTexture(uint8_t item) {
-    // The Deku shield shares the Hero's Shield item id, so only ownership tells the two names apart.
     if (item == ITEM_SHIELD_HERO && OotmmCustomItems_WearingDekuShield()) {
         static constexpr const char* kName =
             "__OTR__textures/ot_item_name_static/gDekuShieldItemNameENGTex";
@@ -270,7 +269,6 @@ extern "C" int OotmmCustomItems_UsableNow(uint8_t item) {
     if (spell == OOTMM_MAGIC_SPELL_NONE) {
         return 1;
     }
-    // Upstream disables Farore's Wind wherever the scene restricts the Song of Soaring.
     if (spell == OOTMM_MAGIC_SPELL_WIND && gPlayState != nullptr &&
         gPlayState->interfaceCtx.restrictions.songOfSoaring != 0) {
         return 0;
@@ -315,7 +313,6 @@ extern "C" int OotmmCustomItems_WearingDekuShield(void) {
     }
     const auto& inventory = OotmmIpc_GetInventory();
     const bool deku = inventory.Has("MM_SHIELD_DEKU") || inventory.Has("SHARED_SHIELD_DEKU");
-    // Upstream files both shields under the same equip value, so the better one simply wins.
     const bool hero = inventory.Has("MM_SHIELD_HERO") || inventory.Has("SHARED_SHIELD_HYLIAN");
     return deku && !hero ? 1 : 0;
 }
@@ -669,8 +666,6 @@ extern "C" void OotmmCustomItems_StartFaroresWindPrompt(void) {
     CustomMessage::StartTextbox(msg, options);
 }
 
-// TODO: handing the letter over cannot consume it; the launcher inventory is monotone and there is
-// no check system yet to record the trade.
 extern "C" void OotmmCustomItems_StartRutoLetterTextbox(void) {
     std::string msg;
     msg += "...Huh?";

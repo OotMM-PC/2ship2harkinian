@@ -1219,7 +1219,7 @@ typedef struct Player {
     /* 0x730 */ Actor* focusActor; // Actor that Player and the camera are looking at; Used for lock-on, talking, and more
     /* 0x734 */ union {
                     UNK_TYPE1 unk_734[0x4];
-                    u8 hoverBootsTimer; // 2S2H [OoTMM] cross-game hover boots, in otherwise unused space
+                    u8 hoverBootsTimer;
                 };
     /* 0x738 */ s32 zTargetActiveTimer; // Non-zero values indicate Z-Targeting should update; Values under 5 indicate lock-on is releasing
     /* 0x73C */ s32 meleeWeaponEffectIndex[3];

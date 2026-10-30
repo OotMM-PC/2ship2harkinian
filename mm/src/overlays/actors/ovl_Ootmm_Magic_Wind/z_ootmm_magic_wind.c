@@ -1,8 +1,3 @@
-/*
- * File: z_ootmm_magic_wind.c
- * Overlay: ovl_Ootmm_Magic_Wind
- * Description: Farore's Wind, ported from Ocarina of Time for OoTMM
- */
 
 #include "z_ootmm_magic_wind.h"
 

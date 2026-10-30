@@ -1,8 +1,3 @@
-/*
- * File: z_ootmm_slingshot_seed.c
- * Overlay: ovl_Ootmm_Slingshot_Seed
- * Description: Slingshot deku seed projectile, ported from Ocarina of Time for OoTMM
- */
 
 #include "z_ootmm_slingshot_seed.h"
 

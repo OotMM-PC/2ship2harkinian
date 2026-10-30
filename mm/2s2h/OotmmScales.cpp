@@ -21,11 +21,9 @@ extern PlayState* gPlayState;
 
 namespace {
 
-// Paces only the no-ground fallback; a respawn that is itself wet would re-void every frame.
 constexpr uint8_t kNoGroundVoidFrames = 20;
 constexpr int32_t kVoidPlayerParams = 0xDFF;
 
-// Dive depth per UPG_SCALE rung; vanilla MM only ever reaches the first. One counter step per 40.
 constexpr float kDiveDepths[] = { 120.0f, 240.0f, 360.0f };
 constexpr float kDiveStep = 40.0f;
 constexpr uint8_t kDiveDoActions[] = { DO_ACTION_1, DO_ACTION_2, DO_ACTION_3, DO_ACTION_4,
@@ -53,8 +51,6 @@ bool OnStandableGround(Player* player) {
            !(player->stateFlags1 & PLAYER_STATE1_8000000) && player->actor.floorBgId == BGCHECK_SCENE;
 }
 
-// A frame into a scene change gSaveContext.save.entrance already names the next scene, and voiding
-// to that entrance with this scene's coordinates would drop Link somewhere else entirely.
 bool EntranceLoadsCurrentScene(PlayState* play) {
     return Entrance_GetSceneIdAbsolute(static_cast<u16>(gSaveContext.save.entrance)) == play->sceneId;
 }
@@ -92,14 +88,12 @@ void OnGameStateUpdate() {
         return;
     }
 
-    // Zora, Goron and Deku keep their native water behavior; free Zora swimming is essential.
     if (player->transformation != PLAYER_FORM_HUMAN && player->transformation != PLAYER_FORM_FIERCE_DEITY) {
         return;
     }
     if (OotmmScales_Tier() != static_cast<int>(Ship::OotmmScaleTier::None)) {
         return;
     }
-    // These all walk the floor rather than swim.
     if (player->currentBoots == PLAYER_BOOTS_GORON || player->currentBoots == PLAYER_BOOTS_DEKU ||
         OotmmCustomItems_EquippedBoots() == OOTMM_BOOTS_IRON) {
         return;
@@ -111,7 +105,6 @@ void OnGameStateUpdate() {
                                PLAYER_STATE1_20000000)) {
         return;
     }
-    // Voiding under an open prompt would discard an armed get-item or save dialog.
     if (gPlayState->pauseCtx.state != PAUSE_STATE_OFF ||
         Message_GetState(&gPlayState->msgCtx) != TEXT_STATE_NONE) {
         return;
@@ -142,8 +135,6 @@ extern "C" void OotmmScales_Init(void) {
 }
 
 extern "C" float OotmmScales_MaxDiveDepth(void) {
-    // Read the tier rather than UPG_SCALE: the grant writes that upgrade once through the applied
-    // ledger, so it stays zero on any save that already recorded the scale. Bronze dives no deeper.
     const int32_t tier = OotmmScales_Tier();
     const int32_t rung = std::min<int32_t>(tier > 0 ? tier - 1 : 0, ARRAY_COUNT(kDiveDepths) - 1);
     return kDiveDepths[rung];

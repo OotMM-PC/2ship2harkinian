@@ -1,7 +1,5 @@
 #include "OotmmCsmc.h"
 
-// OPEN_DISPS block-declares the FrameInterpolation functions; this include keeps the
-// extern "C" declarations visible so those redeclarations inherit C linkage.
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "OotmmIpc.h"
@@ -30,7 +28,6 @@ uint8_t ResourceMgr_FileExists(const char* resName);
 
 namespace {
 
-// Test chests placed by the debug menu, shown as a fixed class.
 std::unordered_map<Actor*, Ship::OotmmCsmcClass> sChestOverrides;
 
 bool HasAgonyStone() {
@@ -53,7 +50,6 @@ Ship::OotmmCsmcClass ClassFor(const Ship::OotmmPlacement& placement) {
     return Ship::OotmmCsmc_Classify(state, Ship::OotmmGame::Mm, placement, revealed);
 }
 
-// The launcher bakes these from OoTMM's own art into ootmm_assets.o2r.
 const char* BakedName(Ship::OotmmCsmcClass itemClass, bool lid) {
     switch (itemClass) {
         case Ship::OotmmCsmcClass::Major:
@@ -78,7 +74,6 @@ const char* BakedName(Ship::OotmmCsmcClass itemClass, bool lid) {
             return lid ? "__OTR__objects/ootmm_csmc/gCsmcChestMapLidDL"
                        : "__OTR__objects/ootmm_csmc/gCsmcChestMapBodyDL";
         default:
-            // BossKey and Normal use the game's own ornate and plain art.
             return nullptr;
     }
 }
@@ -218,8 +213,6 @@ uint32_t OotmmCsmc_TreeColor(const Ship::OotmmPlacement* placement) {
     }
 }
 
-// At global scope so OPEN_DISPS's block-scope FrameInterpolation declarations
-// redeclare the extern "C" functions instead of minting namespace-local ones.
 static void CsmcChestDraw(Actor* thisx, PlayState* play) {
     EnBox* chest = (EnBox*)thisx;
 
@@ -270,7 +263,6 @@ void OotmmCsmc_ClearChestOverrides() {
 void OotmmCsmc_Init() {
     GameInteractor::Instance->RegisterGameHookForID<GameInteractor::OnActorInit>(
         ACTOR_EN_BOX, [](Actor* actor) {
-            // The moon Goron trial keeps its vanilla chests.
             if (gPlayState == nullptr || gPlayState->sceneId == SCENE_LAST_GORON) {
                 return;
             }

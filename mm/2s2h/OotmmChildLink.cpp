@@ -73,7 +73,6 @@ CHILD_SYM(gLinkChildMouth4Tex);
 
 #define CHILD_DL(name) ((Gfx*)(name))
 
-// The launcher stamps this into the generated archive; its presence is the opt-in.
 constexpr char kMarkerPath[] = "objects/ot_obj_link_child/ootmm_localmodel_marker";
 
 alignas(8) Gfx sChildEmptyDL[] = {
@@ -99,9 +98,6 @@ struct DlPatch {
     Gfx* Value;
 };
 
-// OoT child has no waist DL at all: that geometry lives in the skeleton limb, which the
-// z_player_lib carve-out keeps. MM's equipment meshes stay authoritative: sheathed gear is
-// native, and hand-held gear is rebuilt around the ported fist by the hold patches below.
 const DlPatch kDlPatches[] = {
     { &gPlayerSheath12DLs[kHumanNear], sChildEmptyDL },
     { &gPlayerSheath12DLs[kHumanFar], sChildEmptyDL },
@@ -123,7 +119,6 @@ const DlPatch kDlPatches[] = {
     { &gPlayerRightHandInstrumentDLs[kHumanFar], CHILD_DL(gLinkChildRightHandHoldingFairyOcarinaNearDL) },
     { &gPlayerRightHandHookshotDLs[kHumanNear], CHILD_DL(gLinkChildRightHandClosedNearDL) },
     { &gPlayerRightHandHookshotDLs[kHumanFar], CHILD_DL(gLinkChildRightHandClosedNearDL) },
-    // OoT child has no hand-holding-bottle mesh; the open palm carries the pose, bottle unseen.
     { &gPlayerLeftHandBottleDLs[kHumanNear], CHILD_DL(gLinkChildLeftHandUpNearDL) },
     { &gPlayerLeftHandBottleDLs[kHumanFar], CHILD_DL(gLinkChildLeftHandUpNearDL) },
     { &sPlayerFirstPersonLeftForearmDLs[kHuman], sChildEmptyDL },
@@ -133,7 +128,6 @@ const DlPatch kDlPatches[] = {
     { &sPlayerFirstPersonRightHandHookshotDLs[kHuman], CHILD_DL(gLinkChildRightHandClosedNearDL) },
 };
 
-// MM's hand-holding composites rebuilt around the ported fist, so hands stay the model's.
 struct HoldPatch {
     Gfx** Slot;
     const char* Native;
@@ -187,8 +181,6 @@ void Apply() {
         return;
     }
 
-    // Same guard as the adult mapper: an unloadable skeleton keeps vanilla, and staying
-    // un-applied means Active/Restore never act on a swap that did not happen.
     auto childSkel = Ship::Context::GetInstance()->GetResourceManager()->LoadResource(
         (const char*)gLinkChildSkel + 7);
     if (childSkel == nullptr) {
@@ -211,7 +203,6 @@ void Apply() {
         std::memcpy(sBackupMouth, sPlayerMouthTextures[kHuman], sizeof(sBackupMouth));
     }
 
-    // Same 21-limb rig as MM human, so MM's animations drive it directly.
     gPlayerSkeletons[kHuman] = (FlexSkeletonHeader*)gLinkChildSkel;
 
     for (const DlPatch& p : kDlPatches) {

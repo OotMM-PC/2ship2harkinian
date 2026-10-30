@@ -3136,7 +3136,6 @@ s8 sItemItemActions[] = {
 };
 
 PlayerItemAction Player_ItemToItemAction(Player* this, ItemId item) {
-    // 2S2H [OoTMM] Cross-game item ids sit past the end of sItemItemActions.
     if (OotmmCustomItems_IsCustomItem(item)) {
         return OotmmCustomItems_ItemAction(item);
     }
@@ -3557,7 +3556,6 @@ void Player_InitItemAction(PlayState* play, Player* this, PlayerItemAction itemA
     this->unk_B0C = 0.0f;
     this->unk_B28 = 0;
 
-    // 2S2H [OoTMM] Cross-game item actions sit past the end of sItemActionInitFuncs.
     Player_OotmmRunItemActionInitFunc(play, this, itemAction);
     Player_SetModelGroup(this, this->modelGroup);
 }
@@ -4303,7 +4301,6 @@ void Player_FinishItemChange(PlayState* play, Player* this) {
     }
 }
 
-// 2S2H [OoTMM] sItemActionUpdateFuncs is PLAYER_IA_MAX wide; cross-game actions route here.
 static PlayerUpperActionFunc Player_OotmmItemActionUpdateFunc(Player* this) {
     switch (this->heldItemAction) {
         case PLAYER_IA_OOTMM_HAMMER:
@@ -6445,7 +6442,6 @@ s32 func_80834600(Player* this, PlayState* play) {
              (this->actor.bgCheckFlags & BGCHECKFLAG_GROUND) && (this->actor.depthInWater < -30.0f))) {
             func_80834534(play, this);
         } else {
-            // 2S2H [OoTMM] The floor-type timer accumulates in func_808430E0 while on one floor type.
             static u8 sOotmmFloorDamageDelay[2] = { 120, 60 };
 
             if (Player_OotmmGoronTunicActive(this) && !var_a1 && !isSurfaceWallDamage && (sp58 >= 0) &&
@@ -8117,7 +8113,6 @@ static AnimSfxEntry sOotmmSpellAnimSfx[OOTMM_MAGIC_SPELL_MAX][2] = {
     },
 };
 
-// Vanilla OoT pairs the honoo animations with Nayru's Love and tamashii with Din's Fire.
 static PlayerAnimationHeader* sOotmmSpellFirstAnim[OOTMM_MAGIC_SPELL_MAX] = {
     &gPlayerAnim_link_magic_kaze1,
     &gPlayerAnim_link_magic_honoo1,
@@ -11471,7 +11466,6 @@ void func_808400CC(PlayState* play, Player* this) {
 // #region 2S2H [OoTMM] Megaton Hammer world interactions, from upstream's Player.c
 extern BgHakuginPostUnkStruct D_80A9E028;
 
-// The posts check facing before reacting, so force-hitting every collider is safe.
 static void Player_OotmmHammerBonkHakuginPost(void) {
     ColliderCylinder* collider;
     s32 i;
@@ -11536,7 +11530,6 @@ static void Player_OotmmHammerShockwaveCheck(PlayState* play, Player* this) {
                     }
                 }
 
-                // Open bomb grottos, which only check their collider while closed.
                 nearbyGrotto = Player_OotmmFindGrottoNearPos(play, &shockwavePos, 50.0f, 10.0f);
                 if ((nearbyGrotto != NULL) && (DOORANA_GET_TYPE(nearbyGrotto) == DOORANA_TYPE_HIDDEN_BOMB)) {
                     ((DoorAna*)nearbyGrotto)->bombCollider.base.acFlags |= AC_HIT;
@@ -19370,7 +19363,6 @@ void Player_Action_ExchangeItem(Player* this, PlayState* play) {
             Player_StopCutscene(this);
             this->getItemDrawIdPlusOne = GID_NONE + 1;
 
-            // 2S2H [OoTMM] Reading the letter with no NPC ends the exchange with no talk actor.
             if (talkActor == NULL) {
                 func_80839E74(this, play);
                 return;

@@ -56,10 +56,9 @@ struct SongDef {
     uint16_t EffectParams;
     const char* WarpEntrance;
     uint32_t WarpNativeId;
-    const char* WarpQuestion; // may embed a newline control code
+    const char* WarpQuestion;
 };
 
-// Upstream order (packages/generator/src/mm/ocarina.c): warp songs, then Zelda's, then Saria's.
 constexpr std::array<SongDef, OOTMM_SONG_COUNT> kSongs = { {
     { "Minuet of Forest", true, kColorGreen, "MM_SONG_TP_FOREST", "SHARED_SONG_TP_FOREST",
       "MM_SONG_NOTE_TP_FOREST", "SHARED_SONG_NOTE_TP_FOREST", 6, "MinuetOfForest", true,
@@ -135,7 +134,6 @@ std::string PlayedBody(int32_t song) {
     char color;
     std::string name;
     if (song == OOTMM_SONG_NONE) {
-        // MM's native Sun's Song entry (0x1B7D) is empty, so it takes the custom text path too.
         body += "the ";
         color = kColorYellow;
         name = "Sun's Song";
@@ -161,7 +159,6 @@ std::string WarpConfirmBody(int32_t song) {
     body += def.Color;
     body += def.WarpQuestion;
     body += kColorDefault;
-    // The two-line Bolero question drops the spacer line, matching upstream.
     if (std::string(def.WarpQuestion).find(kNewline) == std::string::npos) {
         body += kNewline;
         body += ' ';
@@ -177,7 +174,7 @@ std::string WarpConfirmBody(int32_t song) {
 }
 
 void ShowRestrictedText(PlayState* play) {
-    Message_StartTextbox(play, 0x1B95, NULL); // "Your notes echoed far... but nothing happened."
+    Message_StartTextbox(play, 0x1B95, NULL);
     play->msgCtx.ocarinaMode = OCARINA_MODE_PROCESS_RESTRICTED_SONG;
 }
 
@@ -259,7 +256,6 @@ bool EnsureWarpFont(const SongDef& def) {
     if (sequence == nullptr) {
         return false;
     }
-    // The shipped jingles still name OoT's warp-song font; point them at the shipped copy.
     sequence->fonts[0] = static_cast<uint8_t>(sWarpFontIndex);
     sequence->numFonts = 1;
     return true;
@@ -267,7 +263,6 @@ bool EnsureWarpFont(const SongDef& def) {
 
 RegisterShipInitFunc sInit([]() {
     REGISTER_VB_SHOULD(VB_MSG_CAPTURE_MSGMODE_TEXT_CLOSING_OCARINA_ACTION, {
-        // A pad's matched song belongs to its event actor; the song's own effect must not run.
         if (OotmmSession_IsActive() && sPlayedSong != OOTMM_SONG_NONE && gPlayState != nullptr &&
             !OotmmSongEvents_PadOwnsPlayedSong(gPlayState)) {
             *should = true;

@@ -224,7 +224,6 @@ SpawnVerdict ResolveSpawn(PlayState* play, int16_t actorId, uint16_t params) {
             }
             return Gate("NPC_SHOOTING_GALLERY_OWNER");
         case ACTOR_EN_SYATEKI_OKUTA:
-            // Out-of-cycle days would spawn the gallery octoroks into a broken minigame.
             if (play->sceneId == SCENE_SYATEKI_MIZU &&
                 (gSaveContext.save.day > 3 || gSaveContext.save.day < 1)) {
                 return SpawnVerdict::Block;
@@ -368,7 +367,6 @@ SpawnVerdict ResolveSpawn(PlayState* play, int16_t actorId, uint16_t params) {
         case ACTOR_EN_NEO_REEBA:
             return GateEnemy("ENEMY_LEEVER");
         case ACTOR_EN_SKB:
-            // Room 1 is the upper graveyard, where stalchildren run the grave-opening minigame.
             if (play->sceneId == SCENE_BOTI && play->roomCtx.curRoom.num == 0x01) {
                 return SpawnVerdict::Allow;
             }
@@ -401,7 +399,6 @@ SpawnVerdict ResolveSpawn(PlayState* play, int16_t actorId, uint16_t params) {
         case ACTOR_EN_BIGPO:
             return GateEnemy("ENEMY_POE");
         case ACTOR_OBJ_SOUND:
-            // The carpenters' hammering emitter in Clock Town, silenced with them.
             if ((play->sceneId == SCENE_CLOCKTOWER || play->sceneId == SCENE_TOWN) && (params & 0x7F) == 0x10) {
                 return Gate("NPC_CARPENTERS");
             }

@@ -17,8 +17,6 @@ void Message_OpenText(PlayState* play, u16 textId);
 
 namespace {
 
-// Song ids 0-19 mapped to MM's native ocarina songs; the OoT warp songs (6-11),
-// the lullaby (0) and Saria's (2) only exist here as this port's cross-game songs.
 constexpr int32_t kSongEventSongs[20] = {
     OCARINA_SONG_ZELDAS_LULLABY,
     OCARINA_SONG_EPONAS,
@@ -50,7 +48,6 @@ bool ShuffleEnabled() {
            state.GetSongEventsMm().size() >= OOTMM_MM_SONG_EVENT_MAX;
 }
 
-// The song id (0-19) equivalent of this port's cross-game song that just played.
 int32_t PlayedCrossGameSong() {
     const int32_t custom = OotmmSongs_Played();
     if (custom >= OOTMM_SONG_MINUET && custom <= OOTMM_SONG_PRELUDE) {
@@ -142,7 +139,6 @@ int32_t OotmmSongEvents_Matches(int32_t eventId, int32_t playedSong) {
     if (expected < 0) {
         return 0;
     }
-    // The full lullaby always satisfies a spot asking only for its intro.
     return playedSong == expected ||
            (expected == OCARINA_SONG_GORON_LULLABY_INTRO && playedSong == OCARINA_SONG_GORON_LULLABY);
 }
@@ -198,7 +194,6 @@ int32_t OotmmSongEvents_PromptAction(PlayState* play, int32_t action) {
     }
 
     if (crossGame != OOTMM_SONG_NONE) {
-        // The ownership mask must be action-independent: this also runs while the prompt is open.
         if (!(OotmmSongs_OwnedMask() & (1u << crossGame))) {
             return action;
         }
@@ -222,7 +217,6 @@ int32_t OotmmSongEvents_IsPadPrompt(PlayState* play) {
 }
 
 void OotmmSongEvents_OpenPadPromptText(PlayState* play) {
-    // The vanilla prompt header (textbox type 3) is what routes the text's end into the staff.
     CustomMessage::Entry entry = CustomMessage::LoadVanillaMessageTableEntry(0x1B59);
     entry.autoFormat = false;
     CustomMessage::SetActiveCustomMessage("Play using \xB0 and \xB2; \xB1 to Stop.\xBF", entry);
@@ -251,7 +245,6 @@ void OotmmSongEvents_Init() {
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSceneInit>(
         [](s8 sceneId, s8) { SpawnSceneSongTags(sceneId); });
 
-    // These two spots have no fixed coordinates upstream; the tag inherits its host actor.
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorInit>([](Actor* actor) {
         if (actor == nullptr || gPlayState == nullptr || !ShuffleEnabled()) {
             return;

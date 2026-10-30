@@ -31,8 +31,6 @@ extern void Player_StopCutscene(Player* player);
 
 namespace {
 
-// The chest placement bound while its give sequence runs; the slow-chest cutscene
-// decision fires later in the same open and reads it.
 const Ship::OotmmPlacement* sActiveChest = nullptr;
 bool sWasConnected = false;
 
@@ -127,8 +125,6 @@ void SweepSavedBossContainers() {
     }
 }
 
-// Chest-open continuation without the vanilla give: the open animation plays to its
-// end and control returns; the queued presentation then runs the get-item raise.
 void ChestOpenAction(Player* player, PlayState* play) {
     if (PlayerAnimation_Update(play, &player->skelAnime)) {
         Player_StopCutscene(player);
@@ -369,7 +365,6 @@ void OotmmChecks_Init() {
             SweepSavedBossContainers();
         });
 
-    // A reconnect replays anything the launcher never acknowledged.
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>([]() {
         const bool connected = OotmmIpc_IsConnected();
         if (connected && !sWasConnected) {

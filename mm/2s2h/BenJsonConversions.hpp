@@ -100,7 +100,6 @@ void from_json(const json& j, ShipSaveInfo& shipSaveInfo) {
     shipSaveInfo.ootmmBossBeaten = j.value("ootmmBossBeaten", static_cast<u8>(0));
     shipSaveInfo.ootmmSlingshotSeeds = j.value("ootmmSlingshotSeeds", static_cast<u8>(0));
 
-    // OOTMM_STRIPPED: the built-in randomizer is removed; its saves cannot be loaded.
     if (shipSaveInfo.saveType == SAVETYPE_RANDO) {
         SPDLOG_ERROR("Built-in randomizer saves are not supported.");
         throw new std::runtime_error("Built-in randomizer saves are not supported.");

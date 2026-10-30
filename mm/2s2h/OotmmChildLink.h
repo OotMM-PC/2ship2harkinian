@@ -12,7 +12,6 @@ int32_t OotmmChildLink_CustomModelActive(void);
 #ifdef __cplusplus
 }
 
-// Driven from OotmmAdultLink's form switch so the two mappers can never overlap.
 namespace OotmmChildLink {
 bool Wanted();
 void Apply();

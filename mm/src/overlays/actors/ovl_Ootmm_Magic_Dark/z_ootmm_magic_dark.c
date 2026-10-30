@@ -1,8 +1,3 @@
-/*
- * File: z_ootmm_magic_dark.c
- * Overlay: ovl_Ootmm_Magic_Dark
- * Description: Nayru's Love, ported from Ocarina of Time for OoTMM
- */
 
 #include "z_ootmm_magic_dark.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
@@ -222,7 +217,6 @@ void OotmmMagicDark_DiamondDraw(Actor* thisx, PlayState* play) {
         if (player->stateFlags3 & PLAYER_STATE3_1000) {
             waistY = player->actor.world.pos.y + Player_GetHeight(player) * 0.5f;
         } else {
-            // The Goron's waist sits far lower than the other forms'.
             waistY = player->bodyPartsPos[PLAYER_BODYPART_WAIST].y + 10.0f;
         }
     } else {

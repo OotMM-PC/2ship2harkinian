@@ -1615,29 +1615,20 @@ s8 sRecordOcarinaBendIndex = 0;
 u8 sRecordOcarinaButtonIndex = 0;
 u8 sPlayedOcarinaSongIndexPlusOne = 0;
 
-// Ported from OoTMM packages/generator/src/mm/ocarina.c, indexed by OotmmMmSongId - 1.
 static const OcarinaSongButtons sOotmmSongButtons[OOTMM_SONG_COUNT] = {
-    // Minuet of Forest
     { 6, { OCARINA_BTN_A, OCARINA_BTN_C_UP, OCARINA_BTN_C_LEFT, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_LEFT,
            OCARINA_BTN_C_RIGHT } },
-    // Bolero of Fire
     { 8, { OCARINA_BTN_C_DOWN, OCARINA_BTN_A, OCARINA_BTN_C_DOWN, OCARINA_BTN_A, OCARINA_BTN_C_RIGHT,
            OCARINA_BTN_C_DOWN, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_DOWN } },
-    // Serenade of Water
     { 5, { OCARINA_BTN_A, OCARINA_BTN_C_DOWN, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_LEFT } },
-    // Requiem of Spirit
     { 6, { OCARINA_BTN_A, OCARINA_BTN_C_DOWN, OCARINA_BTN_A, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_DOWN,
            OCARINA_BTN_A } },
-    // Nocturne of Shadow
     { 7, { OCARINA_BTN_C_LEFT, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_RIGHT, OCARINA_BTN_A, OCARINA_BTN_C_LEFT,
            OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_DOWN } },
-    // Prelude of Light
     { 6, { OCARINA_BTN_C_UP, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_UP, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_LEFT,
            OCARINA_BTN_C_UP } },
-    // Zelda's Lullaby
     { 6, { OCARINA_BTN_C_LEFT, OCARINA_BTN_C_UP, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_LEFT, OCARINA_BTN_C_UP,
            OCARINA_BTN_C_RIGHT } },
-    // Saria's Song
     { 6, { OCARINA_BTN_C_DOWN, OCARINA_BTN_C_RIGHT, OCARINA_BTN_C_LEFT, OCARINA_BTN_C_DOWN, OCARINA_BTN_C_RIGHT,
            OCARINA_BTN_C_LEFT } },
 };
@@ -1649,7 +1640,6 @@ const OcarinaSongButtons* AudioOcarina_OotmmSongButtons(s32 song) {
     return &sOotmmSongButtons[song - 1];
 }
 
-// sOoTOcarinaSongNotes row for each OotmmMmSongId - 1.
 static const u8 sOotmmPlaybackRows[OOTMM_SONG_COUNT] = { 0, 1, 2, 3, 4, 5, 7, 6 };
 
 static u16 sOotmmAvailSongs = 0;
@@ -2652,7 +2642,6 @@ void AudioOcarina_CheckSongsWithoutMusicStaff(void) {
                     }
                 }
 
-                // A vanilla match set sPlayedOcarinaSongIndexPlusOne this frame, so it wins ties.
                 if ((j == sOotmmSongButtons[songIndex].numButtons) && (sPlayedOcarinaSongIndexPlusOne == 0)) {
                     sPlayedOcarinaSongIndexPlusOne = OOTMM_SONG_STAFF_BASE + songIndex + 2;
                     sIsOcarinaInputEnabled = false;
@@ -3379,7 +3368,6 @@ void AudioOcarina_TerminaWallGenerateNotes(void) {
     u8 i;
     u8 j;
 
-    // The wall may otherwise display an OoT song the player can learn and actually play.
     s32 forceRandomNotes = OotmmSession_IsActive();
 
     do {

@@ -21,7 +21,6 @@ extern u8 sPlaybackState;
 
 void RegisterFasterSongPlayback() {
     COND_ID_HOOK(OnActorUpdate, ACTOR_PLAYER, CVAR, [](Actor* actor) {
-        // Zeroing sPlaybackState here would end MSGMODE_DISPLAY_SONG_PLAYED after a single note.
         if (OotmmSongs_Played() != OOTMM_SONG_NONE) {
             return;
         }

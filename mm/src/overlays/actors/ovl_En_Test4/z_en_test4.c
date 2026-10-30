@@ -720,7 +720,6 @@ static void EnTest4_OotmmCheckTimeSkip(EnTest4* this, PlayState* play) {
         gSaveContext.save.day = day;
         gSaveContext.save.time = time;
 
-        // Honey & Darling's layout is picked at scene load from the current day.
         if (play->sceneId == SCENE_BOWLING) {
             Player* player = GET_PLAYER(play);
 
@@ -740,7 +739,6 @@ static void EnTest4_OotmmCheckTimeSkip(EnTest4* this, PlayState* play) {
             gSaveContext.save.day--;
         } else {
             this->daytimeIndex = THREEDAY_DAYTIME_DAY;
-            // Night alone never reloads the day counter/skybox, but the skip may have crossed a day.
             Interface_NewDay(play, CURRENT_DAY);
             Environment_NewDay(&play->envCtx);
         }

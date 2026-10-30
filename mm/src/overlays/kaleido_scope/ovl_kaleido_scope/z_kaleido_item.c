@@ -1572,7 +1572,6 @@ void KaleidoScope_UpdateItemEquip(PlayState* play) {
         offsetY = ABS_ALT(pauseCtx->equipAnimY - cButtonPosY) / sEquipAnimTimer;
     }
 
-    // 2S2H [OoTMM] Only the magic arrow ids 0xB5..0xB7 grow the glowing orb.
     if ((pauseCtx->equipTargetItem >= 0xB5) && (pauseCtx->equipTargetItem < 0xB8) &&
         (pauseCtx->equipAnimAlpha < 254)) {
         pauseCtx->equipAnimAlpha += 14;

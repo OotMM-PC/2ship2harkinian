@@ -601,7 +601,6 @@ s16 D_801BFE14[PLAYER_BOOTS_MAX][18] = {
     },
 };
 
-// Rows: iron, hover, iron underwater.
 static s16 sOotmmBootData[3][18] = {
     { 200, 1000, 300, 700, 550, 270, 1000, 0, 120, 800, 300, -160, 600, 590, 750, 125, 200, 130 },
     { 200, 1000, 300, 700, 550, 270, 600, 600, 120, 800, 550, -100, 600, 540, 270, 25, 0, 130 },
@@ -1061,8 +1060,6 @@ u8 sActionModelGroups[PLAYER_IA_MAX] = {
 PlayerModelGroup Player_ActionToModelGroup(Player* player, PlayerItemAction itemAction) {
     PlayerModelGroup modelGroup;
 
-    // 2S2H [OoTMM] Cross-game item actions sit past the end of sActionModelGroups.
-    // The hammer borrows the deku stick group; the stick only draws for PLAYER_IA_DEKU_STICK.
     if (itemAction == PLAYER_IA_OOTMM_HAMMER) {
         return PLAYER_MODELGROUP_DEKU_STICK;
     }
@@ -1805,7 +1802,6 @@ PlayerMeleeWeapon Player_MeleeWeaponFromIA(PlayerItemAction itemAction) {
         return weapon;
     }
 
-    // 2S2H [OoTMM] The hammer is a melee weapon past the vanilla PlayerMeleeWeapon range.
     if (itemAction == PLAYER_IA_OOTMM_HAMMER) {
         return weapon;
     }
@@ -1882,7 +1878,6 @@ s32 Player_GetEnvironmentalHazard(PlayState* play) {
     if (play->roomCtx.curRoom.environmentType == ROOM_ENV_HOT) {
         envHazard = PLAYER_ENV_HAZARD_HOTROOM - 1;
     } else if ((player->transformation != PLAYER_FORM_ZORA) && (player->underwaterTimer > 80) &&
-               // Scales trade MM's 80 frames for OoT's grace, so drowning waits out the timer's 300 cap.
                (!OotmmScales_ExtendsUnderwaterTime() || (player->underwaterTimer >= 300) ||
                 (OotmmCustomItems_EquippedBoots() == OOTMM_BOOTS_IRON))) {
         if ((OotmmCustomItems_EquippedBoots() == OOTMM_BOOTS_IRON) &&
@@ -2710,7 +2705,6 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
     Player* player = (Player*)actor;
 
     if (!Player_OverrideLimbDrawGameplayCommon(play, limbIndex, dList, pos, rot, &player->actor)) {
-        // Raise the model root while carried/held so the taller adult body lines up.
         if ((limbIndex == PLAYER_LIMB_ROOT) && (player->stateFlags3 & PLAYER_STATE3_20000000) &&
             OotmmAdultLink_IsAdult()) {
             pos->y += 1280.0f;
@@ -2904,8 +2898,6 @@ s32 Player_OverrideLimbDrawGameplayDefault(PlayState* play, s32 limbIndex, Gfx**
                 OotmmPresence_CaptureEquipDl(2, *dList);
             }
         } else if (limbIndex == PLAYER_LIMB_WAIST) {
-            // A custom adult model keeps its skeleton's waist limb, like SoH's carve-out,
-            // and OoT child has no waist DL at all; the flap would poke through otherwise.
             if (!OotmmAdultLink_CustomModelActive() && !OotmmChildLink_Active()) {
                 *dList = player->waistDLists[sPlayerLod];
             }
