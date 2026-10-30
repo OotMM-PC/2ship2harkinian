@@ -16,6 +16,7 @@ int32_t OotmmSession_FileSelectionPending(void);
 int32_t OotmmSession_RequestFileCopy(int32_t source, int32_t target);
 int32_t OotmmSession_SaveProgress(void);
 void OotmmSession_NotePlayerExitTransition(void);
+int32_t OotmmSession_WallmasterTakePlayer(struct PlayState* play, struct Actor* wallmaster);
 void OotmmSession_ApplyDeathRespawn(void);
 int32_t OotmmSession_ReturnToSpawn(void);
 void OotmmSession_RedirectMoonCrashRespawn(void);

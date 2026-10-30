@@ -77,6 +77,7 @@ Ship::OotmmEntranceMapping sCrossGameRequest;
 std::optional<Ship::OotmmEntranceMapping> sCrossGameRetry;
 uint32_t sCrossGameRetryFrames = 0;
 std::optional<uint32_t> sLastResolvedEntrance;
+std::optional<uint32_t> sPendingWallmasterSource;
 uint16_t sGrottoReturnEntrance = 0;
 std::string sCrossGameWaitReason;
 
@@ -206,6 +207,9 @@ std::optional<uint32_t> CurrentGrottoExitId() {
 std::optional<uint32_t> ExtendedEntranceSource() {
     if (gPlayState == nullptr) {
         return std::nullopt;
+    }
+    if (sPendingWallmasterSource.has_value()) {
+        return sPendingWallmasterSource;
     }
     if (gSaveContext.respawnFlag == 4 && gPlayState->sceneId == SCENE_KAKUSIANA) {
         return CurrentGrottoExitId();
@@ -514,6 +518,7 @@ void UpdateEntranceTransition() {
     }
     if (gPlayState->transitionTrigger != TRANS_TRIGGER_START) {
         sPlayerExitPending = false;
+        sPendingWallmasterSource.reset();
         sLastResolvedEntrance.reset();
         return;
     }
@@ -542,6 +547,7 @@ void UpdateEntranceTransition() {
         return;
     }
     sGrottoReturnEntrance = 0;
+    sPendingWallmasterSource.reset();
     const auto* mapping = sGameState.FindEntrance(Ship::OotmmGame::Mm, source);
     if (mapping == nullptr || !mapping->ToNativeId.has_value()) {
         return;
@@ -636,6 +642,25 @@ void BootIntoGame(GameState* gameState) {
     GameInteractor_ExecuteOnSaveLoad(static_cast<s16>(slot));
     if (!loaded) {
         PersistNewSave(saveBuffer);
+    }
+}
+
+uint32_t WallmasterSource(int16_t sceneId, int8_t room) {
+    if (sceneId == SCENE_DANPEI2TEST) {
+        return 0xFF00;
+    }
+    if (sceneId != SCENE_REDEAD) {
+        return 0;
+    }
+    switch (room) {
+        case 1:
+            return 0xFF01;
+        case 5:
+            return 0xFF02;
+        case 7:
+            return 0xFF03;
+        default:
+            return 0;
     }
 }
 
@@ -774,6 +799,22 @@ extern "C" int32_t OotmmSession_TryBootDirectly(void* gameState) {
     gSaveContext.seqId = NA_BGM_DISABLED;
     gSaveContext.ambienceId = AMBIENCE_ID_DISABLED;
     BootIntoGame(static_cast<GameState*>(gameState));
+    return 1;
+}
+
+extern "C" int32_t OotmmSession_WallmasterTakePlayer(PlayState* play, Actor* wallmaster) {
+    if (!OotmmSession_IsActive() || sGameState.GetStringSetting("erWallmasters", "none") == "none") {
+        return 0;
+    }
+    const uint32_t source = WallmasterSource(play->sceneId, wallmaster->room);
+    if (source == 0 || sGameState.FindEntrance(Ship::OotmmGame::Mm, source) == nullptr) {
+        return 0;
+    }
+    sPendingWallmasterSource = source;
+    sLastResolvedEntrance.reset();
+    play->nextEntrance = gSaveContext.save.entrance;
+    play->transitionTrigger = TRANS_TRIGGER_START;
+    play->transitionType = TRANS_TYPE_FADE_BLACK;
     return 1;
 }
 

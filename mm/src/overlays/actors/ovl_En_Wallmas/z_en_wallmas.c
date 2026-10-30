@@ -9,6 +9,7 @@
 #include "overlays/actors/ovl_En_Encount1/z_en_encount1.h"
 #include "overlays/actors/ovl_Obj_Ice_Poly/z_obj_ice_poly.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS                                                                                 \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOSTILE | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -499,7 +500,9 @@ void EnWallmas_TakePlayer(EnWallmas* this, PlayState* play) {
 
     if (this->timer == 30) {
         Audio_PlaySfx(NA_SE_OC_ABYSS);
-        func_80169FDC(play);
+        if (!OotmmSession_WallmasterTakePlayer(play, &this->actor)) {
+            func_80169FDC(play);
+        }
     }
 }
 
