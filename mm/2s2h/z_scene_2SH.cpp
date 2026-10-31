@@ -8,6 +8,7 @@
 #include <libultraship/bridge/resourcebridge.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmClockSpeed.h"
+#include "2s2h/OotmmJpLayouts.h"
 #include "2s2h/resource/type/Scene.h"
 #include "2s2h/resource/type/CollisionHeader.h"
 #include "2s2h/resource/type/Path.h"
@@ -85,6 +86,7 @@ void Scene_CommandActorCutsceneCamList(PlayState* play, SOH::ISceneCommand* cmd)
 
 void Scene_CommandCollisionHeader(PlayState* play, SOH::ISceneCommand* cmd) {
     SOH::SetCollisionHeader* colHeader = (SOH::SetCollisionHeader*)cmd;
+    OotmmJpLayouts_PatchCollision(play, (CollisionHeader*)colHeader->GetRawPointer());
     BgCheck_Allocate(&play->colCtx, play, (CollisionHeader*)colHeader->GetRawPointer());
 }
 

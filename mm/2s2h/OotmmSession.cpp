@@ -31,6 +31,7 @@
 #include "OotmmRegionState.h"
 #include "OotmmSpecialConds.h"
 #include "OotmmPresence.h"
+#include "OotmmJpLayouts.h"
 
 #include <cstddef>
 #include <array>
@@ -763,6 +764,7 @@ void OotmmSession_Init() {
         OotmmRegionState_Init();
         OotmmClockSpeed_Init();
         OotmmCycle_Init();
+        OotmmJpLayouts_Init();
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveInit>(
             [](s16) { InitializeSave(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(
