@@ -99,6 +99,31 @@ const std::unordered_map<std::string, uint8_t> kQuestFlags = {
     { "MM_REMAINS_TWINMOLD", QUEST_REMAINS_TWINMOLD },
 };
 
+struct SongNotes {
+    const char* SongItemId;
+    const char* SongName;
+    const char* NoteItemId;
+    const char* SharedNoteItemId;
+    uint32_t Needed;
+    bool ProgressiveOnly;
+};
+
+constexpr SongNotes kSongNotes[] = {
+    { "MM_SONG_AWAKENING", "Sonata of Awakening", "MM_SONG_NOTE_AWAKENING", "SHARED_SONG_NOTE_AWAKENING", 7, false },
+    { "MM_SONG_GORON", "Goron Lullaby", "MM_SONG_NOTE_GORON", "SHARED_SONG_NOTE_GORON", 8, false },
+    { "MM_SONG_GORON_HALF", "Lullaby Intro", "MM_SONG_NOTE_GORON", "SHARED_SONG_NOTE_GORON", 6, true },
+    { "MM_SONG_ZORA", "New Wave Bossa Nova", "MM_SONG_NOTE_ZORA", "SHARED_SONG_NOTE_ZORA", 7, false },
+    { "MM_SONG_EMPTINESS", "Elegy of Emptiness", "MM_SONG_NOTE_EMPTINESS", "SHARED_SONG_NOTE_EMPTINESS", 7, false },
+    { "MM_SONG_ORDER", "Oath to Order", "MM_SONG_NOTE_ORDER", "SHARED_SONG_NOTE_ORDER", 6, false },
+    { "MM_SONG_TIME", "Song of Time", "MM_SONG_NOTE_TIME", "SHARED_SONG_NOTE_TIME", 6, false },
+    { "MM_SONG_HEALING", "Song of Healing", "MM_SONG_NOTE_HEALING", "SHARED_SONG_NOTE_HEALING", 6, false },
+    { "MM_SONG_EPONA", "Epona's Song", "MM_SONG_NOTE_EPONA", "SHARED_SONG_NOTE_EPONA", 6, false },
+    { "MM_SONG_SOARING", "Song of Soaring", "MM_SONG_NOTE_SOARING", "SHARED_SONG_NOTE_SOARING", 6, false },
+    { "MM_SONG_STORMS", "Song of Storms", "MM_SONG_NOTE_STORMS", "SHARED_SONG_NOTE_STORMS", 6, false },
+    { "MM_SONG_SUN", "Sun's Song", "MM_SONG_NOTE_SUN", "SHARED_SONG_NOTE_SUN", 6, false },
+};
+
+
 struct DungeonSlot {
     std::string_view Code;
     uint8_t Index;
@@ -1204,6 +1229,27 @@ void UpdateTraps() {
     }
 }
 
+void ApplyCompletedSongNotes(const Ship::OotmmInventory& inventory) {
+    const bool progressiveLullaby =
+        OotmmSession_GetState().GetStringSetting("progressiveGoronLullabyMm", "progressive") == "progressive";
+    for (const auto& song : kSongNotes) {
+        const uint8_t quest = kQuestFlags.at(song.SongItemId);
+        const std::string key = std::string("@notes:") + song.SongItemId;
+        if ((song.ProgressiveOnly && !progressiveLullaby) || sLedger.Applied(key) != 0 || CHECK_QUEST_ITEM(quest) ||
+            inventory.Count(song.NoteItemId) + inventory.Count(song.SharedNoteItemId) < song.Needed) {
+            continue;
+        }
+        SET_QUEST_ITEM(quest);
+        sLedger.SetApplied(key, 1);
+        Ship::GameIpcItemPresentation presentation;
+        presentation.ItemId = song.SongItemId;
+        presentation.ItemName = song.SongName;
+        presentation.ItemGame = "mm";
+        presentation.DestinationGame = "mm";
+        OotmmItemPresentation_Queue(presentation);
+    }
+}
+
 } // namespace
 
 extern "C" int32_t OotmmItemApply_BombchuCapacity(void) {
@@ -1314,6 +1360,7 @@ void OotmmItemApply_Reconcile() {
         }
         ApplyOne(gPlayState, itemId, count);
     }
+    ApplyCompletedSongNotes(inventory);
     if (!sRetryMagicApplication) {
         sAppliedRevision = inventory.GetRevision();
     }
