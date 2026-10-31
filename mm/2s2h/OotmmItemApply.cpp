@@ -67,6 +67,12 @@ const std::vector<std::pair<std::string_view, uint8_t>> kAmmoSlots = {
     { "STICK", ITEM_DEKU_STICK },
 };
 
+const std::unordered_map<std::string, s16> kWorldMaps = {
+    { "WORLD_MAP_CLOCK_TOWN", TINGLE_MAP_CLOCK_TOWN }, { "WORLD_MAP_WOODFALL", TINGLE_MAP_WOODFALL },
+    { "WORLD_MAP_SNOWHEAD", TINGLE_MAP_SNOWHEAD },     { "WORLD_MAP_ROMANI_RANCH", TINGLE_MAP_ROMANI_RANCH },
+    { "WORLD_MAP_GREAT_BAY", TINGLE_MAP_GREAT_BAY },   { "WORLD_MAP_STONE_TOWER", TINGLE_MAP_STONE_TOWER },
+};
+
 const std::unordered_map<std::string, uint8_t> kQuestFlags = {
     { "MM_SONG_TIME", QUEST_SONG_TIME },
     { "MM_SONG_EPONA", QUEST_SONG_EPONA },
@@ -1135,6 +1141,15 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                     SET_QUEST_ITEM(found->second);
                     sLedger.SetApplied(itemId, 1);
                 }
+                break;
+            }
+            case Ship::OotmmGrantKind::Map: {
+                const auto map = kWorldMaps.find(op.Slot);
+                if (already != 0 || map == kWorldMaps.end()) {
+                    break;
+                }
+                Inventory_SetWorldMapCloudVisibility(map->second);
+                sLedger.SetApplied(itemId, 1);
                 break;
             }
             default:
