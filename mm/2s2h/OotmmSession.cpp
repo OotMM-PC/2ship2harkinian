@@ -299,7 +299,7 @@ void ApplyEnhancements() {
     CVarSetInteger("gCheats.HookshotAnywhere",
                    sGameState.GetStringSetting("hookshotAnywhereMm", "off") != "off" ? 1 : 0);
     CVarSetInteger("gCheats.ClimbAnywhere",
-                   sGameState.GetStringSetting("climbMostSurfacesMm", "off") != "off" ? 1 : 0);
+                   sGameState.GetBoolSetting("climbMostSurfacesMm", false) ? 1 : 0);
     CVarSetInteger("gEnhancements.DifficultyOptions.DamageMultiplier",
                    DamageMultiplier(sGameState.GetStringSetting("damageMultiplierMm", "normal")));
     CVarSetInteger("gEnhancements.DifficultyOptions.HyperEnemies",
