@@ -22,10 +22,15 @@ extern PlayState* gPlayState;
 namespace {
 
 const std::string kWinKey = "@triforce_win";
+const std::string kMajoraKey = "@endgame_majora";
+constexpr const char* kGanonToken = "OOT_TRIFORCE_FULL";
+constexpr const char* kMajoraToken = "MM_MASK_MAJORA";
+constexpr uint16_t kEndgameResendFrames = 60;
 
 Ship::OotmmAppliedLedger sLedger;
 bool sLedgerLoaded = false;
 uint8_t sSafeFrames = 0;
+uint16_t sEndgameResendTimer = 0;
 
 std::string LedgerPathFor(int fileNum) {
     const auto& state = OotmmSession_GetState();
@@ -51,6 +56,28 @@ Ship::OotmmAppliedLedger& Ledger() {
 
 std::string Goal() {
     return OotmmSession_GetState().GetStringSetting("goal", "both");
+}
+
+bool GoalMet(bool ganon, bool majora) {
+    const std::string goal = Goal();
+    if ((goal == "ganon" || goal == "both") && !ganon) {
+        return false;
+    }
+    if ((goal == "majora" || goal == "both") && !majora) {
+        return false;
+    }
+    return true;
+}
+
+void ResendEndgame() {
+    if (Ledger().Applied(kMajoraKey) == 0 || OotmmIpc_GetInventory().Count(kMajoraToken) > 0) {
+        sEndgameResendTimer = 0;
+        return;
+    }
+    if (sEndgameResendTimer == 0) {
+        OotmmIpc_SendEndgameReached("majora");
+    }
+    sEndgameResendTimer = (sEndgameResendTimer + 1) % kEndgameResendFrames;
 }
 
 bool IsQuest() {
@@ -184,7 +211,31 @@ extern "C" int OotmmTriforce_HasWon(void) {
     return OotmmTriforce_Active() && Ledger().Applied(kWinKey) != 0;
 }
 
+extern "C" int OotmmTriforce_OnMajoraDefeated(PlayState* play) {
+    if (!OotmmSession_IsActive()) {
+        return 0;
+    }
+    Ledger().SetApplied(kMajoraKey, 1);
+    sLedger.Save(LedgerPath());
+    OotmmIpc_SendEndgameReached("majora");
+    if (GoalMet(OotmmIpc_GetInventory().Count(kGanonToken) > 0, true)) {
+        return 0;
+    }
+    gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
+    gSaveContext.save.equippedMask = PLAYER_MASK_NONE;
+    gSaveContext.save.day = 0;
+    gSaveContext.save.time = CLOCK_TIME(6, 0) - 1;
+    Sram_SaveSpecialNewDay(play);
+    play->nextEntrance = ENTRANCE(CLOCK_TOWER_INTERIOR, 3);
+    play->transitionTrigger = TRANS_TRIGGER_START;
+    play->transitionType = TRANS_TYPE_FADE_BLACK;
+    return 1;
+}
+
 extern "C" void OotmmTriforce_Update(void) {
+    if (OotmmSession_IsActive()) {
+        ResendEndgame();
+    }
     if (!OotmmTriforce_Active() || OotmmTriforce_HasWon()) {
         return;
     }

@@ -28,6 +28,7 @@
 #include "overlays/effects/ovl_Effect_Ss_Hahen/z_eff_ss_hahen.h"
 
 #include "2s2h/BenPort.h"
+#include "2s2h/OotmmTriforce.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -1957,7 +1958,7 @@ void Boss07_Wrath_DeathCutscene(Boss07* this, PlayState* play) {
                     if (this->cutsceneTimer == 400) {
                         Audio_SetSfxVolumeTransition(&gSfxVolume, 0.0f, 90);
                     }
-                    if (this->cutsceneTimer == (u32)(KREG(94) + 440)) {
+                    if ((this->cutsceneTimer == (u32)(KREG(94) + 440)) && !OotmmTriforce_OnMajoraDefeated(play)) {
                         play->nextEntrance = ENTRANCE(TERMINA_FIELD, 0);
                         gSaveContext.nextCutsceneIndex = 0xFFF7;
                         play->transitionTrigger = TRANS_TRIGGER_START;

@@ -123,6 +123,10 @@ bool OotmmIpc_SendPvpHit(const Ship::OotmmPvpHit& hit) {
     return sSession.SendPvpHit(hit);
 }
 
+bool OotmmIpc_SendEndgameReached(const char* boss) {
+    return sSession.Send(nlohmann::json{ { "type", "endgameReached" }, { "boss", boss } }.dump());
+}
+
 bool OotmmIpc_SendDeathLink() {
     return sSession.Send(nlohmann::json{ { "type", "deathLink" }, { "death", nlohmann::json::object() } }.dump());
 }
