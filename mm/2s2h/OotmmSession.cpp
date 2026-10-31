@@ -50,6 +50,7 @@ extern "C" {
 #include "overlays/actors/ovl_Bg_F40_Switch/z_bg_f40_switch.h"
 #include "overlays/gamestates/ovl_select/z_select.h"
 #include "overlays/gamestates/ovl_file_choose/z_file_select.h"
+extern EffectSsInfo sEffectSsInfo;
 }
 
 namespace {
@@ -292,18 +293,12 @@ int DamageMultiplier(const std::string& value) {
 }
 
 void ApplyEnhancements() {
-    CVarSetInteger("gEnhancements.Playback.SkipScarecrowSong",
-                   sGameState.GetBoolSetting("freeScarecrowMm", false) ? 1 : 0);
-    CVarSetInteger("gEnhancements.Masks.FastTransformation",
-                   sGameState.GetBoolSetting("fastMasks", false) ? 1 : 0);
     CVarSetInteger("gCheats.HookshotAnywhere",
                    sGameState.GetStringSetting("hookshotAnywhereMm", "off") != "off" ? 1 : 0);
     CVarSetInteger("gCheats.ClimbAnywhere",
                    sGameState.GetBoolSetting("climbMostSurfacesMm", false) ? 1 : 0);
     CVarSetInteger("gEnhancements.DifficultyOptions.DamageMultiplier",
                    DamageMultiplier(sGameState.GetStringSetting("damageMultiplierMm", "normal")));
-    CVarSetInteger("gEnhancements.DifficultyOptions.HyperEnemies",
-                   sGameState.GetBoolSetting("mmHyperEnemies", false) ? 1 : 0);
     CVarSetInteger("gEnhancements.Cycle.SaveOnMoonCrash",
                    sGameState.GetStringSetting("moonCrash", "reset") == "cycle" ? 1 : 0);
     CVarSetInteger("gEnhancements.Masks.FierceDeitysAnywhere",
@@ -664,6 +659,79 @@ uint32_t WallmasterSource(int16_t sceneId, int8_t room) {
     }
 }
 
+constexpr u32 kFormChangeBlockedFlags1 = PLAYER_STATE1_DEAD | PLAYER_STATE1_CHARGING_SPIN_ATTACK | PLAYER_STATE1_2000 |
+                                         PLAYER_STATE1_4000 | PLAYER_STATE1_40000 | PLAYER_STATE1_80000 |
+                                         PLAYER_STATE1_100000 | PLAYER_STATE1_200000 | PLAYER_STATE1_400000 |
+                                         PLAYER_STATE1_20000000;
+
+constexpr s32 kHahenObjectIdReg = 4;
+
+s8 sPendingForm = -1;
+Vec3f sFormChangePos;
+
+void DeleteFormChangeEffects() {
+    for (s32 i = 0; i < sEffectSsInfo.tableSize; i++) {
+        EffectSs* effect = &sEffectSsInfo.table[i];
+        if (effect->type == EFFECT_SS_HAHEN && effect->regs[kHahenObjectIdReg] == OBJECT_LINK_NUTS) {
+            EffectSs_Delete(effect);
+        }
+    }
+}
+
+void ResetFormChange(Player* player) {
+    player->actor.speed = 0.0f;
+    player->actor.velocity = { 0.0f, 0.0f, 0.0f };
+    player->actor.world.pos = sFormChangePos;
+    player->stateFlags1 ^= PLAYER_STATE1_8000000;
+    player->stateFlags3 &= ~PLAYER_STATE3_8000;
+    DeleteFormChangeEffects();
+}
+
+void ToggleForm(PlayState* play, Player* player, s8 form) {
+    if (player->actor.draw == nullptr || Player_InCsMode(play) || (player->stateFlags1 & kFormChangeBlockedFlags1) ||
+        (player->stateFlags3 & PLAYER_STATE3_1000)) {
+        return;
+    }
+    gSaveContext.save.playerForm = gSaveContext.save.playerForm == form ? PLAYER_FORM_HUMAN : form;
+    player->av1.actionVar1 = 0;
+    player->actor.update = func_8012301C;
+    player->actor.draw = nullptr;
+    sFormChangePos = player->actor.world.pos;
+    ResetFormChange(player);
+}
+
+void UpdateFastMaskForm() {
+    if (gPlayState == nullptr || gGameState != &gPlayState->state) {
+        return;
+    }
+    Player* player = GET_PLAYER(gPlayState);
+    if (player == nullptr) {
+        return;
+    }
+    if (sPendingForm >= 0) {
+        ToggleForm(gPlayState, player, sPendingForm);
+        sPendingForm = -1;
+    } else if (player->actor.update == func_8012301C) {
+        ResetFormChange(player);
+        func_8012301C(&player->actor, gPlayState);
+        if (player->actor.update != func_8012301C) {
+            player->stateFlags1 &= ~PLAYER_STATE1_200;
+        }
+    }
+}
+
+void UpdateHyperEnemy(Actor* actor) {
+    if (actor->id == ACTOR_EN_DG ||
+        (actor->category != ACTORCAT_BOSS && actor->category != ACTORCAT_ENEMY) || actor->update == nullptr ||
+        Player_InBlockingCsMode(gPlayState, GET_PLAYER(gPlayState))) {
+        return;
+    }
+    const s32 frameAdvance = gPlayState->frameAdvCtx.enabled;
+    gPlayState->frameAdvCtx.enabled = true;
+    actor->update(actor, gPlayState);
+    gPlayState->frameAdvCtx.enabled = frameAdvance;
+}
+
 } // namespace
 
 void OotmmSession_Init() {
@@ -701,6 +769,12 @@ void OotmmSession_Init() {
             [](s16) { ApplySaveFlags(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(UpdateEntranceTransition);
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(RetryInitialSave);
+        if (sGameState.GetBoolSetting("fastMasks", false)) {
+            GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateMainStart>(UpdateFastMaskForm);
+        }
+        if (sGameState.GetBoolSetting("mmHyperEnemies", false)) {
+            GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorUpdate>(UpdateHyperEnemy);
+        }
         // The seed owns the Blast Mask cooldown; vanilla hardcodes it to 310 frames.
         COND_VB_SHOULD(VB_SET_BLAST_MASK_COOLDOWN_TIMER, true, {
             *should = false;
@@ -741,6 +815,30 @@ extern "C" int32_t OotmmSession_SaveProgress(void) {
 
 extern "C" int32_t OotmmSession_IsActive(void) {
     return sGameState.IsActive() && sGameState.HasSeed() ? 1 : 0;
+}
+
+extern "C" int32_t OotmmSession_TryFastMask(int32_t item) {
+    if (!OotmmSession_IsActive() || !sGameState.GetBoolSetting("fastMasks", false)) {
+        return false;
+    }
+    switch (item) {
+        case ITEM_MASK_DEKU:
+            sPendingForm = PLAYER_FORM_DEKU;
+            break;
+        case ITEM_MASK_GORON:
+            sPendingForm = PLAYER_FORM_GORON;
+            break;
+        case ITEM_MASK_ZORA:
+            sPendingForm = PLAYER_FORM_ZORA;
+            break;
+        case ITEM_MASK_FIERCE_DEITY:
+            sPendingForm = PLAYER_FORM_FIERCE_DEITY;
+            break;
+        default:
+            return false;
+    }
+    DeleteFormChangeEffects();
+    return true;
 }
 
 extern "C" int32_t OotmmSession_BoolSetting(const char* key) {

@@ -24,6 +24,7 @@ int32_t OotmmSession_KeepsSaveOnMoonCrash(void);
 int32_t OotmmSession_ReadMoonCrashSave(uint8_t* buffer);
 int32_t OotmmSession_ApplyResolvedMmEntrance(uint32_t entrance);
 int32_t OotmmSession_RedirectBossWarp(uint32_t bossId);
+int32_t OotmmSession_TryFastMask(int32_t item);
 
 #ifdef __cplusplus
 }

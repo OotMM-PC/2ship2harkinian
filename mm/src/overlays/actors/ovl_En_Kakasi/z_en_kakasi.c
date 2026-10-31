@@ -8,6 +8,7 @@
 #include "z_en_kakasi.h"
 #include "objects/object_ka/object_ka.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS                                                                                  \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -1057,13 +1058,18 @@ void EnKakasi_SetupIdleUnderground(EnKakasi* this) {
 }
 
 void EnKakasi_IdleUnderground(EnKakasi* this, PlayState* play) {
+    s32 freeScarecrow = OotmmSession_BoolSetting("freeScarecrowMm");
+    u8 summonMode = freeScarecrow ? OCARINA_MODE_ACTIVE : OCARINA_MODE_PLAYED_SCARECROW_SPAWN;
+
     if (GameInteractor_Should(VB_NEED_SCARECROW_SONG,
-                              CHECK_WEEKEVENTREG(WEEKEVENTREG_79_08) &&
+                              (freeScarecrow || CHECK_WEEKEVENTREG(WEEKEVENTREG_79_08)) &&
                                   (this->picto.actor.xzDistToPlayer < this->songSummonDist) &&
-                                  ((BREG(1) != 0) || (play->msgCtx.ocarinaMode == OCARINA_MODE_PLAYED_SCARECROW_SPAWN)),
+                                  ((BREG(1) != 0) || (play->msgCtx.ocarinaMode == summonMode)),
                               this)) {
         this->picto.actor.flags &= ~ACTOR_FLAG_LOCK_ON_DISABLED;
-        play->msgCtx.ocarinaMode = OCARINA_MODE_END;
+        if (!freeScarecrow) {
+            play->msgCtx.ocarinaMode = OCARINA_MODE_END;
+        }
         this->actionFunc = EnKakasi_SetupRiseOutOfGround;
     }
 }
@@ -1079,11 +1085,15 @@ void EnKakasi_SetupRiseOutOfGround(EnKakasi* this, PlayState* play) {
     if (CutsceneManager_GetCurrentCsId() == CS_ID_GLOBAL_TALK) {
         CutsceneManager_Stop(CS_ID_GLOBAL_TALK);
         CutsceneManager_Queue(this->csIdList[csIdIndex]);
-    } else if (!CutsceneManager_IsNext(this->csIdList[csIdIndex])) {
+    } else if (!OotmmSession_IsActive() && !CutsceneManager_IsNext(this->csIdList[csIdIndex])) {
         CutsceneManager_Queue(this->csIdList[csIdIndex]);
     } else {
-        CutsceneManager_StartWithPlayerCs(this->csIdList[csIdIndex], &this->picto.actor);
-        Actor_PlaySfx(&this->picto.actor, NA_SE_EN_AKINDONUTS_HIDE);
+        if (OotmmSession_IsActive()) {
+            Audio_PlaySfx(NA_SE_SY_CORRECT_CHIME);
+        } else {
+            CutsceneManager_StartWithPlayerCs(this->csIdList[csIdIndex], &this->picto.actor);
+            Actor_PlaySfx(&this->picto.actor, NA_SE_EN_AKINDONUTS_HIDE);
+        }
         this->picto.actor.draw = EnKakasi_Draw;
         this->unkState196 = 6;
         this->actionFunc = EnKakasi_RisingOutOfGround;

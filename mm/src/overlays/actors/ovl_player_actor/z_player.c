@@ -4755,6 +4755,11 @@ void func_80831944(PlayState* play, Player* this) {
 void Player_UseItem(PlayState* play, Player* this, ItemId item) {
     PlayerItemAction itemAction = Player_ItemToItemAction(this, item);
 
+    if (OotmmSession_TryFastMask(item)) {
+        OotmmCustomItems_OnNativeMaskUse(this, itemAction);
+        return;
+    }
+
     if ((((this->heldItemAction == this->itemAction) &&
           (!(this->stateFlags1 & PLAYER_STATE1_400000) ||
            (Player_MeleeWeaponFromIA(itemAction) != PLAYER_MELEEWEAPON_NONE) || (itemAction == PLAYER_IA_NONE))) ||
