@@ -245,7 +245,10 @@ bool DrawTrap(PlayState* play, const Ship::OotmmRenderRecipe& recipe) {
                           COMBINED, PRIMITIVE, 0, 0, 0, COMBINED);
         gDPSetPrimColor(gfxCtx->polyXlu.p++, 0, 0x80, 20, 20, 20, 255);
         gDPSetEnvColor(gfxCtx->polyXlu.p++, 10, 10, 10, 255);
+        gDPSetGrayscaleColor(gfxCtx->polyXlu.p++, 40, 40, 40, 255);
+        gSPGrayscale(gfxCtx->polyXlu.p++, true);
         gSPDisplayList(gfxCtx->polyXlu.p++, model);
+        gSPGrayscale(gfxCtx->polyXlu.p++, false);
         return true;
     }
 
