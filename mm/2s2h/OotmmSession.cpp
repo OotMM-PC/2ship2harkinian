@@ -314,7 +314,15 @@ int DamageMultiplier(const std::string& value) {
     return value == "ohko" ? 8 : 0;
 }
 
+void DefaultCVar(const char* name, int32_t value) {
+    if (CVarGet(name) == nullptr) {
+        CVarSetInteger(name, value);
+    }
+}
+
 void ApplyEnhancements() {
+    DefaultCVar("gEnhancements.Dialogue.FastText", 1);
+    DefaultCVar("gEnhancements.Graphics.BowReticle", 1);
     CVarSetInteger("gCheats.HookshotAnywhere",
                    sGameState.GetStringSetting("hookshotAnywhereMm", "off") != "off" ? 1 : 0);
     CVarSetInteger("gCheats.ClimbAnywhere",
