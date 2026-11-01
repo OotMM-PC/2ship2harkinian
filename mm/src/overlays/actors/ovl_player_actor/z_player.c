@@ -542,7 +542,8 @@ AdjLightSettings D_80862B50;         // backup of lay->envCtx.adjLightSettings
 s32 D_80862B6C;                      // this->skelAnime.movementFlags // sPlayerSkelMoveFlags?
 
 bool func_8082DA90(PlayState* play) {
-    return (play->transitionTrigger != TRANS_TRIGGER_OFF) || (play->transitionMode != TRANS_MODE_OFF);
+    return (play->transitionTrigger != TRANS_TRIGGER_OFF) ||
+           ((play->transitionMode != TRANS_MODE_OFF) && !OotmmSession_BoolSetting("voidWarpMm"));
 }
 
 void Player_StopHorizontalMovement(Player* this) {
