@@ -8,6 +8,7 @@
 
 #include "OotmmItemPresentation.h"
 #include "build.h"
+#include "global.h"
 
 #include <libultraship/bridge/GameIpcSession.h>
 
@@ -45,6 +46,9 @@ void OotmmIpc_Pump() {
         gOotmmPvpEnabled = sSettings.Pvp ? 1 : 0;
         gOotmmShowNames = sSettings.ShowNames ? 1 : 0;
         sSession.AcknowledgeSettings(sSettings.Revision);
+    }
+    if (sSettings.ZTargetHold >= 0 && gSaveContext.options.zTargetSetting != sSettings.ZTargetHold) {
+        gSaveContext.options.zTargetSetting = static_cast<u8>(sSettings.ZTargetHold);
     }
     std::string response;
     while (sSession.TryReceive(response)) {
