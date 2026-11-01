@@ -6,6 +6,7 @@
 
 #include "z_en_warp_uzu.h"
 #include "objects/object_warp_uzu/object_warp_uzu.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -102,6 +103,13 @@ void func_80A66278(EnWarpUzu* this, PlayState* play) {
 }
 
 void func_80A66384(EnWarpUzu* this, PlayState* play) {
+    if (OotmmSession_BoolSetting("erIndoorsTelescopes")) {
+        play->nextEntrance = ENTRANCE(PIRATES_FORTRESS, 10);
+        play->transitionTrigger = TRANS_TRIGGER_START;
+        play->transitionType = TRANS_TYPE_FADE_BLACK;
+        this->actionFunc = EnWarpUzu_DoNothing;
+        return;
+    }
     play->nextEntrance = ENTRANCE(PIRATES_FORTRESS, 10);
     gSaveContext.respawn[RESPAWN_MODE_DOWN].entrance = play->nextEntrance;
     func_80169EFC(play);

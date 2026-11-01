@@ -9571,8 +9571,13 @@ void func_8083A98C(Actor* thisx, PlayState* play2) {
                 gSaveContext.respawn[RESPAWN_MODE_DOWN].entrance = entrance;
             }
 
-            func_80169EFC(play);
-            gSaveContext.respawnFlag = -2;
+            if (OotmmSession_BoolSetting("erIndoorsTelescopes")) {
+                play->nextEntrance = gSaveContext.respawn[RESPAWN_MODE_DOWN].entrance;
+                play->transitionTrigger = TRANS_TRIGGER_START;
+            } else {
+                func_80169EFC(play);
+                gSaveContext.respawnFlag = -2;
+            }
             play->transitionType = TRANS_TYPE_CIRCLE;
         }
     }

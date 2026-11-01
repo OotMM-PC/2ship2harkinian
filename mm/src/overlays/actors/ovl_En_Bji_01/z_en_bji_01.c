@@ -6,6 +6,7 @@
 
 #include "z_en_bji_01.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -341,6 +342,13 @@ void EnBji01_DialogueHandler(EnBji01* this, PlayState* play) {
 }
 
 void func_809CD634(EnBji01* this, PlayState* play) {
+    if (OotmmSession_BoolSetting("erIndoorsTelescopes")) {
+        play->nextEntrance = ENTRANCE(TERMINA_FIELD, 10);
+        play->transitionTrigger = TRANS_TRIGGER_START;
+        play->transitionType = TRANS_TYPE_FADE_BLACK;
+        this->actionFunc = EnBji01_DoNothing;
+        return;
+    }
     AudioSfx_MuteBanks((1 << BANK_PLAYER) | (1 << BANK_ITEM) | (1 << BANK_ENV) | (1 << BANK_ENEMY) |
                        (1 << BANK_OCARINA) | (1 << BANK_VOICE));
     SEQCMD_DISABLE_PLAY_SEQUENCES(true);

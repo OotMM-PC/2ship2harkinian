@@ -7,6 +7,7 @@
 #include "z_obj_nozoki.h"
 #include "objects/object_secom_obj/object_secom_obj.h"
 #include "objects/object_gi_mssa/object_gi_mssa.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -443,6 +444,9 @@ void func_80BA3344(ObjNozoki* this, PlayState* play) {
     } else if ((this->dyna.actor.textId == 0) || Actor_TextboxIsClosing(&this->dyna.actor, play)) {
         play->nextEntrance = ENTRANCE(CURIOSITY_SHOP, 2);
         play->transitionTrigger = TRANS_TRIGGER_START;
+        if (OotmmSession_BoolSetting("erIndoorsTelescopes")) {
+            play->transitionType = TRANS_TYPE_FADE_BLACK;
+        }
     }
 }
 
