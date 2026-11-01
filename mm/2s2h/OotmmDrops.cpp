@@ -16,6 +16,7 @@ extern "C" {
 #include "variables.h"
 
 extern PlayState* gPlayState;
+void func_800A6A40(EnItem00* item, PlayState* play);
 }
 
 namespace {
@@ -28,6 +29,7 @@ struct Drop {
     std::string DrawItemId;
     std::string DrawItemName;
     int CollectibleFlag = -1;
+    bool Collected = false;
 };
 
 void PickDisguise(std::string& drawItemId, std::string& drawItemName) {
@@ -79,6 +81,24 @@ extern "C" void OotmmDrops_DrawActor(Actor* actor, PlayState* play) {
 }
 
 namespace {
+
+bool FloatAboveHead(EnItem00* item, Drop& drop) {
+    if (!Ship::OotmmItemCatalog::IsFast(drop.ItemId)) {
+        return false;
+    }
+    drop.Collected = true;
+    drop.DrawItemId = drop.ItemId;
+    drop.DrawItemName = drop.ItemName;
+    item->unk152 = 15;
+    item->unk14C = 35;
+    item->getItemId = GI_NONE;
+    item->actor.shape.rot.z = 0;
+    item->actor.speed = 0.0f;
+    item->actor.velocity.y = 0.0f;
+    item->actor.gravity = 0.0f;
+    item->actionFunc = func_800A6A40;
+    return true;
+}
 
 void Track(Actor* item, Drop drop) {
     item->draw = OotmmDrops_DrawActor;
@@ -159,9 +179,11 @@ void OotmmDrops_Init() {
                 Flags_SetCollectible(gPlayState, it->second.CollectibleFlag);
             }
             Present(it->second);
-            Actor_Kill(&item->actor);
-            sDrops.erase(it);
             *should = false;
+            if (!FloatAboveHead(item, it->second)) {
+                Actor_Kill(&item->actor);
+                sDrops.erase(it);
+            }
         }
     });
 
@@ -174,7 +196,9 @@ void OotmmDrops_Init() {
              actor = actor->next) {
             const auto it = sDrops.find(actor);
             if (it != sDrops.end()) {
-                reinterpret_cast<EnItem00*>(actor)->unk152 = kDespawnRefresh;
+                if (!it->second.Collected) {
+                    reinterpret_cast<EnItem00*>(actor)->unk152 = kDespawnRefresh;
+                }
                 alive.emplace(actor, std::move(it->second));
             }
         }
