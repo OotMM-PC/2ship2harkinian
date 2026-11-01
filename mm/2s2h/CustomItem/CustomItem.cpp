@@ -147,7 +147,9 @@ void CustomItem00_Update(Actor* actor, PlayState* play) {
                 enItem00->actionFunc(enItem00, play);
                 CUSTOM_ITEM_FLAGS |= CustomItem::CALLED_ACTION;
             }
-            Audio_PlaySfx(NA_SE_SY_GET_ITEM);
+            if (!(CUSTOM_ITEM_FLAGS & CustomItem::QUIET_PICKUP)) {
+                Audio_PlaySfx(NA_SE_SY_GET_ITEM);
+            }
             // Set the unk152 to 15, this indicates the item has been picked up and will start the overhead animation
             enItem00->unk152 = 15;
             CUSTOM_ITEM_FLAGS |= CustomItem::STOP_BOBBING;

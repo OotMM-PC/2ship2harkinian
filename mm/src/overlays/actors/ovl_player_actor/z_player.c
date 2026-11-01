@@ -49,6 +49,7 @@
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmItemPresentation.h"
 #include "2s2h/OotmmSpinUpgrade.h"
 #include "2s2h/OotmmCustomItems.h"
 #include "2s2h/OotmmCustomItemsPlayer.h"
@@ -14971,7 +14972,9 @@ s32 func_808482E0(PlayState* play, Player* this) {
         Message_StartTextbox(play, giEntry->textId, &this->actor);
         Item_Give(play, giEntry->itemId);
 
-        if ((this->getItemId >= GI_MASK_DEKU) && (this->getItemId <= GI_MASK_KAFEIS_MASK)) {
+        if (this->getItemId == GI_SHIP) {
+            OotmmItemPresentation_PlayGetItemFanfare();
+        } else if ((this->getItemId >= GI_MASK_DEKU) && (this->getItemId <= GI_MASK_KAFEIS_MASK)) {
             Audio_PlayFanfare(NA_BGM_GET_NEW_MASK);
         } else if (((this->getItemId >= GI_RUPEE_GREEN) && (this->getItemId <= GI_RUPEE_10)) ||
                    (this->getItemId == GI_RECOVERY_HEART)) {
