@@ -933,6 +933,10 @@ void EnDoor_Draw(Actor* thisx, PlayState* play) {
             }
         }
         if (OotmmRustyDoorLocked(play, &this->knobDoor.dyna.actor)) {
+            s16 yaw = Math_Vec3f_Yaw(&play->view.eye, &this->knobDoor.dyna.actor.world.pos);
+            if (ABS((s16)(this->knobDoor.dyna.actor.shape.rot.y - yaw)) < 0x4000) {
+                Matrix_RotateYF(M_PIf, MTXMODE_APPLY);
+            }
             OotmmRustyDoorDrawLock(play);
         } else if (this->lockTimer) {
             Actor_DrawDoorLock(play, this->lockTimer, DOORLOCK_NORMAL);

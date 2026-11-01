@@ -200,6 +200,7 @@ extern "C" void OotmmRustyDoorDrawLock(PlayState* play) {
     f32 chainRotZ = 0.0f;
 
     OPEN_DISPS(play->state.gfxCtx);
+    gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 140, 64, 255);
     Matrix_Translate(0.0f, 5000.0f, 500.0f, MTXMODE_APPLY);
     Matrix_Get(&base);
     for (s32 i = 0; i < 4; i++) {
