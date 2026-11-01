@@ -5,6 +5,7 @@
 #include "OotmmIpc.h"
 #include "OotmmCustomEquipment.h"
 #include "OotmmFaroresWind.h"
+#include "OotmmDungeonRespawn.h"
 #include "OotmmSession.h"
 
 #include <algorithm>
@@ -579,6 +580,7 @@ extern "C" void OotmmCustomItems_PlaceFaroresWind(PlayState* play) {
     point.data = 40;
 
     OotmmFaroresWind_RespawnTop() = gSaveContext.respawn[RESPAWN_MODE_TOP];
+    OotmmDungeonRespawn_SaveForFaroresWind();
 
     SpawnFaroresWindMarker(play);
 }
@@ -599,6 +601,7 @@ extern "C" void OotmmCustomItems_WarpToFaroresWind(PlayState* play) {
     if (play == nullptr || point.data <= 0) {
         return;
     }
+    OotmmDungeonRespawn_RestoreForFaroresWind();
     if (OotmmFaroresWind_IsCross(point)) {
         OotmmFaroresWind_BeginCrossWarp();
         return;

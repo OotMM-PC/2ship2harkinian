@@ -2,6 +2,7 @@
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/SaveManager/SaveManager.h"
+#include "OotmmDungeonRespawn.h"
 #include "OotmmSession.h"
 
 #include <spdlog/spdlog.h>
@@ -100,6 +101,7 @@ int AgeForKey(std::string_view key) {
 }
 
 void ApplyArrival() {
+    OotmmDungeonRespawn_RestoreForFaroresWind();
     const auto& point = sPoints[CurrentAge()];
     gSaveContext.respawnFlag = 8;
     gSaveContext.respawn[RESPAWN_MODE_HUMAN] = point;

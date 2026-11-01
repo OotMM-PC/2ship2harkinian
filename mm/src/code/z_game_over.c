@@ -8,6 +8,7 @@
 #include "overlays/kaleido_scope/ovl_kaleido_scope/z_kaleido_scope.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 #include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmDungeonRespawn.h"
 
 void GameOver_Init(PlayState* play) {
     play->gameOverCtx.state = GAMEOVER_INACTIVE;
@@ -105,6 +106,7 @@ void GameOver_Update(PlayState* play) {
                     gSaveContext.save.playerForm = PLAYER_FORM_HUMAN;
                     gSaveContext.save.equippedMask = PLAYER_MASK_NONE;
                 }
+                OotmmDungeonRespawn_RedirectRespawn(play);
                 Rumble_StateReset();
             }
             break;

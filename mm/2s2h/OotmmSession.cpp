@@ -17,6 +17,7 @@
 #include "OotmmCsmc.h"
 #include "OotmmDrops.h"
 #include "OotmmFaroresWind.h"
+#include "OotmmDungeonRespawn.h"
 #include "OotmmXflags.h"
 #include "OotmmDebugChecks.h"
 #include "OotmmIpc.h"
@@ -646,6 +647,13 @@ void BootIntoGame(GameState* gameState) {
             target = *spawn;
             gSaveContext.save.entrance = *spawn;
         }
+    } else if (bootEntrance == kOotmmDungeonRespawnEntrance) {
+        if (const auto arrival = OotmmDungeonRespawn_PrepareArrival(); arrival.has_value()) {
+            target = *arrival;
+            gSaveContext.save.entrance = *arrival;
+        } else {
+            SPDLOG_ERROR("[OoTMM] Dungeon entrance arrival without an MM dungeon entrance");
+        }
     } else if (bootEntrance == kOotmmFwCrossEntrance) {
         if (const auto arrival = OotmmFaroresWind_PrepareArrival(static_cast<int32_t>(slot)); arrival.has_value()) {
             target = *arrival;
@@ -786,6 +794,7 @@ void OotmmSession_Init() {
         OotmmScales_Init();
         OotmmStrength_Init();
         OotmmFaroresWind_Init();
+        OotmmDungeonRespawn_Init();
         OotmmAdultLink_Init();
         OotmmPresence_Init();
         OotmmDeathLink_Init();
@@ -939,6 +948,7 @@ extern "C" int32_t OotmmSession_WallmasterTakePlayer(PlayState* play, Actor* wal
     if (source == 0 || sGameState.FindEntrance(Ship::OotmmGame::Mm, source) == nullptr) {
         return 0;
     }
+    OotmmDungeonRespawn_Clear();
     sPendingWallmasterSource = source;
     sLastResolvedEntrance.reset();
     play->nextEntrance = gSaveContext.save.entrance;

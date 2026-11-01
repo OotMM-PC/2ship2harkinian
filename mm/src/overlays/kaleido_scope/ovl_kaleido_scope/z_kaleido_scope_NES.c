@@ -28,6 +28,7 @@
 #include "2s2h_assets.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmDungeonRespawn.h"
 
 #include "2s2h/Enhancements/Songs/Songs.h"
 #include <libultraship/bridge/consolevariablebridge.h>
@@ -3987,6 +3988,7 @@ void KaleidoScope_Update(PlayState* play) {
                         gSaveContext.magicFillTarget = gSaveContext.save.saveInfo.playerData.magic;
                         gSaveContext.save.saveInfo.playerData.magicLevel = 0;
                         gSaveContext.save.saveInfo.playerData.magic = 0;
+                        OotmmDungeonRespawn_RedirectRespawn(play);
                     } else { // PAUSE_PROMPT_NO
                         STOP_GAMESTATE(&play->state);
                         SET_NEXT_GAMESTATE(&play->state, TitleSetup_Init, sizeof(TitleSetupState));
