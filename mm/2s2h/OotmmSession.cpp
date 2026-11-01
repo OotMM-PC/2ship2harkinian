@@ -206,6 +206,27 @@ std::optional<uint32_t> CurrentGrottoExitId() {
     }
 }
 
+uint32_t OverrideSource(uint32_t entrance) {
+    uint32_t key = entrance >> 9;
+    switch (key) {
+        case ENTR_SCENE_SOUTHERN_SWAMP_CLEARED:
+            key = ENTR_SCENE_SOUTHERN_SWAMP_POISONED;
+            break;
+        case ENTR_SCENE_MOUNTAIN_VILLAGE_SPRING:
+            key = ENTR_SCENE_MOUNTAIN_VILLAGE_WINTER;
+            break;
+        case ENTR_SCENE_GORON_VILLAGE_SPRING:
+            key = ENTR_SCENE_GORON_VILLAGE_WINTER;
+            break;
+        case ENTR_SCENE_PATH_TO_GORON_VILLAGE_SPRING:
+            key = ENTR_SCENE_PATH_TO_GORON_VILLAGE_WINTER;
+            break;
+        default:
+            return entrance;
+    }
+    return (key << 9) | (entrance & 0x1FF);
+}
+
 std::optional<uint32_t> ExtendedEntranceSource() {
     if (gPlayState == nullptr) {
         return std::nullopt;
@@ -538,7 +559,7 @@ void UpdateEntranceTransition() {
         !extendedSource.has_value()) {
         return;
     }
-    const uint32_t source = extendedSource.value_or(nextEntrance);
+    const uint32_t source = extendedSource.value_or(OverrideSource(nextEntrance));
     if (sLastResolvedEntrance.has_value() && source == *sLastResolvedEntrance) {
         return;
     }
