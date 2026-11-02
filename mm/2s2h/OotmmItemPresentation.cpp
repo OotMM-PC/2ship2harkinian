@@ -206,6 +206,12 @@ void GivePresentation(Actor* actor, PlayState* play) {
         sPresentationOrder.pop_front();
     }
 
+    if (presentation->Background && Ship::OotmmItemCatalog::IsFast(presentation->ItemId)) {
+        CUSTOM_ITEM_FLAGS |= CustomItem::QUIET_PICKUP;
+        PlayItemFanfare(*presentation, true);
+        return;
+    }
+
     const std::string message = BuildMessage(*presentation);
     CustomMessage::Entry entry = { .textboxType = 2, .msg = message };
     if (CUSTOM_ITEM_FLAGS & CustomItem::GIVE_ITEM_CUTSCENE) {
@@ -233,13 +239,18 @@ extern "C" void OotmmItemPresentation_PlayGetItemFanfare(void) {
 }
 
 void OotmmItemPresentation_Queue(Ship::GameIpcItemPresentation presentation) {
+    const bool background = presentation.Background;
+    if (background && (Ship::OotmmItemCatalog::IsNothing(presentation.ItemId) ||
+                       (presentation.Quiet && !Ship::OotmmItemCatalog::IsFast(presentation.ItemId)))) {
+        return;
+    }
     const int16_t id = static_cast<int16_t>(sNextPresentation);
     sNextPresentation =
         sNextPresentation == std::numeric_limits<int16_t>::max() ? 1 : sNextPresentation + 1;
     sPresentations[id] = std::move(presentation);
     sPendingPresentations.emplace(id);
     GameInteractor::Instance->events.emplace_back(GIEventGiveItem{
-        .showGetItemCutscene = true,
+        .showGetItemCutscene = !background,
         .param = id,
         .giveItem = GivePresentation,
         .drawItem = DrawPresentation,
