@@ -299,10 +299,15 @@ extern "C" void OotmmPuppet_PostLimbDraw(PlayState* play, s32 limbIndex, Gfx** d
         gPuppetForm == PLAYER_FORM_HUMAN && gPuppetShield != PLAYER_SHIELD_NONE &&
         (gPuppetSheathType == PLAYER_MODELTYPE_SHEATH_14 || gPuppetSheathType == PLAYER_MODELTYPE_SHEATH_15)) {
         Gfx* shield = gPuppetDekuShield ? OotmmEquipment_DekuShieldBackDList() : NULL;
-        OPEN_DISPS(play->state.gfxCtx);
-        gSPDisplayList(POLY_OPA_DISP++,
-                       shield != NULL ? shield : gPlayerShields[2 * ((gPuppetShield - 1) ^ 0)]);
-        CLOSE_DISPS(play->state.gfxCtx);
+        if (shield == NULL) {
+            const char* native = reinterpret_cast<const char*>(gPlayerShields[2 * ((gPuppetShield - 1) ^ 0)]);
+            shield = PuppetLoadGfx(native + 7);
+        }
+        if (shield != NULL) {
+            OPEN_DISPS(play->state.gfxCtx);
+            gSPDisplayList(POLY_OPA_DISP++, shield);
+            CLOSE_DISPS(play->state.gfxCtx);
+        }
     }
     // Cross-game masks come from their own resource path, not MM's mask table.
     if (limbIndex == PLAYER_LIMB_HEAD && gPuppetCustomMask != 0) {
@@ -523,6 +528,9 @@ void PuppetDrawFunc(Actor* actor, PlayState* play) {
     gPuppetDekuShield = state->dekuShield;
     gPuppetCustomHand[0] = state->customHand[0];
     gPuppetCustomHand[1] = state->customHand[1];
+    if (state->form == PLAYER_FORM_HUMAN && state->humanModel == 0) {
+        OotmmEquipment_UpdatePuppetTunicTint(state->playerId, state->tunic);
+    }
     Player_DrawImpl(play, state->skelAnime.skeleton, state->skelAnime.jointTable, state->skelAnime.dListCount, 0,
                     (PlayerTransformation)state->form, state->boots, 0, OotmmPuppet_OverrideLimbDraw,
                     OotmmPuppet_PostLimbDraw, actor);

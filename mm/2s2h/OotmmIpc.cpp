@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <utility>
 
+extern "C" void OotmmEquipment_ResetPuppetTunicTint(int32_t playerId);
 extern "C" void OotmmPresence_RefreshPuppetModel(uint16_t playerId);
 extern "C" void gfx_texture_cache_clear();
 
@@ -62,6 +63,7 @@ void MountNextModelArchive() {
     resources->UnloadResources(std::string(mask));
     resources->UnloadResources("alt/" + std::string(mask));
     gfx_texture_cache_clear();
+    OotmmEquipment_ResetPuppetTunicTint(player);
     OotmmPresence_RefreshPuppetModel(static_cast<uint16_t>(player));
     sMountEnd = Clock::now();
     sMountMs = std::chrono::duration_cast<std::chrono::milliseconds>(sMountEnd - start).count();

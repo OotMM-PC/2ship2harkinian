@@ -26,6 +26,8 @@ void OotmmEquipment_GetTunicColor(uint8_t* r, uint8_t* g, uint8_t* b);
 void OotmmEquipment_TunicColorOf(int32_t tunic, uint8_t* r, uint8_t* g, uint8_t* b);
 void OotmmEquipment_DrawBootsOf(struct PlayState* play, int32_t boots);
 void OotmmEquipment_UpdateTunicTint(void);
+void OotmmEquipment_UpdatePuppetTunicTint(int32_t playerId, int32_t tunic);
+void OotmmEquipment_ResetPuppetTunicTint(int32_t playerId);
 
 #ifdef __cplusplus
 }

@@ -11,6 +11,8 @@
 #include "OotmmCustomEquipment.h"
 #include "OotmmSession.h"
 
+#include <stdio.h>
+
 Gfx* ResourceMgr_LoadGfxByName(const char* path);
 uint8_t ResourceMgr_FileExists(const char* path);
 void ResourceMgr_PatchGfxByName(const char* path, const char* patchName, int index, Gfx instruction);
@@ -284,14 +286,48 @@ static const TunicPatchSlot sTunicPatchSlots[] = {
     { "objects/object_link_child/gLinkHumanTorsoDL", "ootmmTunic", 5 },
 };
 
-static int TunicSlotPatchable(const TunicPatchSlot* slot) {
-    Gfx* dl = ResourceMgr_LoadGfxByName(slot->path);
-    size_t count = ResourceMgr_GetGfxCountByName(slot->path);
+static int TunicPathPatchable(const char* path, int index) {
+    Gfx* dl = ResourceMgr_LoadGfxByName(path);
+    size_t count = ResourceMgr_GetGfxCountByName(path);
 
-    if (dl == NULL || (size_t)slot->index >= count) {
+    if (dl == NULL || (size_t)index >= count) {
         return 0;
     }
-    return (dl[slot->index].words.w0 >> 24) == G_SETPRIMCOLOR;
+    return (dl[index].words.w0 >> 24) == G_SETPRIMCOLOR;
+}
+
+static int TunicSlotPatchable(const TunicPatchSlot* slot) {
+    return TunicPathPatchable(slot->path, slot->index);
+}
+
+static int16_t sPuppetAppliedTunic[256];
+
+void OotmmEquipment_ResetPuppetTunicTint(int32_t playerId) {
+    sPuppetAppliedTunic[playerId & 0xFF] = 0;
+}
+
+void OotmmEquipment_UpdatePuppetTunicTint(int32_t playerId, int32_t tunic) {
+    char path[96];
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    size_t i;
+
+    if (sPuppetAppliedTunic[playerId & 0xFF] == tunic + 1) {
+        return;
+    }
+    sPuppetAppliedTunic[playerId & 0xFF] = (int16_t)(tunic + 1);
+    OotmmEquipment_TunicColorOf(tunic, &r, &g, &b);
+    {
+        Gfx tint[] = { gsDPSetPrimColor(0, 0, r, g, b, 255) };
+
+        for (i = 0; i < ARRAY_COUNT(sTunicPatchSlots); i++) {
+            snprintf(path, sizeof(path), "p%02xobjs/%s", playerId & 0xFF, sTunicPatchSlots[i].path + 8);
+            if (ResourceMgr_FileExists(path) && TunicPathPatchable(path, sTunicPatchSlots[i].index)) {
+                ResourceMgr_PatchGfxByName(path, sTunicPatchSlots[i].patchName, sTunicPatchSlots[i].index, tint[0]);
+            }
+        }
+    }
 }
 
 void OotmmEquipment_UpdateTunicTint(void) {
