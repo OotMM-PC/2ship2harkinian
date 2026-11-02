@@ -7,6 +7,7 @@
 #include "z_elf_msg6.h"
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -412,6 +413,10 @@ void func_80BA21C4(ElfMsg6* this, PlayState* play) {
 
 void ElfMsg6_Update(Actor* thisx, PlayState* play) {
     ElfMsg6* this = (ElfMsg6*)thisx;
+
+    if (OotmmSession_IsActive() && !((play->sceneId == SCENE_00KEIKOKU) && (thisx->params == 0xE05))) {
+        return;
+    }
 
     this->actionFunc(this, play);
 }
