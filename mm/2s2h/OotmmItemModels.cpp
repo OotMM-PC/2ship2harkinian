@@ -1135,6 +1135,8 @@ std::optional<ForeignModelKind> LocalRenderKind(Ship::OotmmRenderKind kind) {
 #pragma GCC diagnostic pop
 #endif
 
+bool DrawKeyRing(PlayState* play, std::string_view id);
+
 bool DrawCatalogRecipe(PlayState* play, const std::string& itemId, const std::string& itemName) {
     const Ship::OotmmRenderRecipe* recipe = Ship::OotmmItemRenderCatalog::Find(itemId, itemName);
     if (recipe == nullptr) {
@@ -1193,7 +1195,7 @@ bool DrawCatalogRecipe(PlayState* play, const std::string& itemId, const std::st
         return true;
     }
     if (recipe->Kind == Ship::OotmmRenderKind::KEY_RING) {
-        return DrawOpaPaths(play, { paths[0].c_str(), paths[1].c_str(), paths[2].c_str() });
+        return DrawKeyRing(play, itemId);
     }
     if (recipe->Kind == Ship::OotmmRenderKind::RUSTY_KEY ||
         recipe->Kind == Ship::OotmmRenderKind::SKELETON_KEY) {
@@ -1239,25 +1241,43 @@ bool DrawForeignBombchu(PlayState* play) {
     return true;
 }
 
-const char* KeyRingTheme(std::string_view id) {
-    if (id.ends_with("_FIRE") || id.ends_with("_SH")) return "FireTemple";
-    if (id.ends_with("_WATER") || id.ends_with("_GB")) return "WaterTemple";
-    if (id.ends_with("_SPIRIT")) return "SpiritTemple";
-    if (id.ends_with("_SHADOW") || id.ends_with("_ST")) return "ShadowTemple";
-    if (id.ends_with("_BOTW")) return "BottomoftheWell";
-    if (id.ends_with("_GTG")) return "GerudoTrainingGround";
-    if (id.ends_with("_GF")) return "GerudoFortress";
-    if (id.ends_with("_GANON")) return "GanonsCastle";
-    if (id.ends_with("_TCG")) return "TreasureChestGame";
-    return "ForestTemple";
+struct KeyRingStyle {
+    const char* Theme;
+    uint8_t R, G, B;
+};
+
+KeyRingStyle KeyRingTheme(std::string_view id) {
+    if (id.ends_with("_FIRE") || id.ends_with("_SH")) return { "FireTemple", 237, 95, 95 };
+    if (id.ends_with("_WATER") || id.ends_with("_GB")) return { "WaterTemple", 85, 180, 223 };
+    if (id.ends_with("_SPIRIT")) return { "SpiritTemple", 222, 158, 47 };
+    if (id.ends_with("_SHADOW") || id.ends_with("_ST")) return { "ShadowTemple", 126, 16, 177 };
+    if (id.ends_with("_BOTW")) return { "BottomoftheWell", 227, 110, 255 };
+    if (id.ends_with("_GTG")) return { "GerudoTrainingGround", 221, 212, 60 };
+    if (id.ends_with("_GF")) return { "GerudoFortress", 255, 255, 255 };
+    if (id.ends_with("_GANON")) return { "GanonsCastle", 80, 80, 80 };
+    if (id.ends_with("_TCG")) return { "TreasureChestGame", 255, 255, 255 };
+    return { "ForestTemple", 4, 195, 46 };
 }
 
 bool DrawKeyRing(PlayState* play, std::string_view id) {
-    const std::string theme = KeyRingTheme(id);
+    const KeyRingStyle style = KeyRingTheme(id);
     const std::string root = "__OTR__objects/ot_obj_keyring/gKeyring";
-    const std::string icon = root + "Icon" + theme + "DL";
-    const std::string keys = root + "Keys" + theme + "DL";
-    return DrawOpaPaths(play, { "__OTR__objects/ot_obj_keyring/gKeyringRingDL", keys.c_str(), icon.c_str() });
+    Gfx* ring = LoadOptionalGfx((root + "RingDL").c_str());
+    Gfx* keys = LoadOptionalGfx((root + "Keys" + style.Theme + "DL").c_str());
+    Gfx* icon = LoadOptionalGfx((root + "Icon" + style.Theme + "DL").c_str());
+    if (ring == nullptr || keys == nullptr || icon == nullptr) {
+        return false;
+    }
+    GraphicsContext* gfxCtx = play->state.gfxCtx;
+    Gfx_SetupDL25_Opa(gfxCtx);
+    MATRIX_FINALIZE_AND_LOAD(gfxCtx->polyOpa.p++, gfxCtx);
+    gDPSetPrimColor(gfxCtx->polyOpa.p++, 0, 0, 255, 255, 255, 255);
+    gDPSetEnvColor(gfxCtx->polyOpa.p++, 255, 255, 255, 255);
+    gSPDisplayList(gfxCtx->polyOpa.p++, keys);
+    gSPDisplayList(gfxCtx->polyOpa.p++, ring);
+    gDPSetEnvColor(gfxCtx->polyOpa.p++, style.R, style.G, style.B, 255);
+    gSPDisplayList(gfxCtx->polyOpa.p++, icon);
+    return true;
 }
 
 bool DrawSkeletonKey(PlayState* play) {
