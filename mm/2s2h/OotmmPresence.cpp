@@ -172,11 +172,14 @@ const char* PuppetNamespaced(char* buf, size_t cap, uint16_t playerId, const cha
 }
 
 Gfx* PuppetLoadGfx(const char* name) {
+    if (std::strncmp(name, "alt/", 4) == 0) {
+        name += 4;
+    }
     char ns[128];
     if (PuppetNamespaced(ns, sizeof(ns), static_cast<uint16_t>(gPuppetPlayerId), name) != nullptr) {
         return ResourceMgr_LoadGfxByName(ns + 7);
     }
-    return ResourceMgr_LoadGfxByName(name);
+    return ResourceMgr_FileExists(name) ? ResourceMgr_LoadGfxByName(name) : nullptr;
 }
 
 // The human form draws whichever model the sender reported; the sender's synced pNN
@@ -258,8 +261,12 @@ extern "C" s32 OotmmPuppet_OverrideLimbDraw(PlayState* play, s32 limbIndex, Gfx*
         } else if (limbIndex == PLAYER_LIMB_WAIST) {
             name = gPuppetEquipDl[3];
         }
-        if (name != NULL && name[0] != '\0') {
-            *dList = (name[0] == '-') ? NULL : PuppetLoadGfx(name);
+        if (name != NULL && name[0] == '-') {
+            *dList = NULL;
+        } else if (name != NULL && name[0] != '\0') {
+            if (Gfx* equipped = PuppetLoadGfx(name); equipped != NULL) {
+                *dList = equipped;
+            }
         }
         const s32 which = limbIndex == PLAYER_LIMB_LEFT_HAND    ? gPuppetCustomHand[0]
                           : limbIndex == PLAYER_LIMB_RIGHT_HAND ? gPuppetCustomHand[1]
@@ -644,6 +651,9 @@ void PresenceTick() {
         }
         if (std::strncmp(name, "__OTR__", 7) == 0) {
             name += 7;
+        }
+        if (std::strncmp(name, "alt/", 4) == 0) {
+            name += 4;
         }
         return name;
     };
