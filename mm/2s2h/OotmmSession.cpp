@@ -786,6 +786,7 @@ void OotmmSession_Init() {
         OotmmBottles_Init();
         OotmmCsmc_Init();
         OotmmDrops_Init();
+        OotmmIpc_InitHooks();
         OotmmXflags_Init();
         OotmmDebugChecks_Init();
         OotmmSongEvents_Init();

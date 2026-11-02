@@ -6,11 +6,22 @@
 #include <ship/window/Window.h>
 #include <ship/window/gui/Gui.h>
 
+#include "2s2h/GameInteractor/GameInteractor.h"
 #include "OotmmItemPresentation.h"
 #include "build.h"
 #include "global.h"
 
 #include <libultraship/bridge/GameIpcSession.h>
+#include <ship/resource/ResourceManager.h>
+#include <ship/resource/archive/ArchiveManager.h>
+#include <spdlog/spdlog.h>
+
+#include <chrono>
+#include <cstdio>
+#include <utility>
+
+extern "C" void OotmmPresence_RefreshPuppetModel(uint16_t playerId);
+extern "C" void gfx_texture_cache_clear();
 
 namespace {
 
@@ -19,13 +30,49 @@ Ship::GameIpcSettings sSettings;
 Ship::OotmmInventory sInventory;
 uint64_t sSaveRequestId = 0;
 std::optional<uint64_t> sPendingSaveRequest;
+std::vector<std::pair<std::string, int>> sPendingModelArchives;
 
 void SaveSelectionNotice(const std::string& message) {
     Ship::Context::GetInstance()->GetWindow()->GetGui()->GetGameOverlay()->TextDrawNotification(
         8.0f, true, "%s", message.c_str());
 }
 
+void MountNextModelArchive() {
+    using Clock = std::chrono::steady_clock;
+    static Clock::time_point sMountEnd{};
+    static long long sMountMs = -1;
+    if (sMountMs >= 0) {
+        const auto frameMs = std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now() - sMountEnd).count();
+        SPDLOG_INFO("[OoTMM] Model mount took {} ms, next frame {} ms", sMountMs, frameMs);
+        sMountMs = -1;
+    }
+    if (sPendingModelArchives.empty()) {
+        return;
+    }
+    const auto start = Clock::now();
+    const auto [path, player] = sPendingModelArchives.front();
+    sPendingModelArchives.erase(sPendingModelArchives.begin());
+    const auto resources = Ship::Context::GetInstance()->GetResourceManager();
+    if (resources->GetArchiveManager()->AddArchive(path) == nullptr) {
+        SPDLOG_ERROR("[OoTMM] Could not mount model archive {}", path);
+        return;
+    }
+    char mask[16];
+    std::snprintf(mask, sizeof(mask), "p%02xobjs/*", player & 0xFF);
+    resources->UnloadResources(std::string(mask));
+    resources->UnloadResources("alt/" + std::string(mask));
+    gfx_texture_cache_clear();
+    OotmmPresence_RefreshPuppetModel(static_cast<uint16_t>(player));
+    sMountEnd = Clock::now();
+    sMountMs = std::chrono::duration_cast<std::chrono::milliseconds>(sMountEnd - start).count();
+}
+
 } // namespace
+
+void OotmmIpc_InitHooks() {
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateMainStart>(
+        []() { MountNextModelArchive(); });
+}
 
 extern "C" int gOotmmPvpEnabled = 0;
 extern "C" int gOotmmShowNames = 1;
@@ -55,6 +102,10 @@ void OotmmIpc_Pump() {
         auto parsed = nlohmann::json::parse(response, nullptr, false);
         if (parsed.is_object() && parsed.contains("type") && parsed["type"] == "deathLink") {
             OotmmDeathLink_Receive();
+            continue;
+        }
+        if (parsed.is_object() && parsed.contains("type") && parsed["type"] == "mountModelArchive") {
+            sPendingModelArchives.emplace_back(parsed.value("path", ""), parsed.value("player", 0));
             continue;
         }
         if (!parsed.is_object() || !parsed.contains("type") || parsed["type"] != "nativeSaveResult" ||

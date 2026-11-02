@@ -36,6 +36,7 @@ extern Gfx* gPlayerShields[];
 
 Gfx* ResourceMgr_LoadGfxByName(const char* path);
 uint8_t ResourceMgr_FileExists(const char* resName);
+void ResourceMgr_UnregisterSkeleton(SkelAnime* skelAnime);
 
 void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dListCount, s32 lod,
                      PlayerTransformation playerForm, s32 boots, s32 face, OverrideLimbDrawFlex overrideLimbDraw,
@@ -208,6 +209,7 @@ FlexSkeletonHeader* PuppetSkeleton(PuppetState* state, u8 form) {
 }
 
 void PuppetInitSkeleton(PuppetState* state, PlayState* play, u8 form) {
+    ResourceMgr_UnregisterSkeleton(&state->skelAnime);
     if (form >= PLAYER_FORM_MAX) {
         form = PLAYER_FORM_HUMAN;
     }
@@ -582,6 +584,10 @@ void ApplyPoseToPuppet(PuppetSlot& slot, PlayState* play, const Ship::OotmmPlaye
 }
 
 void DropPuppet(PuppetSlot& slot) {
+    if (slot.state != nullptr) {
+        ResourceMgr_UnregisterSkeleton(&slot.state->skelAnime);
+        slot.state->skeletonReady = false;
+    }
     if (slot.actor != nullptr) {
         if (slot.state != nullptr && slot.state->colliderReady && gPlayState != nullptr) {
             Collider_DestroyCylinder(gPlayState, &slot.state->collider);
@@ -763,10 +769,27 @@ void PresenceTick() {
 
 } // namespace
 
+extern "C" void OotmmPresence_RefreshPuppetModel(uint16_t playerId) {
+    const auto it = gPuppets.find(playerId);
+    if (it == gPuppets.end() || it->second.state == nullptr) {
+        return;
+    }
+    PuppetState* state = it->second.state.get();
+    state->skeletonReady = false;
+    if (gPlayState != nullptr && it->second.actor != nullptr && ActorStillSpawned(gPlayState, it->second.actor)) {
+        PuppetInitSkeleton(state, gPlayState, state->form);
+    }
+}
+
 extern "C" void OotmmPresence_Init(void) {
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>([]() { PresenceTick(); });
     // Scene loads destroy every actor; drop the now-dangling puppet pointers with them.
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSceneInit>([](s16, s8) {
+        for (auto& [id, slot] : gPuppets) {
+            if (slot.state != nullptr) {
+                ResourceMgr_UnregisterSkeleton(&slot.state->skelAnime);
+            }
+        }
         gStateByActor.clear();
         gPuppets.clear();
     });

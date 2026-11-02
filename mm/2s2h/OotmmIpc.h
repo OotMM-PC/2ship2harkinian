@@ -9,6 +9,7 @@
 #include <vector>
 
 void OotmmIpc_Init();
+void OotmmIpc_InitHooks();
 void OotmmIpc_Pump();
 void OotmmIpc_Shutdown();
 bool OotmmIpc_SendCrossGameTransition(const Ship::OotmmEntranceMapping& mapping,
