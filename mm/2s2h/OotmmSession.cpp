@@ -1,5 +1,6 @@
 #include "OotmmSession.h"
 #include "OotmmDeathLink.h"
+#include "OotmmItemPage.h"
 #include "SaveManager/SaveManager.h"
 #include "BenGui/Notification.h"
 
@@ -42,6 +43,7 @@
 #include <libultraship/bridge/consolevariablebridge.h>
 #include <optional>
 #include <string>
+#include <utility>
 #include <spdlog/spdlog.h>
 #include <ship/utils/AtomicFile.h>
 #include <ship/window/Window.h>
@@ -54,6 +56,9 @@ extern "C" {
 #include "overlays/gamestates/ovl_file_choose/z_file_select.h"
 extern EffectSsInfo sEffectSsInfo;
 }
+
+extern "C" void CosmeticEditor_SetColor(const char* name, uint8_t r, uint8_t g, uint8_t b);
+extern "C" void CosmeticEditor_RecolorPalette(const char* path, int count, uint32_t defaultColor, uint32_t color);
 
 namespace {
 
@@ -321,6 +326,31 @@ void DefaultCVar(const char* name, int32_t value) {
     }
 }
 
+std::optional<uint32_t> SeedColor(const char* key) {
+    const std::string hex = sGameState.GetStringSetting(std::string("cosmetic.color.") + key, "");
+    if (hex.size() != 7 || hex[0] != '#') {
+        return std::nullopt;
+    }
+    return static_cast<uint32_t>(std::stoul(hex.substr(1), nullptr, 16));
+}
+
+void ApplySeedColors() {
+    static constexpr std::pair<const char*, const char*> kColors[] = {
+        { "mmTunicDeku", "Player.DekuTunic" },
+        { "mmTunicGoron", "Player.GoronTunic" },
+        { "mmTunicZora", "Player.ZoraTunic" },
+        { "dpad", "Buttons.DPad" },
+    };
+    for (const auto& [key, name] : kColors) {
+        if (const auto color = SeedColor(key)) {
+            CosmeticEditor_SetColor(name, *color >> 16, (*color >> 8) & 0xFF, *color & 0xFF);
+        }
+    }
+    if (const auto color = SeedColor("mmTunicFierceDeity")) {
+        CosmeticEditor_RecolorPalette("objects/object_link_boy/object_link_boy_TLUT_008128", 16, 0xFFFFFF, *color);
+    }
+}
+
 void ApplyEnhancements() {
     DefaultCVar("gEnhancements.Dialogue.FastText", 1);
     DefaultCVar("gEnhancements.Graphics.BowReticle", 1);
@@ -340,6 +370,11 @@ void ApplyEnhancements() {
     CVarSetInteger("gCheats.EasyFrameAdvance", 1);
     CVarSetInteger("gEnhancements.Restorations.PauseBufferWindow", 1);
     CVarSetInteger("gEnhancements.Dpad.DpadEquips", 1);
+    CVarSetInteger("gEnhancements.PlayerActions.ArrowCycle", 1);
+    if (sGameState.GetBoolSetting("cosmetic.noLowHealthBeep", false)) {
+        CVarSetInteger("gAudioEditor.LowHpAlarm", 1);
+    }
+    ApplySeedColors();
     CVarSetInteger("gEnhancements.Saving.PauseSave", 1);
     CVarSetInteger("gEnhancements.Cutscenes.SkipIntroSequence", 1);
     CVarSetInteger("gEnhancements.Cutscenes.SkipFirstCycle", 1);
@@ -880,6 +915,17 @@ extern "C" int32_t OotmmSession_TryFastMask(int32_t item) {
     }
     DeleteFormChangeEffects();
     return true;
+}
+
+extern "C" int32_t OotmmSession_SeedColor(const char* key, uint8_t* r, uint8_t* g, uint8_t* b) {
+    const auto color = OotmmSession_IsActive() ? SeedColor(key) : std::nullopt;
+    if (!color) {
+        return 0;
+    }
+    *r = *color >> 16;
+    *g = (*color >> 8) & 0xFF;
+    *b = *color & 0xFF;
+    return 1;
 }
 
 extern "C" int32_t OotmmSession_BoolSetting(const char* key) {

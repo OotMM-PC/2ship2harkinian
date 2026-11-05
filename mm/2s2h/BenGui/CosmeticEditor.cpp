@@ -2,6 +2,9 @@
 #include "CosmeticEditor.h"
 #include "2s2h/ShipInit.hpp"
 
+#include <algorithm>
+#include <string>
+
 std::vector<const char*> cosmeticEditorParentElements;
 
 extern "C" {
@@ -531,6 +534,45 @@ extern "C" Gfx* Gfx_DrawTexRectIA8_DropShadowOffsetOverride(Gfx* pkt, TexturePtr
     return Gfx_DrawTexRectIA8_DropShadowOffset(pkt, texture, textureWidth, textureHeight, rectLeft, rectTop, rectWidth,
                                                rectHeight, dsdx, dtdy, setColor.r, setColor.g, setColor.b, a, masks,
                                                rects);
+}
+
+extern "C" void CosmeticEditor_SetColor(const char* name, uint8_t r, uint8_t g, uint8_t b) {
+    const std::string cvar = std::string("gCosmetic.") + name + ".Color";
+    for (const auto& element : cosmeticEditorElements) {
+        if (cvar != element.colorCvar) {
+            continue;
+        }
+        CVarSetColor(element.colorCvar, { r, g, b, 255 });
+        CVarSetInteger(element.colorChangedCvar, true);
+        ShipInit::Init(element.colorCvar);
+        ShipInit::Init(element.colorChangedCvar);
+        return;
+    }
+}
+
+extern "C" void CosmeticEditor_RecolorPalette(const char* path, int count, uint32_t defaultColor, uint32_t color) {
+    auto res = Ship::Context::GetInstance()->GetResourceManager()->LoadResource(path);
+    if (res == nullptr) {
+        return;
+    }
+    auto data = (uint8_t*)res->GetRawPointer();
+    const float cr = ((color >> 16) & 0xFF) / 255.0f;
+    const float cg = ((color >> 8) & 0xFF) / 255.0f;
+    const float cb = (color & 0xFF) / 255.0f;
+    const float dl = std::max({ ((defaultColor >> 16) & 0xFF) / 255.0f, ((defaultColor >> 8) & 0xFF) / 255.0f,
+                                (defaultColor & 0xFF) / 255.0f });
+    const float boost = std::max({ cr, cg, cb }) / dl;
+    for (int i = 0; i < count; i++) {
+        UnpatchPalette(path, i);
+        const uint16_t col16 = (data[i * 2] << 8) | data[i * 2 + 1];
+        const float pl = std::max({ (col16 >> 11) / 31.0f, ((col16 >> 6) & 0x1F) / 31.0f, ((col16 >> 1) & 0x1F) / 31.0f });
+        const auto channel = [&](float c) {
+            return static_cast<uint8_t>(static_cast<int>(std::clamp(c * pl * boost, 0.0f, 1.0f) * 255.0f) >> 3);
+        };
+        PatchPalette(path, i, channel(cr), channel(cg), channel(cb));
+        data[i * 2 + 1] = (data[i * 2 + 1] & ~1) | (col16 & 1);
+    }
+    gfx_texture_cache_clear();
 }
 
 void CosmeticEditorRandomizeElement(CosmeticEditorElement element) {

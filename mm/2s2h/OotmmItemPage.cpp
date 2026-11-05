@@ -241,6 +241,42 @@ extern "C" void OotmmItemPage_UpdateCursor(PlayState* play) {
     Audio_PlaySfx(NA_SE_SY_DECIDE);
 }
 
+extern "C" void OotmmItemPage_FillDpadDefaults(void) {
+    if (!OotmmSession_IsActive() || gPlayState == nullptr || gPlayState->pauseCtx.state != PAUSE_STATE_OFF ||
+        gSaveContext.gameMode != GAMEMODE_NORMAL) {
+        return;
+    }
+    const struct {
+        int Button;
+        int Slot;
+    } defaults[] = {
+        { EQUIP_SLOT_D_DOWN, SLOT_OCARINA },
+        { EQUIP_SLOT_D_UP, SLOT_MASK_DEKU },
+        { EQUIP_SLOT_D_LEFT, SLOT_MASK_GORON },
+        { EQUIP_SLOT_D_RIGHT, SLOT_MASK_ZORA },
+    };
+    for (const auto& entry : defaults) {
+        const uint8_t item = gSaveContext.save.saveInfo.inventory.items[entry.Slot];
+        if (item == ITEM_NONE || DPAD_GET_CUR_FORM_BTN_ITEM(entry.Button) != ITEM_NONE) {
+            continue;
+        }
+        bool assigned = false;
+        for (int button = EQUIP_SLOT_D_RIGHT; button <= EQUIP_SLOT_D_UP; button++) {
+            assigned |= DPAD_GET_CUR_FORM_BTN_ITEM(button) == item;
+        }
+        for (int form = 0; form < 4; form++) {
+            for (int button = EQUIP_SLOT_C_LEFT; button <= EQUIP_SLOT_C_RIGHT; button++) {
+                assigned |= BUTTON_ITEM_EQUIP(form, button) == item;
+            }
+        }
+        if (!assigned) {
+            DPAD_SET_CUR_FORM_BTN_ITEM(entry.Button, item);
+            DPAD_SET_CUR_FORM_BTN_SLOT(entry.Button, entry.Slot);
+            Interface_Dpad_LoadItemIconImpl(gPlayState, entry.Button);
+        }
+    }
+}
+
 extern "C" void OotmmItemPage_Draw(PlayState* play) {
     PauseContext* pauseCtx = &play->pauseCtx;
     const std::vector<uint8_t> owned = OwnedItems();

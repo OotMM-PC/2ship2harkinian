@@ -1,6 +1,7 @@
 #include <libultraship/bridge/consolevariablebridge.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/ShipInit.hpp"
+#include "2s2h/OotmmSession.h"
 
 extern "C" {
 #include "macros.h"
@@ -52,8 +53,23 @@ static bool IsHoldingMagicBow(Player* player) {
 }
 
 static bool IsAimingBow(Player* player) {
-    return IsHoldingBow(player) && ((player->unk_AA5 == PLAYER_UNKAA5_3) || /* Aiming box in first person */
+    if (OotmmSession_IsActive() && player->heldActor != NULL && player->heldActor->id == ACTOR_EN_ARROW &&
+        (player->heldActor->params < ARROW_TYPE_NORMAL || player->heldActor->params > ARROW_TYPE_LIGHT)) {
+        return false;
+    }
+    return IsHoldingBow(player) &&((player->unk_AA5 == PLAYER_UNKAA5_3) || /* Aiming box in first person */
                                     (player->upperActionFunc == Player_UpperAction_7) /* Arrow pulled back on bow */);
+}
+
+static bool HasMagicForArrow(s16 cost) {
+    Player* player = GET_PLAYER(gPlayState);
+    s16 refund = 0;
+
+    if (player->heldActor != NULL && player->heldActor->id == ACTOR_EN_ARROW &&
+        ARROW_IS_MAGICAL(player->heldActor->params)) {
+        refund = sMagicArrowCosts[ARROW_GET_MAGIC_FROM_TYPE(player->heldActor->params)];
+    }
+    return gSaveContext.save.saveInfo.playerData.magic + refund >= cost;
 }
 
 static bool HasArrowType(PlayerItemAction arrowType) {
@@ -61,11 +77,11 @@ static bool HasArrowType(PlayerItemAction arrowType) {
         case ARROW_NORMAL:
             return true;
         case ARROW_FIRE:
-            return (INV_CONTENT(ITEM_ARROW_FIRE) == ITEM_ARROW_FIRE);
+            return (INV_CONTENT(ITEM_ARROW_FIRE) == ITEM_ARROW_FIRE) && HasMagicForArrow(sMagicArrowCosts[0]);
         case ARROW_ICE:
-            return (INV_CONTENT(ITEM_ARROW_ICE) == ITEM_ARROW_ICE);
+            return (INV_CONTENT(ITEM_ARROW_ICE) == ITEM_ARROW_ICE) && HasMagicForArrow(sMagicArrowCosts[1]);
         case ARROW_LIGHT:
-            return (INV_CONTENT(ITEM_ARROW_LIGHT) == ITEM_ARROW_LIGHT);
+            return (INV_CONTENT(ITEM_ARROW_LIGHT) == ITEM_ARROW_LIGHT) && HasMagicForArrow(sMagicArrowCosts[2]);
         default:
             return false;
     }
@@ -85,17 +101,11 @@ static s32 GetBowItemForArrow(PlayerItemAction arrowType) {
 }
 
 static bool CanCycleArrows() {
-    Player* player = GET_PLAYER(gPlayState);
-
-    // Don't allow cycling during bow minigames in specific scenes
-    if (gSaveContext.minigameStatus == MINIGAME_STATUS_ACTIVE &&
-        (gPlayState->sceneId == SCENE_SYATEKI_MIZU || // Town Shooting Gallery
-         gPlayState->sceneId == SCENE_SYATEKI_MORI || // Swamp Shooting Gallery
-         gPlayState->sceneId == SCENE_20SICHITAI2)) { // Tourist Center boat cruise
+    if (gPlayState->sceneId == SCENE_SYATEKI_MIZU || gPlayState->sceneId == SCENE_SYATEKI_MORI) {
         return false;
     }
 
-    return !gHorseIsMounted && player->rideActor == NULL && INV_CONTENT(SLOT_BOW) == ITEM_BOW &&
+    return INV_CONTENT(SLOT_BOW) == ITEM_BOW &&
            (INV_CONTENT(ITEM_ARROW_FIRE) == ITEM_ARROW_FIRE || INV_CONTENT(ITEM_ARROW_ICE) == ITEM_ARROW_ICE ||
             INV_CONTENT(ITEM_ARROW_LIGHT) == ITEM_ARROW_LIGHT);
 }

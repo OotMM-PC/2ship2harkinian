@@ -14,6 +14,7 @@ int OotmmItemPage_EquipOutlineIndex(uint8_t cButtonSlot);
 void OotmmItemPage_UpdateCursor(struct PlayState* play);
 void OotmmItemPage_Draw(struct PlayState* play);
 void OotmmItemPage_DrawPageIndicator(struct PlayState* play);
+void OotmmItemPage_FillDpadDefaults(void);
 
 #ifdef __cplusplus
 }

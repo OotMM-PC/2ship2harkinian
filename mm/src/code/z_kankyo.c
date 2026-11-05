@@ -1,3 +1,4 @@
+#include "2s2h/OotmmSession.h"
 #include "ultra64.h"
 #include "z64light.h"
 #include "z64math.h"
@@ -2490,7 +2491,11 @@ void Environment_PlaySceneSequence(PlayState* play) {
                 }
             } else if ((CURRENT_TIME >= CLOCK_TIME(6, 0)) && (CURRENT_TIME <= CLOCK_TIME(17, 10))) {
                 if (gSceneSeqState != SCENESEQ_DEFAULT) {
-                    Audio_PlayMorningSceneSequence(play->sceneSequences.seqId, dayMinusOne);
+                    if (OotmmSession_IsActive()) {
+                        Audio_PlaySceneSequence(play->sceneSequences.seqId, dayMinusOne);
+                    } else {
+                        Audio_PlayMorningSceneSequence(play->sceneSequences.seqId, dayMinusOne);
+                    }
                 } else if ((CURRENT_TIME >= CLOCK_TIME(6, 1)) &&
                            (play->sceneSequences.seqId != ((void)0, gSaveContext.seqId))) {
                     Audio_PlaySceneSequence(play->sceneSequences.seqId, dayMinusOne);

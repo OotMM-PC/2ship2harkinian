@@ -5,6 +5,7 @@
 #include "OotmmNpcChecks.h"
 #include "OotmmSession.h"
 #include "OotmmSpecialConds.h"
+#include "OotmmXflags.h"
 
 #include <cctype>
 #include <string>
@@ -24,6 +25,8 @@ namespace {
 constexpr u16 kGossipText = 0x20D0;
 constexpr u16 kRemainsText = 0x1C18;
 constexpr u16 kOathText = 0x2013;
+constexpr s16 kLocationSign = 0x1000;
+constexpr u16 kLocationSignText = kLocationSign | 0x300;
 constexpr s16 kMoonCondSign = 0x1101;
 constexpr u16 kMoonSignText = kMoonCondSign | 0x300;
 constexpr s16 kRemainsTalkParams = 0x18;
@@ -327,6 +330,47 @@ const Actor* TalkingSign() {
     return nullptr;
 }
 
+const char* GenericGrottoName(int grotto) {
+    switch (grotto) {
+        case 0x13: return "Path to Snowhead Generic Grotto";
+        case 0x14: return "Ikana Valley Generic Grotto";
+        case 0x15: return "Zora Cape Generic Grotto";
+        case 0x16: return "Road to Ikana Generic Grotto";
+        case 0x17: return "Great Bay Coast Generic Grotto";
+        case 0x18: return "Ikana Graveyard Generic Grotto";
+        case 0x19: return "Twin Islands Generic Grotto";
+        case 0x1A: return "Termina Field Pillar Generic Grotto";
+        case 0x1B: return "Mountain Village Generic Grotto";
+        case 0x1C: return "Woods of Mystery Generic Grotto";
+        case 0x1D: return "Southern Swamp Generic Grotto";
+        case 0x1E: return "Road to Southern Swamp Generic Grotto";
+        case 0x1F: return "Termina Field Tall Grass Generic Grotto";
+        default: return nullptr;
+    }
+}
+
+std::string LocationName() {
+    const char* name = nullptr;
+    if (gPlayState->sceneId == SCENE_KAKUSIANA) {
+        if (gPlayState->roomCtx.curRoom.num == 0x04) {
+            name = GenericGrottoName(gSaveContext.respawn[RESPAWN_MODE_UNK_3].data & 0x1F);
+        } else if (gPlayState->roomCtx.curRoom.num == 0x0A) {
+            switch (OotmmXflags_LastScene()) {
+                case SCENE_00KEIKOKU: name = "Termina Field Cow Grotto"; break;
+                case SCENE_30GYOSON: name = "Great Bay Coast Cow Grotto"; break;
+            }
+        }
+    }
+    return name != nullptr ? name : "Unknown Location";
+}
+
+void BuildLocationSignText(u16*, bool* loadFromMessageTable) {
+    const Actor* sign = gPlayState != nullptr ? TalkingSign() : nullptr;
+    if (sign != nullptr && sign->params == kLocationSign) {
+        Load(0x01, 0x30, 0xFE, Native(Ship::OotmmHintLayout(LocationName())), loadFromMessageTable);
+    }
+}
+
 void BuildSignText(u16*, bool* loadFromMessageTable) {
     const Actor* sign = gPlayState != nullptr ? TalkingSign() : nullptr;
     if (sign == nullptr || sign->params != kMoonCondSign) {
@@ -338,16 +382,30 @@ void BuildSignText(u16*, bool* loadFromMessageTable) {
     }
 }
 
-void SpawnExtraSigns(s8, s8) {
-    const auto& state = OotmmSession_GetState();
-    if (gPlayState == nullptr || gPlayState->sceneId != SCENE_OKUJOU || state.GetStringSetting("moon") != "custom" ||
-        !state.GetHints().SpecialConds.contains("MOON")) {
-        return;
-    }
+void SpawnSign(float x, float y, float z, s16 yaw, s16 params) {
     if (Object_GetSlot(&gPlayState->objectCtx, OBJECT_KANBAN) < 0) {
         Object_SpawnPersistent(&gPlayState->objectCtx, OBJECT_KANBAN);
     }
-    Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_EN_KANBAN, -120.0f, 20.0f, 150.0f, 0, 0x2800, 0, kMoonCondSign);
+    Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_EN_KANBAN, x, y, z, 0, yaw, 0, params);
+}
+
+void SpawnExtraSigns(s8, s8) {
+    if (gPlayState == nullptr || !OotmmSession_IsActive()) {
+        return;
+    }
+    const auto& state = OotmmSession_GetState();
+    if (gPlayState->sceneId == SCENE_KAKUSIANA && state.GetStringSetting("erGrottos", "none") != "none") {
+        if (gPlayState->roomCtx.curRoom.num == 0x04) {
+            SpawnSign(2330.0f, -5.0f, -40.0f, 0x2000, kLocationSign);
+        } else if (gPlayState->roomCtx.curRoom.num == 0x0A) {
+            SpawnSign(2350.0f, 0.0f, 1200.0f, 0x2000, kLocationSign);
+        }
+    }
+    if (gPlayState->sceneId != SCENE_OKUJOU || state.GetStringSetting("moon") != "custom" ||
+        !state.GetHints().SpecialConds.contains("MOON")) {
+        return;
+    }
+    SpawnSign(-120.0f, 20.0f, 150.0f, 0x2800, kMoonCondSign);
 }
 
 } // namespace
@@ -359,6 +417,7 @@ void OotmmHints_Init() {
     interactor->RegisterGameHookForID<GameInteractor::OnOpenText>(kRemainsText, BuildRemainsText);
     interactor->RegisterGameHookForID<GameInteractor::OnOpenText>(kOathText, BuildOathText);
     interactor->RegisterGameHookForID<GameInteractor::OnOpenText>(kMoonSignText, BuildSignText);
+    interactor->RegisterGameHookForID<GameInteractor::OnOpenText>(kLocationSignText, BuildLocationSignText);
     for (const u16 id : { 0x578, 0x580, 0x582, 0x583, 0x585, 0x586, 0x588, 0x589, 0x58B, 0x58C }) {
         interactor->RegisterGameHookForID<GameInteractor::OnOpenText>(id, BuildGreatFairyText);
     }

@@ -242,19 +242,35 @@ static Gfx sHoverBootsCircleDL[] = {
     gsSPEndDisplayList(),
 };
 
+#define OOTMM_TUNIC_GERUDO_TINT 100
+
 void OotmmEquipment_TunicColorOf(int32_t tunic, uint8_t* r, uint8_t* g, uint8_t* b) {
     switch (tunic) {
         case OOTMM_TUNIC_GORON:
+            if (OotmmSession_SeedColor("ootTunicGoron", r, g, b)) {
+                break;
+            }
             *r = 100;
             *g = 20;
             *b = 0;
             break;
         case OOTMM_TUNIC_ZORA:
+            if (OotmmSession_SeedColor("ootTunicZora", r, g, b)) {
+                break;
+            }
             *r = 0;
             *g = 60;
             *b = 100;
             break;
+        case OOTMM_TUNIC_GERUDO_TINT:
+            *r = 120;
+            *g = 0;
+            *b = 180;
+            break;
         default:
+            if (OotmmSession_SeedColor("mmTunicHuman", r, g, b)) {
+                break;
+            }
             *r = 30;
             *g = 105;
             *b = 27;
@@ -262,8 +278,17 @@ void OotmmEquipment_TunicColorOf(int32_t tunic, uint8_t* r, uint8_t* g, uint8_t*
     }
 }
 
+static int32_t OotmmEquipment_EffectiveTunic(void) {
+    const int32_t tunic = OotmmCustomItems_EquippedTunic();
+    if (tunic == OOTMM_TUNIC_NONE && OotmmCustomItems_EquippedMask() == OOTMM_MASK_GERUDO &&
+        OotmmSession_BoolSetting("cosmetic.gerudoTunic")) {
+        return OOTMM_TUNIC_GERUDO_TINT;
+    }
+    return tunic;
+}
+
 void OotmmEquipment_GetTunicColor(uint8_t* r, uint8_t* g, uint8_t* b) {
-    OotmmEquipment_TunicColorOf(OotmmCustomItems_EquippedTunic(), r, g, b);
+    OotmmEquipment_TunicColorOf(OotmmEquipment_EffectiveTunic(), r, g, b);
 }
 
 typedef struct {
@@ -359,11 +384,11 @@ void OotmmEquipment_UpdateTunicTint(void) {
         sVerified = 1;
     }
 
-    if (OotmmCustomItems_EquippedTunic() == sAppliedTunic) {
+    if (OotmmEquipment_EffectiveTunic() == sAppliedTunic) {
         return;
     }
 
-    sAppliedTunic = OotmmCustomItems_EquippedTunic();
+    sAppliedTunic = OotmmEquipment_EffectiveTunic();
     OotmmEquipment_TunicColorOf(sAppliedTunic, &r, &g, &b);
     {
         Gfx tint[] = { gsDPSetPrimColor(0, 0, r, g, b, 255) };

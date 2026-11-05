@@ -8,6 +8,7 @@
 #include <libultraship/bridge/resourcebridge.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmClockSpeed.h"
+#include "2s2h/OotmmSession.h"
 #include "2s2h/OotmmJpLayouts.h"
 #include "2s2h/resource/type/Scene.h"
 #include "2s2h/resource/type/CollisionHeader.h"
@@ -341,6 +342,20 @@ void Scene_CommandSoundSettings(PlayState* play, SOH::ISceneCommand* cmd) {
 
     play->sceneSequences.seqId = settings->settings.seqId;
     play->sceneSequences.ambienceId = settings->settings.natureAmbienceId;
+    if (OotmmSession_IsActive() && OotmmSession_BoolSetting("cosmetic.nightBgm")) {
+        switch (play->sceneId) {
+            case SCENE_SOUGEN:
+            case SCENE_LAST_DEKU:
+            case SCENE_LAST_GORON:
+            case SCENE_LAST_ZORA:
+            case SCENE_LAST_LINK:
+            case SCENE_BOTI:
+                break;
+            default:
+                play->sceneSequences.ambienceId = 0x13;
+                break;
+        }
+    }
 
     if (gSaveContext.seqId == NA_BGM_DISABLED || AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_MAIN) == NA_BGM_FINAL_HOURS) {
         Audio_SetSpec(settings->settings.reverb); // BENTODO Verify if this should be reverb
