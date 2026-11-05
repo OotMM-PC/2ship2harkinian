@@ -9,6 +9,7 @@
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmShops.h"
+#include "2s2h/OotmmSession.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
@@ -202,7 +203,7 @@ void EnTrt_SetupGetMushroomCutscene(EnTrt* this) {
 u16 EnTrt_GetItemTextId(EnTrt* this) {
     EnGirlA* item = this->items[this->cursorIndex];
 
-    if ((item->actor.params == SI_POTION_BLUE) && !(this->flags & ENTRT_GIVEN_MUSHROOM)) {
+    if (!OotmmSession_IsActive() && (item->actor.params == SI_POTION_BLUE) && !(this->flags & ENTRT_GIVEN_MUSHROOM)) {
         return 0x880;
     }
     return item->actor.textId;
@@ -211,7 +212,7 @@ u16 EnTrt_GetItemTextId(EnTrt* this) {
 u16 EnTrt_GetItemChoiceTextId(EnTrt* this) {
     EnGirlA* item = this->items[this->cursorIndex];
 
-    if ((item->actor.params == SI_POTION_BLUE) && !CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_FREE_BLUE_POTION)) {
+    if (!OotmmSession_IsActive() && (item->actor.params == SI_POTION_BLUE) && !CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_FREE_BLUE_POTION)) {
         this->textId = 0x881;
         return 0x881;
     }
@@ -626,7 +627,8 @@ s32 EnTrt_HasPlayerSelectedItem(PlayState* play, EnTrt* this, Input* input) {
         return true;
     }
     if (EnTrt_TestItemSelected(play)) {
-        if ((item->actor.params != SI_POTION_BLUE) || (this->flags & ENTRT_GIVEN_MUSHROOM)) {
+        if (OotmmSession_IsActive() ? OotmmShops_CanSelectKotakeItem(item)
+                                    : ((item->actor.params != SI_POTION_BLUE) || (this->flags & ENTRT_GIVEN_MUSHROOM))) {
             this->prevActionFunc = this->actionFunc;
             Message_ContinueTextbox(play, EnTrt_GetItemChoiceTextId(this));
             Audio_PlaySfx(NA_SE_SY_DECIDE);
@@ -767,7 +769,7 @@ void EnTrt_SelectItem(EnTrt* this, PlayState* play) {
                         break;
                 }
             }
-        } else if ((talkState == TEXT_STATE_EVENT) && Message_ShouldAdvance(play)) {
+        } else if (!OotmmSession_IsActive() && (talkState == TEXT_STATE_EVENT) && Message_ShouldAdvance(play)) {
             if (!Inventory_HasEmptyBottle()) {
                 Audio_PlaySfx(NA_SE_SY_ERROR);
                 EnTrt_SetupCannotBuy(play, this, 0x846);

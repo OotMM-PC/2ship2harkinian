@@ -35,6 +35,7 @@ void OotmmNpcChecks_Init(void);
 #include <libultraship/bridge/OotmmGameState.h>
 
 bool OotmmNpcChecks_CanPurchasePlacement(const Ship::OotmmPlacement& placement);
+bool OotmmNpcChecks_CanPurchaseRepeat(const std::string& itemId);
 bool OotmmNpcChecks_CollectPurchasedPlacement(const Ship::OotmmPlacement& placement);
 bool OotmmNpcChecks_IsPlacementCollected(const Ship::OotmmPlacement& placement);
 std::string OotmmNpcChecks_PlacementName(const Ship::OotmmPlacement& placement);

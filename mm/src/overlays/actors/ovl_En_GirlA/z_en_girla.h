@@ -47,6 +47,7 @@ typedef struct EnGirlA {
     /* 0x1C8 */ EnGirlADrawFunc drawFunc;
     s16 ootmmShopId;
     u8 ootmmState;
+    u8 ootmmNeedsMushroom;
 } EnGirlA; // size = 0x1CC
 
 typedef enum {

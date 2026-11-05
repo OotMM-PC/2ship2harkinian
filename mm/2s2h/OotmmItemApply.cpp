@@ -984,6 +984,21 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                 }
                 break;
             }
+            case Ship::OotmmGrantKind::BigFairy: {
+                if (count > already) {
+                    if (gSaveContext.save.saveInfo.playerData.isMagicAcquired &&
+                        gSaveContext.magicState != MAGIC_STATE_IDLE) {
+                        sRetryMagicApplication = true;
+                        break;
+                    }
+                    Health_ChangeBy(play, static_cast<s16>((count - already) * 8 * 0x10));
+                    if (gSaveContext.save.saveInfo.playerData.isMagicAcquired) {
+                        Magic_Add(play, MAGIC_FILL_TO_CAPACITY);
+                    }
+                    sLedger.SetApplied(itemId, count);
+                }
+                break;
+            }
             case Ship::OotmmGrantKind::Health: {
                 if (count > already) {
                     const uint32_t delta = count - already;

@@ -2,7 +2,9 @@
 
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "OotmmIpc.h"
 #include "OotmmItemModels.h"
+#include <libultraship/bridge/OotmmItemGrant.h>
 #include "OotmmItemPresentation.h"
 #include "OotmmNpcChecks.h"
 #include "OotmmSession.h"
@@ -140,16 +142,24 @@ const Ship::OotmmPlacement* FindShop(const EnGirlA* item) {
 
 const std::unordered_map<std::string, uint8_t> kRenewals = {
     { "MM_ARROWS_10", ITEM_ARROWS_10 },     { "MM_ARROWS_30", ITEM_ARROWS_30 },
-    { "MM_ARROWS_40", ITEM_ARROWS_40 },     { "MM_BOMBS_5", ITEM_BOMBS_5 },
-    { "MM_BOMBS_10", ITEM_BOMBS_10 },       { "MM_BOMBS_20", ITEM_BOMBS_20 },
-    { "MM_BOMBS_30", ITEM_BOMBS_30 },       { "MM_BOMBCHU", ITEM_BOMBCHUS_1 },
-    { "MM_BOMBCHU_5", ITEM_BOMBCHUS_5 },    { "MM_BOMBCHU_10", ITEM_BOMBCHUS_10 },
-    { "MM_BOMBCHU_20", ITEM_BOMBCHUS_20 },  { "MM_NUTS_5", ITEM_DEKU_NUTS_5 },
+    { "MM_ARROWS_40", ITEM_ARROWS_40 },     { "MM_BOMB", ITEM_BOMB },
+    { "MM_BOMBS_5", ITEM_BOMBS_5 },         { "MM_BOMBS_10", ITEM_BOMBS_10 },
+    { "MM_BOMBS_20", ITEM_BOMBS_20 },       { "MM_BOMBS_30", ITEM_BOMBS_30 },
+    { "MM_BOMBCHU", ITEM_BOMBCHUS_1 },      { "MM_BOMBCHU_5", ITEM_BOMBCHUS_5 },
+    { "MM_BOMBCHU_10", ITEM_BOMBCHUS_10 },  { "MM_BOMBCHU_20", ITEM_BOMBCHUS_20 },
+    { "MM_NUT", ITEM_DEKU_NUT },            { "MM_NUTS_5", ITEM_DEKU_NUTS_5 },
     { "MM_NUTS_10", ITEM_DEKU_NUTS_10 },    { "MM_STICK", ITEM_DEKU_STICK },
-    { "MM_RECOVERY_HEART", ITEM_RECOVERY_HEART }, { "MM_RUPEE_GREEN", ITEM_RUPEE_GREEN },
-    { "MM_RUPEE_BLUE", ITEM_RUPEE_BLUE },   { "MM_RUPEE_RED", ITEM_RUPEE_RED },
-    { "MM_RUPEE_PURPLE", ITEM_RUPEE_PURPLE }, { "MM_RUPEE_SILVER", ITEM_RUPEE_SILVER },
-    { "MM_RUPEE_GOLD", ITEM_RUPEE_HUGE },
+    { "MM_RECOVERY_HEART", ITEM_RECOVERY_HEART }, { "MM_SHIELD_HERO", ITEM_SHIELD_HERO },
+    { "MM_MILK", ITEM_MILK_BOTTLE },        { "MM_BOTTLE_MILK", ITEM_MILK_BOTTLE },
+    { "MM_CHATEAU", ITEM_CHATEAU },         { "MM_BOTTLE_CHATEAU", ITEM_CHATEAU },
+    { "MM_FISH", ITEM_FISH },               { "MM_BUGS", ITEM_BUG },
+    { "MM_FAIRY", ITEM_FAIRY },             { "MM_BOTTLE_FAIRY", ITEM_FAIRY },
+    { "MM_POE", ITEM_POE },                 { "MM_BOTTLE_POE", ITEM_POE },
+    { "MM_POTION_RED", ITEM_POTION_RED },   { "MM_BOTTLE_POTION_RED", ITEM_POTION_RED },
+    { "MM_POTION_GREEN", ITEM_POTION_GREEN }, { "MM_BOTTLE_POTION_GREEN", ITEM_POTION_GREEN },
+    { "MM_POTION_BLUE", ITEM_POTION_BLUE }, { "MM_BOTTLE_POTION_BLUE", ITEM_POTION_BLUE },
+    { "MM_MAGIC_BEAN", ITEM_MAGIC_BEANS },  { "MM_MAGIC_JAR_SMALL", ITEM_MAGIC_JAR_SMALL },
+    { "MM_MAGIC_JAR_LARGE", ITEM_MAGIC_JAR_BIG },
 };
 
 const uint8_t* FindRenewal(const EnGirlA* item, const Ship::OotmmPlacement& placement) {
@@ -163,33 +173,11 @@ const uint8_t* FindRenewal(const EnGirlA* item, const Ship::OotmmPlacement& plac
     return found == kRenewals.end() ? nullptr : &found->second;
 }
 
-bool CanHold(uint8_t item) {
-    const auto& player = gSaveContext.save.saveInfo.playerData;
-    switch (item) {
-        case ITEM_ARROWS_10:
-        case ITEM_ARROWS_30:
-        case ITEM_ARROWS_40:
-            return GET_CUR_UPG_VALUE(UPG_QUIVER) != 0 && AMMO(ITEM_BOW) < CUR_CAPACITY(UPG_QUIVER);
-        case ITEM_BOMBS_5:
-        case ITEM_BOMBS_10:
-        case ITEM_BOMBS_20:
-        case ITEM_BOMBS_30:
-            return GET_CUR_UPG_VALUE(UPG_BOMB_BAG) != 0 && AMMO(ITEM_BOMB) < CUR_CAPACITY(UPG_BOMB_BAG);
-        case ITEM_BOMBCHUS_1:
-        case ITEM_BOMBCHUS_5:
-        case ITEM_BOMBCHUS_10:
-        case ITEM_BOMBCHUS_20:
-            return GET_CUR_UPG_VALUE(UPG_BOMB_BAG) != 0 && AMMO(ITEM_BOMBCHU) < CUR_CAPACITY(UPG_BOMB_BAG);
-        case ITEM_DEKU_NUTS_5:
-        case ITEM_DEKU_NUTS_10:
-            return CUR_CAPACITY(UPG_DEKU_NUTS) == 0 || AMMO(ITEM_DEKU_NUT) < CUR_CAPACITY(UPG_DEKU_NUTS);
-        case ITEM_DEKU_STICK:
-            return CUR_CAPACITY(UPG_DEKU_STICKS) == 0 || AMMO(ITEM_DEKU_STICK) < CUR_CAPACITY(UPG_DEKU_STICKS);
-        case ITEM_RECOVERY_HEART:
-            return player.health < player.healthCapacity;
-        default:
-            return true;
-    }
+
+bool LedgerRenewable(const EnGirlA* item, const Ship::OotmmPlacement& placement) {
+    return !(item->ootmmShopId >= 0x02 && item->ootmmShopId <= 0x04) && placement.CloakItemId.empty() &&
+           placement.IsFor(OotmmSession_GetState().GetPlayerId()) &&
+           !Ship::OotmmItemGrant::RenewalOf(placement.ItemId).empty();
 }
 
 s32 CanBuyShuffled(PlayState* play, EnGirlA* item) {
@@ -203,8 +191,7 @@ s32 CanBuyShuffled(PlayState* play, EnGirlA* item) {
 
 s32 CanBuyRenewal(PlayState* play, EnGirlA* item) {
     const auto* placement = FindShop(item);
-    const uint8_t* renewal = placement != nullptr ? FindRenewal(item, *placement) : nullptr;
-    if (renewal == nullptr || !CanHold(*renewal)) {
+    if (placement == nullptr || !OotmmNpcChecks_CanPurchaseRepeat(placement->ItemId)) {
         return CANBUY_RESULT_NO_ROOM;
     }
     return gSaveContext.save.saveInfo.playerData.rupees < play->msgCtx.unk1206C ? CANBUY_RESULT_NEED_RUPEES
@@ -219,6 +206,11 @@ void BuyRenewal(PlayState* play, EnGirlA* item) {
     const auto* placement = FindShop(item);
     if (const uint8_t* renewal = placement != nullptr ? FindRenewal(item, *placement) : nullptr) {
         Item_Give(play, *renewal);
+    } else if (placement != nullptr) {
+        const std::string ledger = Ship::OotmmItemGrant::RenewalOf(placement->ItemId);
+        if (!ledger.empty()) {
+            OotmmIpc_SendRenewalGrant(ledger);
+        }
     }
     Rupees_ChangeBy(-play->msgCtx.unk1206C);
 }
@@ -229,7 +221,7 @@ void Hide(PlayState*, EnGirlA* item) {
 }
 
 void ApplyCollected(EnGirlA* item, const Ship::OotmmPlacement& placement) {
-    if (FindRenewal(item, placement) != nullptr) {
+    if (FindRenewal(item, placement) != nullptr || LedgerRenewable(item, placement)) {
         item->ootmmState = kRenewable;
         item->canBuyFunc = CanBuyRenewal;
         item->buyFunc = BuyRenewal;
@@ -293,7 +285,10 @@ void BuildShopText(u16* textId, bool* loadFromMessageTable) {
     if (item->ootmmState == kSoldOut) {
         entry.msg = "SOLD OUT\x1A";
     } else if (description) {
-        entry.msg = OotmmNpcChecks_PlacementName(*placement) + "\x11%r" + std::to_string(price) + " Rupees%w\x1A";
+        const bool needsMushroom =
+            item->actor.params == SI_POTION_BLUE && !CHECK_WEEKEVENTREG(WEEKEVENTREG_GAVE_KOTAKE_MUSHROOM);
+        entry.msg = OotmmNpcChecks_PlacementName(*placement) + "\x11%r" + std::to_string(price) + " Rupees%w" +
+                    (needsMushroom ? "\x11\x11%pRequires Magic Mushroom%w\x1A" : "\x1A");
     } else {
         entry.msg = OotmmNpcChecks_PlacementName(*placement) + "\x11%r" + std::to_string(price) + " Rupees\x11\xC2%gBuy\x11No thanks%w";
     }
@@ -302,6 +297,32 @@ void BuildShopText(u16* textId, bool* loadFromMessageTable) {
 }
 
 } // namespace
+
+int OotmmShops_RepeatItem(const Ship::OotmmPlacement& placement, int fallback) {
+    if (!placement.CloakItemId.empty() || !placement.IsFor(OotmmSession_GetState().GetPlayerId())) {
+        return fallback;
+    }
+    const auto found = kRenewals.find(placement.ItemId);
+    if (found != kRenewals.end()) {
+        return found->second;
+    }
+    const std::string ledger = Ship::OotmmItemGrant::RenewalOf(placement.ItemId);
+    if (!ledger.empty()) {
+        OotmmIpc_SendRenewalGrant(ledger);
+        Ship::GameIpcItemPresentation presentation;
+        presentation.ItemId = ledger;
+        presentation.ItemName = Ship::OotmmItemCatalog::TrimGameSuffix(placement.ItemName);
+        presentation.ItemGame = ledger.starts_with("OOT_") ? "oot" : "mm";
+        presentation.DestinationGame = presentation.ItemGame;
+        OotmmItemPresentation_Queue(presentation);
+        return ITEM_NONE;
+    }
+    return fallback;
+}
+
+extern "C" int OotmmShops_CanSelectKotakeItem(const EnGirlA* item) {
+    return item->ootmmState != kSoldOut && !item->ootmmNeedsMushroom;
+}
 
 extern "C" void OotmmShops_SetupItem(EnGirlA* item, PlayState* play) {
     if (item == nullptr || play == nullptr || !OotmmSession_IsActive()) {
@@ -318,6 +339,8 @@ extern "C" void OotmmShops_SetupItem(EnGirlA* item, PlayState* play) {
         item->ootmmState = kVanilla;
         return;
     }
+    item->ootmmNeedsMushroom =
+        item->actor.params == SI_POTION_BLUE && !CHECK_WEEKEVENTREG(WEEKEVENTREG_GAVE_KOTAKE_MUSHROOM);
     item->restockFunc = Restock;
     if (OotmmNpcChecks_IsPlacementCollected(*placement)) {
         ApplyCollected(item, *placement);

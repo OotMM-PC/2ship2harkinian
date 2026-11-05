@@ -6,6 +6,9 @@
 #include "OotmmChecks.h"
 #include "OotmmCustomItems.h"
 #include "OotmmIpc.h"
+#include <libultraship/bridge/OotmmItemGrant.h>
+#include <memory>
+#include <vector>
 #include "OotmmItemApply.h"
 #include "OotmmItemModels.h"
 #include "OotmmItemPresentation.h"
@@ -50,7 +53,11 @@ struct Renewal {
     GetItemId Gi = GI_NONE;
     const char* ItemId = nullptr;
     const char* Name = nullptr;
+    bool ViaLedger = false;
 };
+
+std::string sPendingLedgerRenewal;
+std::string sPendingLedgerName;
 
 const std::unordered_map<std::string, Renewal> kRenewals = {
     { "MM_RECOVERY_HEART", { GI_RECOVERY_HEART, "MM_RECOVERY_HEART", "Recovery Heart" } },
@@ -105,6 +112,13 @@ constexpr const char* kSoldOut = "%rSOLD OUT%w";
 
 std::unordered_map<Actor*, OfferSite> sPendingOffers;
 std::unordered_map<Actor*, std::string> sCompletedMessageOffers;
+struct TextDoneOffer {
+    int32_t Frames;
+    bool Read;
+};
+std::unordered_map<Actor*, TextDoneOffer> sTextDoneOffers;
+Actor* sUpdatingActor = nullptr;
+bool sCheckingOfferText = false;
 int32_t sGrandmaOfferPos = -1;
 std::vector<std::string> sDeferredCollects;
 uint32_t sDeferredFrame = 0;
@@ -142,71 +156,89 @@ bool IsMmBombchuAmmo(const std::string& itemId) {
            itemId == "MM_BOMBCHU_10" || itemId == "MM_BOMBCHU_20";
 }
 
-bool CanPurchaseMmCapacity(const std::string& itemId) {
+constexpr int32_t kUnlimitedRoom = 999;
+
+int32_t VitalFree(std::string_view family) {
     const auto& info = gSaveContext.save.saveInfo;
-    if (IsMmBombchuAmmo(itemId)) {
-        return info.inventory.ammo[SLOT_BOMBCHU] < OotmmItemApply_BombchuCapacity();
+    if (family == "health") {
+        return info.playerData.healthCapacity - info.playerData.health;
     }
-    if (itemId == "MM_RECOVERY_HEART") {
-        return info.playerData.health < info.playerData.healthCapacity;
+    if (family == "magic") {
+        return info.playerData.isMagicAcquired
+                   ? (info.playerData.isDoubleMagicAcquired ? 0x60 : 0x30) - info.playerData.magic
+                   : 0;
     }
-    const bool needsMagic = info.playerData.isMagicAcquired &&
-        info.playerData.magic < (info.playerData.isDoubleMagicAcquired ? 0x60 : 0x30);
-    if (itemId == "MM_MAGIC_JAR_SMALL" || itemId == "MM_MAGIC_JAR_LARGE") {
-        return needsMagic;
+    if (family == "fairy") {
+        return VitalFree("health") > 0 || VitalFree("magic") > 0;
     }
-    if (itemId == "MM_FAIRY_BIG") {
-        return info.playerData.health < info.playerData.healthCapacity || needsMagic;
+    if (family == "sticks") {
+        return CUR_UPG_VALUE(UPG_DEKU_STICKS) == 0
+                   ? kUnlimitedRoom
+                   : CUR_CAPACITY(UPG_DEKU_STICKS) - info.inventory.ammo[SLOT_DEKU_STICK];
     }
-    if (itemId == "MM_RUPEE_GREEN" || itemId == "MM_RUPEE_BLUE" || itemId == "MM_RUPEE_RED" ||
-        itemId == "MM_RUPEE_PURPLE" || itemId == "MM_RUPEE_SILVER" || itemId == "MM_RUPEE_GOLD") {
-        return info.playerData.rupees < CUR_CAPACITY(UPG_WALLET);
+    if (family == "nuts") {
+        return CUR_UPG_VALUE(UPG_DEKU_NUTS) == 0 ? kUnlimitedRoom
+                                                 : CUR_CAPACITY(UPG_DEKU_NUTS) - info.inventory.ammo[SLOT_DEKU_NUT];
     }
-    if (itemId == "MM_POTION_RED" || itemId == "MM_POTION_GREEN" || itemId == "MM_POTION_BLUE" ||
-        itemId == "MM_FAIRY" || itemId == "MM_MILK" || itemId == "MM_CHATEAU" ||
-        itemId == "MM_BUGS" || itemId == "MM_FISH" || itemId == "MM_POE" ||
-        itemId == "MM_BIG_POE" || itemId == "MM_BLUE_FIRE") {
-        for (int slot = SLOT_BOTTLE_1; slot <= SLOT_BOTTLE_6; ++slot) {
-            if (info.inventory.items[slot] == ITEM_BOTTLE) {
-                return true;
-            }
-        }
-        return false;
+    if (family == "bombs") {
+        return CUR_UPG_VALUE(UPG_BOMB_BAG) > 0 ? CUR_CAPACITY(UPG_BOMB_BAG) - info.inventory.ammo[SLOT_BOMB] : 0;
     }
-    if (itemId == "MM_STICK") {
-        return CUR_UPG_VALUE(UPG_DEKU_STICKS) == 0 ||
-               info.inventory.ammo[SLOT_DEKU_STICK] < CUR_CAPACITY(UPG_DEKU_STICKS);
+    if (family == "bombchu") {
+        return OotmmItemApply_BombchuCapacity() - info.inventory.ammo[SLOT_BOMBCHU];
     }
-    if (itemId == "MM_NUT" || itemId == "MM_NUTS_5" || itemId == "MM_NUTS_10") {
-        return CUR_UPG_VALUE(UPG_DEKU_NUTS) == 0 ||
-               info.inventory.ammo[SLOT_DEKU_NUT] < CUR_CAPACITY(UPG_DEKU_NUTS);
+    if (family == "arrows") {
+        return CUR_UPG_VALUE(UPG_QUIVER) > 0 ? CUR_CAPACITY(UPG_QUIVER) - info.inventory.ammo[SLOT_BOW] : 0;
     }
-    if (itemId == "MM_BOMB" || itemId == "MM_BOMBS_5" || itemId == "MM_BOMBS_10" ||
-        itemId == "MM_BOMBS_20" || itemId == "MM_BOMBS_30") {
-        return CUR_UPG_VALUE(UPG_BOMB_BAG) > 0 &&
-               info.inventory.ammo[SLOT_BOMB] < CUR_CAPACITY(UPG_BOMB_BAG);
-    }
-    if (itemId == "MM_ARROWS_10" || itemId == "MM_ARROWS_30" || itemId == "MM_ARROWS_40") {
-        return CUR_UPG_VALUE(UPG_QUIVER) > 0 && info.inventory.ammo[SLOT_BOW] < CUR_CAPACITY(UPG_QUIVER);
-    }
-    if (itemId == "MM_DEKU_SEEDS_5" || itemId == "MM_DEKU_SEEDS_30") {
+    if (family == "seeds") {
         const auto capacity = OotmmCustomItems_SlingshotMaxAmmo();
-        return capacity > 0 && OotmmCustomItems_SlingshotAmmo() < capacity;
+        return capacity > 0 ? capacity - OotmmCustomItems_SlingshotAmmo() : 0;
     }
-    if (!OotmmSession_GetState().GetBoolSetting("sharedShields", false)) {
-        const auto shield = GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD);
-        if (itemId == "MM_SHIELD_DEKU") {
-            return shield == PLAYER_SHIELD_NONE;
+    if (family == "rupees") {
+        return CUR_CAPACITY(UPG_WALLET) - info.playerData.rupees;
+    }
+    if (family == "bottles") {
+        int32_t empty = 0;
+        for (int slot = SLOT_BOTTLE_1; slot <= SLOT_BOTTLE_6; ++slot) {
+            empty += info.inventory.items[slot] == ITEM_BOTTLE;
         }
-        if (itemId == "MM_SHIELD_HERO") {
-            return shield == PLAYER_SHIELD_NONE ||
-                   (shield == PLAYER_SHIELD_HEROS_SHIELD && OotmmCustomItems_WearingDekuShield());
+        return empty;
+    }
+    if (family == "beans") {
+        return info.inventory.items[SLOT_MAGIC_BEANS] < 20 ? kUnlimitedRoom : 0;
+    }
+    const auto shield = GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD);
+    if (family == "SHIELD_DEKU") {
+        return shield == PLAYER_SHIELD_NONE;
+    }
+    if (family == "SHIELD_HERO") {
+        return shield == PLAYER_SHIELD_NONE ||
+               (shield == PLAYER_SHIELD_HEROS_SHIELD && OotmmCustomItems_WearingDekuShield());
+    }
+    return 1;
+}
+
+std::string OotVitalsPath() {
+    return OotmmSession_GetState().GetBootConfig().StatePath + ".vitals.oot";
+}
+
+bool CanPurchaseMmCapacity(const std::string& itemId) {
+    const bool sharedShields = OotmmSession_GetState().GetBoolSetting("sharedShields", false);
+    const std::string family = Ship::OotmmItemGrant::VitalFamily(itemId);
+    if (itemId.starts_with("OOT_")) {
+        if (sharedShields && ((family == "SHIELD_DEKU" && VitalFree("SHIELD_DEKU") > 0) ||
+                              (family == "SHIELD_HYLIAN" && VitalFree("SHIELD_HERO") > 0))) {
+            return true;
         }
+        return Ship::OotmmItemGrant::CanHoldRemote(itemId, OotmmIpc_GetInventory(), OotVitalsPath());
     }
-    if (itemId == "MM_MAGIC_BEAN") {
-        return info.inventory.items[SLOT_MAGIC_BEANS] < 20;
+    if (VitalFree(family) > 0) {
+        return true;
     }
-    return true;
+    if (sharedShields && (family == "SHIELD_DEKU" || family == "SHIELD_HERO")) {
+        return Ship::OotmmItemGrant::CanHoldRemote(family == "SHIELD_DEKU" ? "OOT_SHIELD_DEKU" : "OOT_SHIELD_HYLIAN",
+                                                   OotmmIpc_GetInventory(), OotVitalsPath());
+    }
+    return false;
 }
 
 constexpr const char* kTingleSites[] = {
@@ -338,6 +370,20 @@ Renewal RepeatFor(const PurchaseSite& site, const Ship::OotmmPlacement& placemen
         if (const auto found = kRenewals.find(placement.ItemId); found != kRenewals.end()) {
             return found->second;
         }
+        static std::unordered_map<std::string, Renewal> sLedgerRenewals;
+        static std::vector<std::unique_ptr<std::string>> sStrings;
+        if (const auto cached = sLedgerRenewals.find(placement.ItemId); cached != sLedgerRenewals.end()) {
+            return cached->second;
+        }
+        std::string renewal = Ship::OotmmItemGrant::RenewalOf(placement.ItemId);
+        if (!renewal.empty()) {
+            sStrings.push_back(std::make_unique<std::string>(std::move(renewal)));
+            const char* id = sStrings.back()->c_str();
+            sStrings.push_back(
+                std::make_unique<std::string>(Ship::OotmmItemCatalog::TrimGameSuffix(placement.ItemName)));
+            const char* name = sStrings.back()->c_str();
+            return sLedgerRenewals[placement.ItemId] = Renewal{ GI_RECOVERY_HEART, id, name, true };
+        }
     }
     return site.Fallback == GI_RECOVERY_HEART ? kRenewals.at("MM_RECOVERY_HEART") : Renewal{};
 }
@@ -354,8 +400,11 @@ int PurchaseState(const PurchaseSite& site) {
     if (repeat.Gi == GI_NONE) {
         return 0;
     }
-    return OotmmSession_GetState().GetStringSetting("mode", "single") != "single" ||
-           CanPurchaseMmCapacity(repeat.ItemId);
+    const bool allowed = OotmmSession_GetState().GetStringSetting("mode", "single") != "single" ||
+                         CanPurchaseMmCapacity(repeat.ItemId);
+    sPendingLedgerRenewal = allowed && repeat.ViaLedger ? repeat.ItemId : "";
+    sPendingLedgerName = allowed && repeat.ViaLedger ? repeat.Name : "";
+    return allowed;
 }
 
 std::string CompactPlacementName(const Ship::OotmmPlacement& placement) {
@@ -887,6 +936,12 @@ bool OotmmNpcChecks_IsPlacementCollected(const Ship::OotmmPlacement& placement) 
     return IsCollected(placement);
 }
 
+bool OotmmNpcChecks_CanPurchaseRepeat(const std::string& itemId) {
+    const auto found = kRenewals.find(itemId);
+    return OotmmSession_GetState().GetStringSetting("mode", "single") != "single" ||
+           CanPurchaseMmCapacity(found != kRenewals.end() ? found->second.ItemId : itemId);
+}
+
 bool OotmmNpcChecks_CanPurchasePlacement(const Ship::OotmmPlacement& placement) {
     if (IsCollected(placement) || Ship::OotmmItemCatalog::IsNothing(placement.ItemId)) {
         return false;
@@ -1075,6 +1130,22 @@ void OotmmNpcChecks_Init(void) {
             }
         }
         if (pending == sPendingOffers.end() && OotmmNpcChecks_IsCollected(site) && offer.Repeat != GI_NONE) {
+            if (!sPendingLedgerRenewal.empty() && gPlayState != nullptr) {
+                OotmmIpc_SendRenewalGrant(sPendingLedgerRenewal);
+                Ship::GameIpcItemPresentation presentation;
+                presentation.ItemId = sPendingLedgerRenewal;
+                presentation.ItemName = sPendingLedgerName;
+                presentation.ItemGame = sPendingLedgerRenewal.starts_with("OOT_") ? "oot" : "mm";
+                presentation.DestinationGame = presentation.ItemGame;
+                OotmmItemPresentation_Queue(presentation);
+                sPendingLedgerRenewal.clear();
+                *should = false;
+                actor->parent = &GET_PLAYER(gPlayState)->actor;
+                sCompletedMessageOffers[actor] = site;
+                sTextDoneOffers[actor].Frames = 30;
+                sTextDoneOffers[actor].Read = false;
+                return;
+            }
             *item = offer.Repeat;
             return;
         }
