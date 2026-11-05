@@ -38,4 +38,5 @@ int OotmmXflags_TreeColor(struct Actor* actor, unsigned char* rgb);
 void OotmmXflags_Init();
 int64_t OotmmXflags_NativeId(struct Actor* actor);
 int OotmmXflags_LastScene();
+void OotmmXflags_SetLastScene(int scene);
 #endif

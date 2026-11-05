@@ -5,6 +5,7 @@
  */
 
 #include "z_en_jg.h"
+#include "2s2h/OotmmSession.h"
 #include "overlays/actors/ovl_En_S_Goro/z_en_s_goro.h"
 #include "overlays/actors/ovl_Obj_Ice_Poly/z_obj_ice_poly.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -498,7 +499,7 @@ void EnJg_Talk(EnJg* this, PlayState* play) {
 
         temp = this->textId;
         if ((temp == 0xDBB) || (temp == 0xDBC)) {
-            if (!CHECK_WEEKEVENTREG(WEEKEVENTREG_24_80)) {
+            if (!OotmmSession_IsActive() && !CHECK_WEEKEVENTREG(WEEKEVENTREG_24_80)) {
                 // The player hasn't talked to the Goron Child at least once, so they can't learn
                 // the Lullaby Intro. End the current conversation with the player.
                 play->msgCtx.msgMode = MSGMODE_TEXT_CLOSING;

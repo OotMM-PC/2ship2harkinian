@@ -247,12 +247,14 @@ void EnKusa_DropCollectible(EnKusa* this, PlayState* play) {
     s32 collectible;
     s32 collectableParams;
 
+    if (!GameInteractor_Should(VB_GRASS_DROP_COLLECTIBLE, true, ACTOR_EN_KUSA, this)) {
+        return;
+    }
+
     if ((KUSA_GET_TYPE(&this->actor) == ENKUSA_TYPE_GRASS) || (KUSA_GET_TYPE(&this->actor) == ENKUSA_TYPE_BUSH)) {
         if (!KUSA_GET_PARAM_0C(&this->actor)) {
-            if (GameInteractor_Should(VB_GRASS_DROP_COLLECTIBLE, true, ACTOR_EN_KUSA, this)) {
-                Item_DropCollectibleRandom(play, NULL, &this->actor.world.pos,
-                                           KUSA_GET_RAND_COLLECTIBLE_ID(&this->actor) * 0x10);
-            }
+            Item_DropCollectibleRandom(play, NULL, &this->actor.world.pos,
+                                       KUSA_GET_RAND_COLLECTIBLE_ID(&this->actor) * 0x10);
         }
     } else if (KUSA_GET_TYPE(&this->actor) == ENKUSA_TYPE_REGROWING_GRASS) {
         Item_DropCollectible(play, &this->actor.world.pos, 3);

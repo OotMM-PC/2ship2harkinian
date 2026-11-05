@@ -5,6 +5,7 @@
  */
 
 #include "z_bg_dkjail_ivy.h"
+#include "2s2h/OotmmSession.h"
 #include "assets/objects/gameplay_keep/gameplay_keep.h"
 #include "assets/objects/object_dkjail_obj/object_dkjail_obj.h"
 
@@ -145,7 +146,9 @@ void BgDkjailIvy_WaitForCut(BgDkjailIvy* this, PlayState* play) {
     if (this->collider.base.acFlags & AC_HIT) {
         this->collider.base.acFlags &= ~AC_HIT;
         this->dyna.actor.flags |= ACTOR_FLAG_UPDATE_CULLING_DISABLED;
-        CutsceneManager_Queue(this->dyna.actor.csId);
+        if (!OotmmSession_IsActive()) {
+            CutsceneManager_Queue(this->dyna.actor.csId);
+        }
         BgDkjailIvy_SetupCutscene(this);
     } else {
         CollisionCheck_SetAC(play, &play->colChkCtx, &this->collider.base);
@@ -157,8 +160,10 @@ void BgDkjailIvy_SetupCutscene(BgDkjailIvy* this) {
 }
 
 void BgDkjailIvy_BeginCutscene(BgDkjailIvy* this, PlayState* play) {
-    if (CutsceneManager_IsNext(this->dyna.actor.csId)) {
-        CutsceneManager_StartWithPlayerCs(this->dyna.actor.csId, &this->dyna.actor);
+    if (OotmmSession_IsActive() || CutsceneManager_IsNext(this->dyna.actor.csId)) {
+        if (!OotmmSession_IsActive()) {
+            CutsceneManager_StartWithPlayerCs(this->dyna.actor.csId, &this->dyna.actor);
+        }
         this->fadeOutTimer = 50;
         DynaPoly_DisableCollision(play, &play->colCtx.dyna, this->dyna.bgId);
         Flags_SetSwitch(play, BG_DKJAIL_GET_SWITCH_FLAG(&this->dyna.actor));

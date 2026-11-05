@@ -54,7 +54,7 @@ void HandleGiantsCutsceneSkip() {
 // Only reached if the cutscene is skipped
 void handleGiantsCheck(SceneId sceneId) {
     // The Oath to Order check only occurs when freeing a Giant for the first time.
-    if (gSaveContext.save.saveInfo.unk_EA8[1] == 1) {
+    if (GameInteractor_Should(VB_GIVE_OATH_TO_ORDER, gSaveContext.save.saveInfo.unk_EA8[1] == 1)) {
         GameInteractor::Instance->events.emplace_back(GIEventGiveItem{
             .showGetItemCutscene = !CVarGetInteger("gEnhancements.Cutscenes.SkipGetItemCutscenes", 0),
             .giveItem =

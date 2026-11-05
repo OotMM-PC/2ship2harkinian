@@ -661,6 +661,10 @@ int OotmmXflags_LastScene() {
     return sLastScene;
 }
 
+void OotmmXflags_SetLastScene(int scene) {
+    sLastScene = scene;
+}
+
 int64_t OotmmXflags_NativeId(Actor* actor) {
     const auto xf = Resolve(actor);
     return xf.has_value() ? (static_cast<int64_t>(xf->Scene) << 32) | NativeId(*xf) : -1;

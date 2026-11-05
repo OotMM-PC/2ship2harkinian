@@ -5,6 +5,7 @@
  */
 
 #include "z_elf_msg.h"
+#include "2s2h/OotmmSession.h"
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -132,6 +133,10 @@ void func_8092E284(ElfMsg* this, PlayState* play) {
 
 void ElfMsg_Update(Actor* thisx, PlayState* play) {
     ElfMsg* this = (ElfMsg*)thisx;
+
+    if (OotmmSession_IsActive()) {
+        return;
+    }
 
     if (func_8092DF9C(this, play) == 0) {
         if (Actor_TalkOfferAccepted(&this->actor, &play->state)) {

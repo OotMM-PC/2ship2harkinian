@@ -14,6 +14,7 @@
 #include "overlays/actors/ovl_En_Syateki_Wf/z_en_syateki_wf.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmNpcChecks.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS                                                                                  \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -890,6 +891,13 @@ void EnSyatekiMan_Town_Talk(EnSyatekiMan* this, PlayState* play) {
 void EnSyatekiMan_Swamp_SetupGiveReward(EnSyatekiMan* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
 
+    if (OotmmSession_IsActive() && (HS_GET_SWAMP_SHOOTING_GALLERY_HIGH_SCORE() >= SG_SWAMP_HEART_PIECE_SCORE) &&
+        !CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_SWAMP_SHOOTING_GALLERY_QUIVER_UPGRADE) &&
+        Actor_HasParent(&this->actor, play)) {
+        this->actor.parent = NULL;
+        SET_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_SWAMP_SHOOTING_GALLERY_QUIVER_UPGRADE);
+    }
+
     if (Actor_HasParent(&this->actor, play)) {
         if (!CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_SWAMP_SHOOTING_GALLERY_QUIVER_UPGRADE)) {
             SET_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_SWAMP_SHOOTING_GALLERY_QUIVER_UPGRADE);
@@ -901,7 +909,8 @@ void EnSyatekiMan_Swamp_SetupGiveReward(EnSyatekiMan* this, PlayState* play) {
         this->actor.parent = NULL;
         this->actionFunc = EnSyatekiMan_Swamp_GiveReward;
     } else {
-        if (!OotmmNpcChecks_Done("MM_SHOOTING_GAME_SWAMP_1", CUR_UPG_VALUE(UPG_QUIVER) >= 3) &&
+        if (OotmmSession_IsActive() && (player->stateFlags1 & PLAYER_STATE1_400)) {
+        } else if (!OotmmNpcChecks_Done("MM_SHOOTING_GAME_SWAMP_1", CUR_UPG_VALUE(UPG_QUIVER) >= 3) &&
             !CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_SWAMP_SHOOTING_GALLERY_QUIVER_UPGRADE)) {
             Actor_OfferGetItem(&this->actor, play, GI_QUIVER_30 + CLAMP_MAX(CUR_UPG_VALUE(UPG_QUIVER), 2), 500.0f,
                                100.0f);
@@ -947,6 +956,14 @@ void EnSyatekiMan_Swamp_GiveReward(EnSyatekiMan* this, PlayState* play) {
 void EnSyatekiMan_Town_SetupGiveReward(EnSyatekiMan* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
 
+    if (OotmmSession_IsActive() && (HS_GET_TOWN_SHOOTING_GALLERY_HIGH_SCORE() >= 50) &&
+        !CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_TOWN_SHOOTING_GALLERY_QUIVER_UPGRADE) &&
+        Actor_HasParent(&this->actor, play)) {
+        this->actor.parent = NULL;
+        SET_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_TOWN_SHOOTING_GALLERY_QUIVER_UPGRADE);
+        this->prevTextId = 0x406;
+    }
+
     if (Actor_HasParent(&this->actor, play)) {
         if (this->prevTextId == 0x407) {
             if (!CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_TOWN_SHOOTING_GALLERY_QUIVER_UPGRADE)) {
@@ -963,7 +980,8 @@ void EnSyatekiMan_Town_SetupGiveReward(EnSyatekiMan* this, PlayState* play) {
         this->actor.parent = NULL;
         this->actionFunc = EnSyatekiMan_Town_GiveReward;
     } else {
-        if (this->prevTextId == 0x407) {
+        if (OotmmSession_IsActive() && (player->stateFlags1 & PLAYER_STATE1_400)) {
+        } else if (this->prevTextId == 0x407) {
             if (!OotmmNpcChecks_Done("MM_SHOOTING_GAME_TOWN_1", CUR_UPG_VALUE(UPG_QUIVER) >= 3) &&
                 !CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_TOWN_SHOOTING_GALLERY_QUIVER_UPGRADE)) {
                 Actor_OfferGetItem(&this->actor, play, GI_QUIVER_30 + CLAMP_MAX(CUR_UPG_VALUE(UPG_QUIVER), 2),
@@ -1206,7 +1224,7 @@ void EnSyatekiMan_Swamp_AddBonusPoints(EnSyatekiMan* this, PlayState* play) {
             this->currentWave = 0;
             this->actionFunc = EnSyatekiMan_Swamp_EndGame;
             sBonusTimer = 0;
-        } else if (sBonusTimer > 10) {
+        } else if (OotmmSession_IsActive() || (sBonusTimer > 10)) {
             gSaveContext.timerStopTimes[TIMER_ID_MINIGAME_1] += SECONDS_TO_TIMER(1);
             play->interfaceCtx.minigamePoints += SG_BONUS_POINTS_PER_SECOND;
             this->score += SG_BONUS_POINTS_PER_SECOND;

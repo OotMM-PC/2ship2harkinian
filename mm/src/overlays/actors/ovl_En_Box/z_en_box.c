@@ -5,6 +5,7 @@
  */
 
 #include "z_en_box.h"
+#include "2s2h/OotmmSession.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "objects/object_box/object_box.h"
 #include "overlays/actors/ovl_En_Elforg/z_en_elforg.h"
@@ -485,7 +486,7 @@ void EnBox_WaitOpen(EnBox* this, PlayState* play) {
             Audio_PlayFanfare(NA_BGM_OPEN_CHEST);
         }
 
-        if (this->getItemId == GI_STRAY_FAIRY) {
+        if (!OotmmSession_IsActive() && (this->getItemId == GI_STRAY_FAIRY)) {
             this->movementFlags |= ENBOX_MOVE_0x20;
         } else {
             if ((this->getItemId == GI_HEART_PIECE) || (this->getItemId == GI_BOTTLE)) {

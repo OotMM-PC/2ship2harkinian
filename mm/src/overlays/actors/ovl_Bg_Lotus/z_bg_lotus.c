@@ -1,4 +1,5 @@
 #include "z_bg_lotus.h"
+#include "2s2h/OotmmCustomItems.h"
 #include "objects/object_lotus/object_lotus.h"
 
 #define FLAGS 0x00000000
@@ -83,7 +84,8 @@ void func_80AD68DC(BgLotus* this, PlayState* play) {
                 EffectSsGRipple_Spawn(play, &this->dyna.actor.world.pos, 0x3E8, 0x578, 8);
                 this->unk166 = 40;
             }
-            if (gSaveContext.save.playerForm != PLAYER_FORM_DEKU) {
+            if ((gSaveContext.save.playerForm != PLAYER_FORM_DEKU) &&
+                (OotmmCustomItems_EquippedBoots() != OOTMM_BOOTS_HOVER)) {
                 this->unk166 = 40;
                 this->dyna.actor.flags |= ACTOR_FLAG_UPDATE_CULLING_DISABLED;
                 this->actionFunc = func_80AD6A88;

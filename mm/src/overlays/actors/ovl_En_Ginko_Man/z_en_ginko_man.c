@@ -5,6 +5,8 @@
  */
 
 #include "z_en_ginko_man.h"
+#include "2s2h/OotmmNpcChecks.h"
+#include "2s2h/OotmmSession.h"
 #include "GameInteractor/GameInteractor.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
@@ -77,10 +79,169 @@ void EnGinkoMan_Init(Actor* thisx, PlayState* play) {
 void EnGinkoMan_Destroy(Actor* thisx, PlayState* play) {
 }
 
+#define OOTMM_BANK_MAX 99999
+#define OOTMM_BANK_FEE (gSaveContext.save.isNight ? 4 : 0)
+
+static u8 sOotmmBankIsDeposit;
+static const u16 sOotmmBankRewardRupees[] = { 200, 500, 1000 };
+static const u16 sOotmmBankRewardText[] = { 0x45B, 0x45C, 0x45D };
+static const char* const sOotmmBankRewardIds[] = { "MM_BANK_1", "MM_BANK_2", "MM_BANK_3" };
+
+void EnGinkoMan_OotmmDefault(EnGinkoMan* this, PlayState* play);
+void EnGinkoMan_OotmmCheckReward(EnGinkoMan* this, PlayState* play);
+
+static s32 EnGinkoMan_OotmmButton(PlayState* play) {
+    s32 state = Message_GetState(&play->msgCtx);
+    u16 buttons = play->state.input[0].press.button;
+
+    if ((state != TEXT_STATE_CHOICE) && (state != TEXT_STATE_EVENT) && (state != TEXT_STATE_INPUT_RUPEES)) {
+        return 0;
+    }
+    if (CHECK_BTN_ALL(buttons, BTN_B)) {
+        return BTN_B;
+    }
+    if (CHECK_BTN_ALL(buttons, BTN_A)) {
+        return BTN_A;
+    }
+    if (CHECK_BTN_ALL(buttons, BTN_R)) {
+        return BTN_R;
+    }
+    return 0;
+}
+
+static s32 EnGinkoMan_OotmmCurrentRupees(void) {
+    s32 rupees = gSaveContext.save.saveInfo.playerData.rupees + gSaveContext.rupeeAccumulator;
+
+    return CLAMP(rupees, 0, CUR_CAPACITY(UPG_WALLET));
+}
+
+static void EnGinkoMan_OotmmDeposit(s32 amount) {
+    s32 bank = (s32)HIGH_SCORE(HS_BANK_RUPEES);
+
+    amount = MIN(amount, OOTMM_BANK_MAX - bank);
+    amount = MIN(amount, EnGinkoMan_OotmmCurrentRupees());
+    HIGH_SCORE(HS_BANK_RUPEES) = bank + amount;
+    Rupees_ChangeBy(-amount);
+}
+
+static void EnGinkoMan_OotmmWithdraw(s32 amount) {
+    s32 bank = (s32)HIGH_SCORE(HS_BANK_RUPEES);
+    s32 fee = OOTMM_BANK_FEE;
+
+    amount = MIN(amount, bank);
+    amount = MIN(amount, CUR_CAPACITY(UPG_WALLET) - EnGinkoMan_OotmmCurrentRupees());
+    if (amount == 0) {
+        return;
+    }
+    bank -= amount;
+    Rupees_ChangeBy(amount);
+    if (bank > fee) {
+        bank -= fee;
+    } else {
+        Rupees_ChangeBy(-(fee - bank));
+        bank = 0;
+    }
+    HIGH_SCORE(HS_BANK_RUPEES) = bank;
+}
+
+void EnGinkoMan_OotmmGiveReward(EnGinkoMan* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+
+    if (player->stateFlags1 & PLAYER_STATE1_400) {
+        return;
+    }
+    if (Actor_HasParent(&this->actor, play)) {
+        this->actor.parent = NULL;
+        this->actionFunc = EnGinkoMan_OotmmCheckReward;
+        return;
+    }
+    Actor_OfferGetItem(&this->actor, play, GI_WALLET_ADULT, 9999.0f, 9999.0f);
+}
+
+void EnGinkoMan_OotmmCheckReward(EnGinkoMan* this, PlayState* play) {
+    s32 i;
+
+    this->actor.parent = NULL;
+    for (i = 0; i < ARRAY_COUNT(sOotmmBankRewardIds); i++) {
+        if (OotmmNpcChecks_IsCollected(sOotmmBankRewardIds[i])) {
+            continue;
+        }
+        if ((s32)HIGH_SCORE(HS_BANK_RUPEES) < sOotmmBankRewardRupees[i]) {
+            break;
+        }
+        this->curTextId = sOotmmBankRewardText[i];
+        this->actionFunc = EnGinkoMan_OotmmGiveReward;
+        EnGinkoMan_OotmmGiveReward(this, play);
+        return;
+    }
+    this->curTextId = 0;
+    this->actionFunc = EnGinkoMan_OotmmDefault;
+}
+
+void EnGinkoMan_OotmmTransfer(EnGinkoMan* this, PlayState* play) {
+    s32 amount;
+
+    switch (EnGinkoMan_OotmmButton(play)) {
+        case BTN_A:
+            amount = play->msgCtx.rupeesSelected;
+            break;
+        case BTN_B:
+            amount = 0;
+            break;
+        case BTN_R:
+            amount = 9999;
+            break;
+        default:
+            return;
+    }
+    Message_CloseTextbox(play);
+    if (amount != 0) {
+        if (sOotmmBankIsDeposit) {
+            EnGinkoMan_OotmmDeposit(amount);
+        } else {
+            EnGinkoMan_OotmmWithdraw(amount);
+        }
+    }
+    this->actionFunc = EnGinkoMan_OotmmCheckReward;
+    EnGinkoMan_OotmmCheckReward(this, play);
+}
+
+void EnGinkoMan_OotmmMainBox(EnGinkoMan* this, PlayState* play) {
+    s32 action;
+
+    switch (EnGinkoMan_OotmmButton(play)) {
+        case BTN_A:
+            action = play->msgCtx.choiceIndex;
+            break;
+        case BTN_B:
+            action = 2;
+            break;
+        default:
+            return;
+    }
+    sOotmmBankIsDeposit = action == 0;
+    if (action == 2) {
+        Message_CloseTextbox(play);
+        this->actionFunc = EnGinkoMan_OotmmDefault;
+    } else {
+        Message_StartTextbox(play, 0x450, &this->actor);
+        this->actionFunc = EnGinkoMan_OotmmTransfer;
+    }
+}
+
+void EnGinkoMan_OotmmDefault(EnGinkoMan* this, PlayState* play) {
+    if (Actor_TalkOfferAccepted(&this->actor, &play->state)) {
+        Message_StartTextbox(play, 0x44C, &this->actor);
+        this->actionFunc = EnGinkoMan_OotmmMainBox;
+    } else {
+        Actor_OfferTalk(&this->actor, play, 100.0f);
+    }
+}
+
 void EnGinkoMan_SetupIdle(EnGinkoMan* this) {
     this->actor.flags |= ACTOR_FLAG_ATTENTION_ENABLED;
     Actor_ChangeAnimationByInfo(&this->skelAnime, sAnimationInfo, GINKO_ANIM_SITTING);
-    this->actionFunc = EnGinkoMan_Idle;
+    this->actionFunc = OotmmSession_IsActive() ? EnGinkoMan_OotmmDefault : EnGinkoMan_Idle;
 }
 
 void EnGinkoMan_Idle(EnGinkoMan* this, PlayState* play) {

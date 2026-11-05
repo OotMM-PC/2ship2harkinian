@@ -57,6 +57,8 @@ extern "C" {
 extern EffectSsInfo sEffectSsInfo;
 }
 
+static bool IsEntranceShuffle();
+
 extern "C" void CosmeticEditor_SetColor(const char* name, uint8_t r, uint8_t g, uint8_t b);
 extern "C" void CosmeticEditor_RecolorPalette(const char* path, int count, uint32_t defaultColor, uint32_t color);
 
@@ -271,6 +273,7 @@ std::optional<uint16_t> ResolveMmEntrance(uint32_t entrance) {
     }
     if (entrance == kGrottoCowField || entrance == kGrottoCowCoast) {
         sCowGrottoVariant = entrance == kGrottoCowCoast ? 1 : 0;
+        OotmmXflags_SetLastScene(entrance == kGrottoCowCoast ? SCENE_30GYOSON : SCENE_00KEIKOKU);
         gSaveContext.respawn[RESPAWN_MODE_UNK_3].data =
             static_cast<int8_t>(entrance == kGrottoCowCoast ? -1 : 31);
         if (gSaveContext.respawnFlag == 4) {
@@ -386,6 +389,10 @@ void ApplyEnhancements() {
     CVarSetInteger("gEnhancements.Songs.FasterSongPlayback", 1);
     CVarSetInteger("gEnhancements.Songs.SkipSoTCutscenes", 1);
     CVarSetInteger("gEnhancements.Songs.SkipSoaringCutscene", 1);
+    CVarSetInteger("gEnhancements.Player.FasterPushAndPull", 0);
+    CVarSetInteger("gEnhancements.Player.UnderwaterOcarina", 1);
+    CVarSetInteger("gFixes.FixEponaStealingSword", 1);
+    gItemPrices[ITEM_GOLD_DUST] = 0;
 }
 
 void ApplySaveFlags() {
@@ -429,12 +436,42 @@ void ApplySaveFlags() {
         }
     }
 
+    if (sGameState.GetStringSetting("strayFairyOtherShuffle", "") == "removed") {
+        auto& flags = gSaveContext.save.saveInfo.permanentSceneFlags;
+        flags[SCENE_MITURIN].switch1 |= 0x0007FC00;
+        flags[SCENE_MITURIN].collectible |= 0x70000000;
+        flags[SCENE_HAKUGIN].switch1 |= 0x0007B800;
+        flags[SCENE_HAKUGIN].collectible |= 0x40000000;
+        flags[SCENE_SEA].switch1 |= 0x00078000;
+        flags[SCENE_SEA].collectible |= 0x7C000000;
+    }
+
     if (sGameState.GetStringSetting("beneathWell", "vanilla") == "open") {
         gSaveContext.save.saveInfo.permanentSceneFlags[SCENE_REDEAD].switch0 |= 0xC0000082;
         gSaveContext.save.saveInfo.permanentSceneFlags[SCENE_REDEAD].switch1 |= 0x000007FF;
         gSaveContext.cycleSceneFlags[SCENE_REDEAD].switch0 |= 0xC0000082;
         gSaveContext.cycleSceneFlags[SCENE_REDEAD].switch1 |= 0x000007FF;
     }
+}
+
+bool ErMovesSirloin() {
+    return sGameState.GetStringSetting("erIndoors", "none") != "none" ||
+           sGameState.GetStringSetting("erOverworld", "none") != "none";
+}
+
+void SpawnLonePeakCollision() {
+    if (gPlayState != nullptr && gPlayState->sceneId == SCENE_11GORONNOSATO2) {
+        Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_OOTMM_BG_LONEPEAK, 2487.0f, -200.0f, -1320.0f, 0, 0, 0, 0);
+    }
+}
+
+void SpawnStoredSirloin() {
+    if (gPlayState == nullptr || gPlayState->sceneId != SCENE_10YUKIYAMANOMURA ||
+        OotmmItemApply_LedgerGet("MM_STORED_SIRLOIN") == 0 ||
+        CHECK_WEEKEVENTREG(WEEKEVENTREG_CLEARED_SNOWHEAD_TEMPLE)) {
+        return;
+    }
+    Actor_Spawn(&gPlayState->actorCtx, gPlayState, ACTOR_EN_MM, -1025.0f, 8.0f, 400.0f, 0, 0, 0, 0x8000);
 }
 
 void InitializeSave() {
@@ -553,10 +590,22 @@ std::optional<uint16_t> InitialMmSpawn() {
     return ResolveMmEntrance(*mapping->ToNativeId);
 }
 
+void KeepStoneTowerOrientation() {
+    if (gPlayState == nullptr || !IsEntranceShuffle()) {
+        return;
+    }
+    if (gPlayState->sceneId == SCENE_F41) {
+        Flags_SetSwitch(gPlayState, 0x14);
+    } else if (gPlayState->sceneId == SCENE_F40) {
+        Flags_UnsetSwitch(gPlayState, 0x14);
+    }
+}
+
 void UpdateEntranceTransition() {
     if (gPlayState == nullptr) {
         return;
     }
+    KeepStoneTowerOrientation();
     if (sCrossGameRetry.has_value()) {
         gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
         if (++sCrossGameRetryFrames >= 60) {
@@ -841,10 +890,28 @@ void OotmmSession_Init() {
         OotmmJpLayouts_Init();
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveInit>(
             [](s16) { InitializeSave(); });
+        GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSceneInit>(
+            [](s8, s8) {
+                SpawnStoredSirloin();
+                SpawnLonePeakCollision();
+                if (gPlayState != nullptr && gPlayState->colCtx.colHeader != nullptr) {
+                    CollisionHeader* header = gPlayState->colCtx.colHeader;
+                    if (gPlayState->sceneId == SCENE_12HAKUGINMAE && header->surfaceTypeList != nullptr) {
+                        header->surfaceTypeList[10].data[0] = 0x00000001;
+                        header->surfaceTypeList[11].data[0] = 0x30000001;
+                    } else if (gPlayState->sceneId == SCENE_31MISAKI && header->vtxList != nullptr) {
+                        header->vtxList[434].y = 0x00A9;
+                        header->vtxList[435].y = 0x00A9;
+                    }
+                }
+            });
+        GameInteractor::Instance->RegisterGameHook<GameInteractor::BeforeEndOfCycleSave>(
+            []() { OotmmItemApply_LedgerSet("MM_STORED_SIRLOIN", 0); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(
             [](s16) { ApplySaveFlags(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(UpdateEntranceTransition);
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(RetryInitialSave);
+        GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(OotmmItemPage_FillDpadDefaults);
         if (sGameState.GetBoolSetting("fastMasks", false)) {
             GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateMainStart>(UpdateFastMaskForm);
         }
@@ -887,6 +954,42 @@ bool OotmmSession_HasPendingInitialSave() {
 extern "C" int32_t OotmmSession_SaveProgress(void) {
     return OotmmSession_IsActive() && gPlayState != nullptr && gSaveContext.fileNum >= 0 &&
            gSaveContext.fileNum < 3 && gSaveContext.rupeeAccumulator == 0 && PersistTransitionSave();
+}
+
+extern "C" int32_t OotmmSession_ErIndoors(void) {
+    return OotmmSession_IsActive() && sGameState.GetStringSetting("erIndoors", "none") != "none";
+}
+
+extern "C" int32_t OotmmSession_SirloinIsStoredAway(PlayState* play) {
+    return OotmmSession_IsActive() && ErMovesSirloin() && OotmmItemApply_LedgerGet("MM_STORED_SIRLOIN") != 0 &&
+           play->sceneId != SCENE_10YUKIYAMANOMURA;
+}
+
+extern "C" int32_t OotmmSession_StoreSirloin(PlayState* play, Actor* sirloin) {
+    if (!OotmmSession_IsActive() || !ErMovesSirloin() || play->sceneId != SCENE_16GORON_HOUSE) {
+        return 0;
+    }
+    OotmmItemApply_LedgerSet("MM_STORED_SIRLOIN", 1);
+    Audio_PlaySfx(NA_SE_SY_CORRECT_CHIME);
+    GET_PLAYER(play)->actor.child = nullptr;
+    sirloin->parent = nullptr;
+    Actor_Kill(sirloin);
+    return 1;
+}
+
+extern "C" void OotmmSession_FixupPlayInit(void) {
+    if (!OotmmSession_IsActive()) {
+        return;
+    }
+    if (ErMovesSirloin()) {
+        gSaveContext.unk_1014 = 0;
+    }
+    if (gSaveContext.save.entrance == ENTRANCE(DEKU_KINGS_CHAMBER, 0) &&
+        sGameState.GetStringSetting("erIndoors", "none") != "none" &&
+        gSaveContext.save.saveInfo.inventory.items[SLOT_MASK_DEKU] == ITEM_MASK_DEKU) {
+        gSaveContext.save.playerForm = PLAYER_FORM_DEKU;
+        gSaveContext.save.equippedMask = PLAYER_MASK_DEKU;
+    }
 }
 
 extern "C" int32_t OotmmSession_IsActive(void) {
@@ -985,6 +1088,11 @@ extern "C" int32_t OotmmSession_TryBootDirectly(void* gameState) {
     gSaveContext.ambienceId = AMBIENCE_ID_DISABLED;
     BootIntoGame(static_cast<GameState*>(gameState));
     return 1;
+}
+
+extern "C" int32_t OotmmSession_ShuffledWallmaster(int16_t actorId) {
+    return OotmmSession_IsActive() && actorId == ACTOR_EN_WALLMAS &&
+           sGameState.GetStringSetting("erWallmasters", "none") != "none";
 }
 
 extern "C" int32_t OotmmSession_WallmasterTakePlayer(PlayState* play, Actor* wallmaster) {
@@ -1142,6 +1250,15 @@ static bool IsEntranceShuffle() {
         }
     }
     return false;
+}
+
+extern "C" int32_t OotmmSession_ErRegionsOverworld(void) {
+    return OotmmSession_IsActive() && ((sGameState.GetStringSetting("erRegions", "none") != "none") ||
+                                       (sGameState.GetStringSetting("erOverworld", "none") != "none"));
+}
+
+extern "C" int32_t OotmmSession_IsEntranceShuffle(void) {
+    return OotmmSession_IsActive() && IsEntranceShuffle();
 }
 
 extern "C" int32_t OotmmSession_KeepsSaveOnMoonCrash(void) {

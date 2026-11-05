@@ -6,6 +6,7 @@
 
 #include "z_bg_ikana_block.h"
 #include "objects/gameplay_dangeon_keep/gameplay_dangeon_keep.h"
+#include "2s2h/OotmmSession.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -290,9 +291,10 @@ void func_80B7F1A8(BgIkanaBlock* this) {
 void func_80B7F290(BgIkanaBlock* this, PlayState* play) {
     s32 pad;
 
-    Math_StepToF(&this->unk_16C, 2.0f, 0.4f);
+    Math_StepToF(&this->unk_16C, OotmmSession_IsActive() ? 8.0f : 2.0f, OotmmSession_IsActive() ? 1.59375f : 0.4f);
 
-    if (GameInteractor_Should(VB_BLOCK_BE_FINISHED_PULLING, Math_StepToF(this->unk_164, this->unk_168, this->unk_16C),
+    if (OotmmSession_IsActive() ? Math_StepToF(this->unk_164, this->unk_168, this->unk_16C)
+                                : GameInteractor_Should(VB_BLOCK_BE_FINISHED_PULLING, Math_StepToF(this->unk_164, this->unk_168, this->unk_16C),
                               this->unk_164, this->unk_168, this->unk_16C, this->unk_16C)) {
         Player* player = GET_PLAYER(play);
 

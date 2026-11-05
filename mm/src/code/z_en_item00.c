@@ -8,6 +8,7 @@
 #include "2s2h/OotmmChecks.h"
 #include "2s2h/OotmmItemApply.h"
 #include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmCustomItems.h"
 
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 
@@ -101,6 +102,10 @@ void EnItem00_Init(Actor* thisx, PlayState* play) {
     if (thisx->params == ITEM00_3_HEARTS) {
         thisx->params = ITEM00_RECOVERY_HEART;
     }
+    if ((thisx->params == ITEM00_OOTMM_SEEDS) &&
+        ((play->sceneId == SCENE_F01) || (play->sceneId == SCENE_INISIE_BS) || (play->sceneId == SCENE_LAST_BS))) {
+        thisx->params = (CUR_UPG_VALUE(UPG_QUIVER) != 0) ? ITEM00_ARROWS_10 : ITEM00_NOTHING;
+    }
 
     Actor_ProcessInitChain(thisx, sInitChain);
     Collider_InitAndSetCylinder(play, &this->collider, thisx, &sCylinderInit);
@@ -151,6 +156,7 @@ void EnItem00_Init(Actor* thisx, PlayState* play) {
             break;
 
         case ITEM00_BOMBCHU:
+        case ITEM00_OOTMM_SEEDS:
         case ITEM00_BOMBS_A:
         case ITEM00_BOMBS_B:
         case ITEM00_DEKU_NUTS_1:
@@ -269,6 +275,10 @@ void EnItem00_Init(Actor* thisx, PlayState* play) {
 
         case ITEM00_BOMBCHU:
             Item_Give(play, ITEM_BOMBCHUS_5);
+            break;
+
+        case ITEM00_OOTMM_SEEDS:
+            OotmmCustomItems_AddSlingshotSeeds(5);
             break;
 
         case ITEM00_ARROWS_10:
@@ -435,7 +445,8 @@ void func_800A6780(EnItem00* this, PlayState* play) {
     if (this->actor.params <= ITEM00_RUPEE_RED) {
         this->actor.shape.rot.y += 0x3C0;
     } else if ((this->actor.params >= ITEM00_SHIELD_HERO) && (this->actor.params != ITEM00_DEKU_NUTS_10) &&
-               (this->actor.params != ITEM00_BOMBS_0) && (this->actor.params != ITEM00_BOMBCHU)) {
+               (this->actor.params != ITEM00_BOMBS_0) && (this->actor.params != ITEM00_BOMBCHU) &&
+               (this->actor.params != ITEM00_OOTMM_SEEDS)) {
         this->actor.world.rot.x -= 0x2BC;
         this->actor.shape.rot.y += 0x190;
         this->actor.shape.rot.x = this->actor.world.rot.x - 0x4000;
@@ -615,6 +626,10 @@ void EnItem00_Update(Actor* thisx, PlayState* play) {
             Item_Give(play, ITEM_BOMBCHUS_5);
             break;
 
+        case ITEM00_OOTMM_SEEDS:
+            OotmmCustomItems_AddSlingshotSeeds(5);
+            break;
+
         case ITEM00_ARROWS_10:
             Item_Give(play, ITEM_ARROWS_10);
             break;
@@ -777,6 +792,7 @@ void EnItem00_Draw(Actor* thisx, PlayState* play) {
             case ITEM00_DEKU_NUTS_10:
             case ITEM00_BOMBS_0:
             case ITEM00_BOMBCHU:
+            case ITEM00_OOTMM_SEEDS:
                 EnItem00_DrawSprite(this, play);
                 break;
 
@@ -869,7 +885,11 @@ void EnItem00_DrawSprite(EnItem00* this, PlayState* play) {
 
     POLY_OPA_DISP = Gfx_SetupDL66(POLY_OPA_DISP);
 
-    gSPSegment(POLY_OPA_DISP++, 0x08, Lib_SegmentedToVirtual(sItemDropTextures[texIndex]));
+    if (this->actor.params == ITEM00_OOTMM_SEEDS) {
+        gSPSegment(POLY_OPA_DISP++, 0x08, (void*)"__OTR__objects/ot_gameplay_keep/gDropDekuSeedsTex");
+    } else {
+        gSPSegment(POLY_OPA_DISP++, 0x08, Lib_SegmentedToVirtual(sItemDropTextures[texIndex]));
+    }
 
     MATRIX_FINALIZE_AND_LOAD(POLY_OPA_DISP++, play->state.gfxCtx);
 
@@ -911,10 +931,42 @@ void EnItem00_DrawHeartPiece(EnItem00* this, PlayState* play) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+static s16 EnItem00_OotmmArrowOrSeeds(s32 size) {
+    static const s16 sArrowDrops[] = { ITEM00_ARROWS_10, ITEM00_ARROWS_30, ITEM00_ARROWS_40, ITEM00_ARROWS_50 };
+    s32 arrowsAllowed = CUR_UPG_VALUE(UPG_QUIVER) != 0;
+    s32 seedsAllowed = OotmmCustomItems_SlingshotMaxAmmo() > 0;
+
+    if (!arrowsAllowed && !seedsAllowed) {
+        return ITEM00_NO_DROP;
+    }
+    if (!seedsAllowed) {
+        return sArrowDrops[size];
+    }
+    if (!arrowsAllowed) {
+        return ITEM00_OOTMM_SEEDS;
+    }
+    return (Rand_ZeroOne() < 0.5f) ? sArrowDrops[size] : ITEM00_OOTMM_SEEDS;
+}
+
 s16 func_800A7650(s16 dropId) {
     if (OotmmSession_IsActive() &&
         (dropId == ITEM00_BOMBS_A || dropId == ITEM00_BOMBS_B || dropId == ITEM00_BOMBS_0)) {
         return OotmmItemApply_SelectBombDrop(dropId, ITEM00_BOMBCHU);
+    }
+    if (OotmmSession_IsActive()) {
+        switch (dropId) {
+            case ITEM00_ARROWS_10:
+            case ITEM00_OOTMM_SEEDS:
+                return EnItem00_OotmmArrowOrSeeds(0);
+            case ITEM00_ARROWS_30:
+                return EnItem00_OotmmArrowOrSeeds(1);
+            case ITEM00_ARROWS_40:
+                return EnItem00_OotmmArrowOrSeeds(2);
+            case ITEM00_ARROWS_50:
+                return EnItem00_OotmmArrowOrSeeds(3);
+            default:
+                break;
+        }
     }
     if ((((dropId == ITEM00_BOMBS_A) || (dropId == ITEM00_BOMBS_0) || (dropId == ITEM00_BOMBS_B)) &&
          (INV_CONTENT(ITEM_BOMB) == ITEM_NONE)) ||

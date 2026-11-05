@@ -5,6 +5,7 @@
  */
 
 #include "z_en_stop_heishi.h"
+#include "2s2h/OotmmSession.h"
 #include "z64quake.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
@@ -407,6 +408,10 @@ void func_80AE7F34(EnStopheishi* this, PlayState* play) {
         case PLAYER_FORM_FIERCE_DEITY:
             phi_a2 = 1;
             break;
+    }
+
+    if (OotmmSession_IsActive() && (phi_a2 == 0)) {
+        phi_a2 = 1;
     }
 
     if (((phi_a2 == 1) || (phi_a2 == 2) || (phi_a2 == 3)) &&

@@ -10,6 +10,7 @@
 #include <string.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmNpcChecks.h"
+#include "2s2h/OotmmSession.h"
 #include <libultraship/log/luslog.h>
 
 s16 sCutsceneQuakeIndex;
@@ -1186,6 +1187,17 @@ void Cutscene_SetActorCue(CutsceneContext* csCtx, u8** script, s16 cueChannel) {
  *
  * TODO: consider changing the type of `script` to `uintptr_t` when this function matches.
  */
+static void Cutscene_RetimeBeehiveCues(u8* script) {
+    static const u16 sFrames[][2] = { { 0, 0x10 }, { 0x10, 0x63 }, { 0x63, 0x64 } };
+    CsCmdActorCue* cues = (CsCmdActorCue*)(script + sizeof(s32));
+    s32 i;
+
+    for (i = 0; i < ARRAY_COUNT(sFrames); i++) {
+        cues[i].startFrame = sFrames[i][0];
+        cues[i].endFrame = sFrames[i][1];
+    }
+}
+
 void Cutscene_ProcessScript(PlayState* play, CutsceneContext* csCtx, u8* script) {
     s32 i;
     s32 j;
@@ -1195,6 +1207,7 @@ void Cutscene_ProcessScript(PlayState* play, CutsceneContext* csCtx, u8* script)
     s32 cmdEntries;
     s32 pad2;
     s32 csFrameCount;
+    s32 isBeehive;
     void* cmd;
 
     // Read the command list count and the ending frame for this cutscene
@@ -1203,6 +1216,11 @@ void Cutscene_ProcessScript(PlayState* play, CutsceneContext* csCtx, u8* script)
 
     memcpy(&csFrameCount, script, sizeof(csFrameCount));
     script += sizeof(csFrameCount);
+
+    isBeehive = OotmmSession_IsActive() && (play->sceneId == SCENE_PIRATE) && (csCtx->scriptIndex == 1);
+    if (isBeehive) {
+        csFrameCount = 100;
+    }
 
     if ((csCtx->curFrame > (u16)csFrameCount) && (play->transitionTrigger != TRANS_TRIGGER_START) &&
         (csCtx->state != CS_STATE_RUN_UNSTOPPABLE)) {
@@ -1218,6 +1236,10 @@ void Cutscene_ProcessScript(PlayState* play, CutsceneContext* csCtx, u8* script)
 
         if (cmdType == CS_CAM_STOP) {
             break;
+        }
+
+        if (isBeehive && ((cmdType == CS_CMD_ACTOR_CUE_108) || (cmdType == CS_CMD_ACTOR_CUE_476))) {
+            Cutscene_RetimeBeehiveCues(script);
         }
 
         if (((cmdType >= CS_CMD_ACTOR_CUE_100) && (cmdType <= CS_CMD_ACTOR_CUE_149)) ||

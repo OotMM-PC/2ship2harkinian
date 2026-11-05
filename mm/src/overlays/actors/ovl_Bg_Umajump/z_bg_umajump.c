@@ -5,6 +5,7 @@
  */
 
 #include "z_bg_umajump.h"
+#include "2s2h/OotmmSession.h"
 #include "assets/objects/object_umajump/object_umajump.h"
 
 #define FLAGS 0x00000000
@@ -91,7 +92,7 @@ void BgUmajump_Init(Actor* thisx, PlayState* play) {
     thisx->params = BG_UMAJUMP_GET_TYPE(thisx);
 
     if (thisx->params == BG_UMAJUMP_TYPE_2) {
-        if ((play->sceneId == SCENE_F01) && !CHECK_WEEKEVENTREG(WEEKEVENTREG_89_20) &&
+        if (!OotmmSession_IsActive() && (play->sceneId == SCENE_F01) && !CHECK_WEEKEVENTREG(WEEKEVENTREG_89_20) &&
             !CHECK_QUEST_ITEM(QUEST_SONG_EPONA) && (thisx->csId != CS_ID_NONE)) {
             this->actionFunc = BgUmajump_CheckDistance;
             thisx->update = func_8091A5A0;

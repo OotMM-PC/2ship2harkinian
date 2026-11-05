@@ -5,6 +5,7 @@
  */
 
 #include "z_en_mm.h"
+#include "2s2h/OotmmSession.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
@@ -72,6 +73,11 @@ void EnMm_Init(Actor* thisx, PlayState* play) {
     EnMm* this = (EnMm*)thisx;
     EnMmActionFunc action;
 
+    if (OotmmSession_SirloinIsStoredAway(play)) {
+        Actor_Kill(&this->actor);
+        return;
+    }
+
     if ((this->actor.params >= 0) && (!CHECK_WEEKEVENTREG(WEEKEVENTREG_37_10) ||
                                       CHECK_WEEKEVENTREG(WEEKEVENTREG_37_08) || (gSaveContext.unk_1014 != 0))) {
         Actor_Kill(&this->actor);
@@ -119,6 +125,10 @@ void func_80965DB4(EnMm* this, PlayState* play) {
     f32 temp_f2;
     s32 angle;
     s32 pad;
+
+    if (Actor_HasParent(&this->actor, play) && OotmmSession_StoreSirloin(play, &this->actor)) {
+        return;
+    }
 
     if (Actor_HasParent(&this->actor, play)) {
         func_80965BBC(this);

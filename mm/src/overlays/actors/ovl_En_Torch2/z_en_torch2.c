@@ -7,6 +7,7 @@
 #include "z_en_torch2.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -79,8 +80,10 @@ void EnTorch2_Destroy(Actor* thisx, PlayState* play) {
     EnTorch2* this = (EnTorch2*)thisx;
 
     Collider_DestroyCylinder(play, &this->collider);
-    Play_SetRespawnData(play, this->actor.params + RESPAWN_MODE_GORON - 1, 0xFF, 0,
-                        PLAYER_PARAMS(0xFF, PLAYER_START_MODE_B), &this->actor.world.pos, this->actor.shape.rot.y);
+    if (!OotmmSession_IsActive()) {
+        Play_SetRespawnData(play, this->actor.params + RESPAWN_MODE_GORON - 1, 0xFF, 0,
+                            PLAYER_PARAMS(0xFF, PLAYER_START_MODE_B), &this->actor.world.pos, this->actor.shape.rot.y);
+    }
     play->actorCtx.elegyShells[this->actor.params] = NULL;
 }
 

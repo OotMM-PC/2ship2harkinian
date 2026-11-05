@@ -572,6 +572,10 @@ void Environment_Init(PlayState* play2, EnvironmentContext* envCtx, s32 arg2) {
     u8 dayOffset;
     s16 i;
 
+    if (OotmmSession_IsActive() && (play->sceneId == SCENE_DEKUTES || play->sceneId == SCENE_YOUSEI_IZUMI)) {
+        gWeatherMode = WEATHER_MODE_CLEAR;
+    }
+
     CREG(1) = 0;
 
     gSaveContext.sunsSongState = SUNSSONG_INACTIVE;

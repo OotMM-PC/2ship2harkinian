@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_pzlblock.h"
+#include "2s2h/OotmmSession.h"
 #include "objects/gameplay_dangeon_keep/gameplay_dangeon_keep.h"
 #include "objects/object_secom_obj/object_secom_obj.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -279,8 +280,10 @@ void func_809A3BA4(ObjPzlblock* this) {
 }
 
 void func_809A3BC0(ObjPzlblock* this, PlayState* play) {
-    if (GameInteractor_Should(VB_BLOCK_BE_FINISHED_PULLING, Math_StepToF(this->unk_164, this->unk_168, 2.3f),
-                              this->unk_164, this->unk_168, 2.3f, 2.3f)) {
+    const f32 step = OotmmSession_IsActive() ? 4.59375f : 2.3f;
+
+    if (GameInteractor_Should(VB_BLOCK_BE_FINISHED_PULLING, Math_StepToF(this->unk_164, this->unk_168, step),
+                              this->unk_164, this->unk_168, step, step)) {
         Player* player = GET_PLAYER(play);
         s32 params = OBJPZLBLOCK_GET_ROTZ(&this->dyna.actor);
         s32 pad;

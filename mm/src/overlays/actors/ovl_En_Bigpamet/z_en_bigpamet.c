@@ -8,6 +8,7 @@
 #include "z64quake.h"
 #include "z64rumble.h"
 #include "overlays/actors/ovl_En_Pametfrog/z_en_pametfrog.h"
+#include "2s2h/OotmmCustomItems.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 
 #define FLAGS                                                                                 \
@@ -722,9 +723,12 @@ void func_80A28EE8(EnBigpamet* this, PlayState* play) {
 }
 
 void func_80A29028(EnBigpamet* this, PlayState* play) {
+    Player* player = GET_PLAYER(play);
+
     if (this->collider.base.acFlags & AC_HIT) {
         this->collider.base.acFlags &= ~AC_HIT;
-        if ((this->actor.colChkInfo.damageEffect == 0xF) && (this->actor.parent->params != GEKKO_JUMP_ON_SNAPPER) &&
+        if (((this->actor.colChkInfo.damageEffect == 0xF) || (player->heldItemAction == PLAYER_IA_OOTMM_HAMMER)) &&
+            (this->actor.parent->params != GEKKO_JUMP_ON_SNAPPER) &&
             (this->actionFunc != func_80A28E98)) {
             func_80A28B98(this, play);
         }

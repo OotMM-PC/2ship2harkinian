@@ -5,6 +5,7 @@
  */
 
 #include "z_en_suttari.h"
+#include "2s2h/OotmmSession.h"
 #include "overlays/actors/ovl_En_Clear_Tag/z_en_clear_tag.h"
 #include "overlays/actors/ovl_En_Door/z_en_door.h"
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
@@ -1294,7 +1295,7 @@ void func_80BAD380(EnSuttari* this, PlayState* play) {
         if (this->flags1 & 0x100) {
             this->flags2 |= 8;
             func_80BAAF1C(this);
-        } else if (this->flags1 & 0x200) {
+        } else if ((this->flags1 & 0x200) && !OotmmSession_IsActive()) {
             SET_WEEKEVENTREG(WEEKEVENTREG_SAKON_DEAD);
             this->flags2 |= 4;
             this->actor.speed = 0.0f;
@@ -1304,8 +1305,8 @@ void func_80BAD380(EnSuttari* this, PlayState* play) {
             Actor_Kill(&this->actor);
             return;
         }
-        if (this->unk1F4[1] == -0x63) {
-            if (this->flags2 & 8) {
+        if ((OotmmSession_IsActive() && (this->animIndex == SUTTARI_ANIM_6)) || (this->unk1F4[1] == -0x63)) {
+            if ((this->flags2 & 8) || (OotmmSession_IsActive() && (this->animIndex == SUTTARI_ANIM_6))) {
                 SET_WEEKEVENTREG(WEEKEVENTREG_RECOVERED_STOLEN_BOMB_BAG);
             }
             this->actor.speed = 0.0f;
@@ -1543,7 +1544,7 @@ void EnSuttari_Init(Actor* thisx, PlayState* play) {
 void EnSuttari_Destroy(Actor* thisx, PlayState* play) {
     EnSuttari* this = (EnSuttari*)thisx;
 
-    if ((play->sceneId == SCENE_BACKTOWN) && !(this->flags2 & 4)) {
+    if ((play->sceneId == SCENE_BACKTOWN) && !(this->flags2 & 4) && !OotmmSession_IsActive()) {
         SEQCMD_STOP_SEQUENCE(SEQ_PLAYER_BGM_MAIN, 20);
     }
     Collider_DestroyCylinder(play, &this->collider);

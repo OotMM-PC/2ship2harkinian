@@ -299,6 +299,10 @@ bool Message_ShouldAdvance(PlayState* play) {
     MessageContext* msgCtx = &play->msgCtx;
     Input* controller = CONTROLLER1(&play->state);
 
+    if (OotmmNpcChecks_OfferTextDone()) {
+        return true;
+    }
+
     if ((msgCtx->textboxEndType == TEXTBOX_ENDTYPE_TWO_CHOICE) ||
         (msgCtx->textboxEndType == TEXTBOX_ENDTYPE_THREE_CHOICE)) {
         if (CHECK_BTN_ALL(controller->press.button, BTN_A)) {
@@ -3871,6 +3875,10 @@ void Message_DisplayOcarinaStaffBlockSunsSong(PlayState* play, u16 ocarinaAction
  * @return u8 A value of the TextState enum representing the current state of the on-screen message
  */
 u8 Message_GetState(MessageContext* msgCtx) {
+    if (OotmmNpcChecks_OfferTextDone()) {
+        return TEXT_STATE_DONE;
+    }
+
     if (msgCtx->msgLength == 0) {
         return TEXT_STATE_NONE;
     }
@@ -5085,8 +5093,11 @@ void Message_DrawMain(PlayState* play, Gfx** gfxP) {
                                     play, (gOcarinaSongItemMap[msgCtx->ocarinaStaff->state] + ITEM_SONG_SONATA) & 0xFF);
                             }
                         } else if (msgCtx->ocarinaStaff->state == OCARINA_SONG_GORON_LULLABY_INTRO) {
-                            OotmmNpcChecks_SongTaught(ITEM_SONG_LULLABY_INTRO);
-                        } else if (!((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) &&
+                            if (!OotmmSongEvents_IsPadPrompt(play)) {
+                                OotmmNpcChecks_SongTaught(ITEM_SONG_LULLABY_INTRO);
+                            }
+                        } else if (!OotmmSongEvents_IsPadPrompt(play) &&
+                                   !((msgCtx->ocarinaAction >= OCARINA_ACTION_PROMPT_WIND_FISH_HUMAN) &&
                                      (msgCtx->ocarinaAction <= OCARINA_ACTION_PROMPT_WIND_FISH_DEKU)) &&
                                    (msgCtx->ocarinaStaff->state != OCARINA_SONG_NEW_WAVE)) {
                             OotmmNpcChecks_SongTaught(

@@ -5,6 +5,7 @@
  */
 
 #include "z_bg_haka_tomb.h"
+#include "2s2h/OotmmSouls.h"
 #include "objects/object_haka_obj/object_haka_obj.h"
 
 #define FLAGS 0x00000000
@@ -99,6 +100,9 @@ void func_80BD6754(BgHakaTomb* this) {
 }
 
 void func_80BD6768(BgHakaTomb* this, PlayState* play) {
+    if (!OotmmSouls_HasComposerBros()) {
+        return;
+    }
     if (SubS_StartCutscene(&this->dyna.actor, this->csIdList[0], CS_ID_NONE, SUBS_CUTSCENE_WITH_PLAYER)) {
         BgHakaTomb_SetupDoNothing(this);
     }

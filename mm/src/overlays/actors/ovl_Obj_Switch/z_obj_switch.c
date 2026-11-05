@@ -4,6 +4,8 @@
  * Description: Floor and Eye Switches
  */
 
+#include "2s2h/OotmmSession.h"
+#include "overlays/actors/ovl_En_Arrow/z_en_arrow.h"
 #include "z_obj_switch.h"
 #include "z64rumble.h"
 #include "overlays/actors/ovl_Obj_Ice_Poly/z_obj_ice_poly.h"
@@ -224,6 +226,10 @@ void ObjSwitch_InitTrisCollider(Actor* thisx, PlayState* play, ColliderTrisInit*
 
     Collider_InitTris(play, &this->colliderTris);
     Collider_SetTris(play, &this->colliderTris, &this->dyna.actor, init, this->colliderTrisElements);
+    if (OotmmSession_IsActive()) {
+        this->colliderTrisElements[0].base.acDmgInfo.dmgFlags |= (1 << 0x10);
+        this->colliderTrisElements[1].base.acDmgInfo.dmgFlags |= (1 << 0x10);
+    }
     Matrix_Push();
     Matrix_SetTranslateRotateYXZ(this->dyna.actor.world.pos.x,
                                  this->dyna.actor.world.pos.y +
@@ -637,6 +643,15 @@ s32 ObjSwitch_IsEyeSwitchHit(ObjSwitch* this) {
         if (acActor != NULL) {
             Vec3f sp2C;
             Vec3f sp20;
+
+            if (OotmmSession_IsActive()) {
+                if ((acActor->id == ACTOR_EN_ARROW) && (acActor->params == ARROW_TYPE_DEKU_BUBBLE)) {
+                    return false;
+                }
+                if (acActor->id == ACTOR_OOTMM_SLINGSHOT_SEED) {
+                    return true;
+                }
+            }
 
             Matrix_Push();
             Matrix_RotateYS(acActor->world.rot.y, MTXMODE_NEW);

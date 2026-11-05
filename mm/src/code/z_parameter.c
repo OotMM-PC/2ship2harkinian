@@ -27,6 +27,7 @@
 #include "2s2h/OotmmCustomItems.h"
 #include "2s2h/OotmmItemApply.h"
 #include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmSouls.h"
 #include <libultraship/bridge/gfxbridge.h>
 #include <libultraship/bridge/consolevariablebridge.h>
 
@@ -1686,6 +1687,10 @@ void Interface_StartGoronRaceTimer(s32 arg0) {
 }
 
 void Interface_StartBottleTimer(s16 seconds, s16 timerId) {
+    if (OotmmSession_IsEntranceShuffle()) {
+        return;
+    }
+
     gSaveContext.bottleTimerStates[timerId] = BOTTLE_TIMER_STATE_COUNTING;
     gSaveContext.bottleTimerCurTimes[timerId] = SECONDS_TO_TIMER(seconds);
     gSaveContext.bottleTimerTimeLimits[timerId] = gSaveContext.bottleTimerCurTimes[timerId];
@@ -3382,7 +3387,8 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                 ItemId itemId = GET_CUR_FORM_BTN_ITEM(i);
                 u8 restricted = OotmmCustomItems_IsCustomItem(itemId)
                                     ? !OotmmCustomItems_UsableNow(itemId)
-                                    : !gPlayerFormItemRestrictions[GET_PLAYER_FORM][itemId];
+                                    : (itemId == ITEM_MASK_GIANT && !OotmmSouls_HasTwinmold()) ||
+                                          !gPlayerFormItemRestrictions[GET_PLAYER_FORM][itemId];
 
                 if (GameInteractor_Should(VB_ITEM_BE_RESTRICTED, restricted, &itemId)) {
                     // Item not usable in current playerForm
@@ -3532,7 +3538,8 @@ void Interface_UpdateButtonsPart2(PlayState* play) {
                 ItemId itemId = DPAD_GET_CUR_FORM_BTN_ITEM(j);
                 u8 restricted = OotmmCustomItems_IsCustomItem(itemId)
                                     ? !OotmmCustomItems_UsableNow(itemId)
-                                    : !gPlayerFormItemRestrictions[GET_PLAYER_FORM][itemId];
+                                    : (itemId == ITEM_MASK_GIANT && !OotmmSouls_HasTwinmold()) ||
+                                          !gPlayerFormItemRestrictions[GET_PLAYER_FORM][itemId];
 
                 if (GameInteractor_Should(VB_ITEM_BE_RESTRICTED, restricted, &itemId)) {
                     // Item not usable in current playerForm
@@ -4507,7 +4514,7 @@ u8 Item_GiveImpl(PlayState* play, u8 item) {
         }
         return item;
 
-    } else if ((item == ITEM_MILK_BOTTLE) || (item == ITEM_POE) || (item == ITEM_GOLD_DUST) || (item == ITEM_CHATEAU) ||
+    } else if ((item == ITEM_MILK_BOTTLE) || ((item == ITEM_POE) && !OotmmSession_IsActive()) || (item == ITEM_GOLD_DUST) || (item == ITEM_CHATEAU) ||
                (item == ITEM_HYLIAN_LOACH)) {
         slot = SLOT(item);
 
@@ -8661,6 +8668,10 @@ void Interface_UpdateBottleTimers(PlayState* play) {
     u64 osTime;
     s32 pad[2];
 
+    if (OotmmSession_IsEntranceShuffle()) {
+        return;
+    }
+
     // Not satisfying any of these conditions will pause the bottle timer
     if (!IS_PAUSED(&play->pauseCtx) && (play->gameOverCtx.state == GAMEOVER_INACTIVE) &&
         ((msgCtx->msgMode == MSGMODE_NONE) || ((msgCtx->currentTextId >= 0x100) && (msgCtx->currentTextId <= 0x200)) ||
@@ -9456,6 +9467,9 @@ void Interface_Draw(PlayState* play) {
 
             if (sPictoState == PICTO_BOX_STATE_SETUP_PHOTO) {
                 sPictoState = PICTO_BOX_STATE_PHOTO;
+                if (OotmmSession_IsActive() && sPictoPhotoBeingTaken) {
+                    Snap_RecordPictographedActors(play);
+                }
                 Message_StartTextbox(play, 0xF8, NULL);
                 Interface_SetHudVisibility(HUD_VISIBILITY_NONE);
                 player->stateFlags1 |= PLAYER_STATE1_200;

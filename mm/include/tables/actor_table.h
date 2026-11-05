@@ -709,3 +709,4 @@
 /* 0x2B5 */ DEFINE_ACTOR_INTERNAL(Ootmm_Boomerang,      ACTOR_OOTMM_BOOMERANG,     ALLOCTYPE_NORMAL,    "Ootmm_Boomerang",     "Boomerang (OoTMM)")
 /* 0x2B6 */ DEFINE_ACTOR_INTERNAL(Ootmm_Slingshot_Seed, ACTOR_OOTMM_SLINGSHOT_SEED, ALLOCTYPE_NORMAL,   "Ootmm_Slingshot_Seed", "Slingshot Seed (OoTMM)")
 /* 0x2B7 */ DEFINE_ACTOR_INTERNAL(Ootmm_Custom_Warp,    ACTOR_OOTMM_CUSTOM_WARP,   ALLOCTYPE_NORMAL,    "Ootmm_Custom_Warp",    "Region Wisp (OoTMM)")
+/* 0x2B8 */ DEFINE_ACTOR_INTERNAL(Ootmm_Bg_Lonepeak,    ACTOR_OOTMM_BG_LONEPEAK,   ALLOCTYPE_NORMAL,    "Ootmm_Bg_Lonepeak",    "Lone Peak Shrine collision")

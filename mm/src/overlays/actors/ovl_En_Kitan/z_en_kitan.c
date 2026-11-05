@@ -5,6 +5,7 @@
  */
 
 #include "z_en_kitan.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
 
@@ -195,6 +196,9 @@ void EnKitan_OfferPrize(EnKitan* this, PlayState* play) {
         Actor_OfferGetItem(&this->actor, play, GI_RUPEE_RED, 2000.0f, 1000.0f);
     } else {
         Actor_OfferGetItem(&this->actor, play, GI_HEART_PIECE, 2000.0f, 1000.0f);
+        if (OotmmSession_IsActive()) {
+            AudioSeq_QueueSeqCmd((1 << 28) | 0xFF | (1 << 24) | (128 << 16));
+        }
     }
 }
 

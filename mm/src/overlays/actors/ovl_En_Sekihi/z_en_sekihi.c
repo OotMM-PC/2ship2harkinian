@@ -11,6 +11,7 @@
 #include "objects/object_sekihiz/object_sekihiz.h"
 #include "objects/object_zog/object_zog.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -62,7 +63,7 @@ void EnSekihi_Init(Actor* thisx, PlayState* play) {
         return;
     }
 
-    if ((type == SEKIHI_TYPE_4) &&
+    if (!OotmmSession_IsActive() && (type == SEKIHI_TYPE_4) &&
         ((gSaveContext.save.saveInfo.skullTokenCount & 0xFFFF) >= SPIDER_HOUSE_TOKENS_REQUIRED)) {
         // For some reason the mikau grave sets the flag instead of something in the spider house on exit.
         SET_WEEKEVENTREG(WEEKEVENTREG_OCEANSIDE_SPIDER_HOUSE_BUYER_MOVED_IN);

@@ -7,6 +7,7 @@
 #include "z_en_ma_yto.h"
 #include "overlays/actors/ovl_En_Ma_Yts/z_en_ma_yts.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS                                                                           \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_FREEZE_EXCEPTION | \
@@ -1131,7 +1132,7 @@ void EnMaYto_SetupPostMilkRunEnd(EnMaYto* this) {
 }
 
 void EnMaYto_PostMilkRunEnd(EnMaYto* this, PlayState* play) {
-    if (this->unk310 == 3) {
+    if ((this->unk310 == 3) && !OotmmSession_ErRegionsOverworld()) {
         play->nextEntrance = ENTRANCE(TERMINA_FIELD, 13);
     } else {
         play->nextEntrance = ENTRANCE(ROMANI_RANCH, 8);

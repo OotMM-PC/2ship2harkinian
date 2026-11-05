@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_oshihiki.h"
+#include "2s2h/OotmmSession.h"
 #include "overlays/actors/ovl_Obj_Switch/z_obj_switch.h"
 #include "objects/gameplay_dangeon_keep/gameplay_dangeon_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -480,7 +481,7 @@ void ObjOshihiki_SetupPush(ObjOshihiki* this, PlayState* play) {
     this->stateFlags |= PUSHBLOCK_SETUP_PUSH;
     this->dyna.actor.gravity = 0.0f;
     if (GameInteractor_Should(VB_PUSH_BLOCK_SET_SPEED, true, this)) {
-        this->pushSpeed = 2.0f;
+        this->pushSpeed = OotmmSession_IsActive() ? 4.0f : 2.0f;
     }
     this->actionFunc = ObjOshihiki_Push;
 }

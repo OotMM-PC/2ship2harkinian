@@ -5,6 +5,7 @@
  */
 
 #include "z_elf_msg4.h"
+#include "2s2h/OotmmSession.h"
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "overlays/actors/ovl_Elf_Msg5/z_elf_msg5.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -150,6 +151,10 @@ void func_80AFD770(ElfMsg4* this, PlayState* play) {
 void ElfMsg4_Update(Actor* thisx, PlayState* play) {
     Actor* bgActor;
     ElfMsg4* this = (ElfMsg4*)thisx;
+
+    if (OotmmSession_IsActive()) {
+        return;
+    }
 
     if (!func_80AFD380(this, play)) {
         bgActor = this->elfMsg5;

@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_boat.h"
+#include "2s2h/OotmmSession.h"
 #include "objects/object_kaizoku_obj/object_kaizoku_obj.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
@@ -128,14 +129,28 @@ void ObjBoat_Update(Actor* thisx, PlayState* play) {
                 }
             }
         } else {
-            speedTarget = this->direction * (OBJBOAT_GET_4000(thisx) ? 5.0f : 3.0f);
+            f32 topSpeed = 3.0f;
+
+            if (OotmmSession_IsActive() && (this->dyna.actor.params == 0x47F)) {
+                static Vec3f sPlatformProximity = { -455.0f, 0.0f, -680.0f };
+
+                if ((Math_Vec3f_DistXYZ(&this->dyna.actor.world.pos, &sPlatformProximity) >= 750.0f) &&
+                    !((this->direction > 0) && (this->curPointIndex >= 0xC))) {
+                    topSpeed = 7.5f;
+                }
+            }
+            speedTarget = this->direction * (OBJBOAT_GET_4000(thisx) ? 5.0f : topSpeed);
         }
     }
 
     if (player->csAction != PLAYER_CSACTION_26) {
         Math_ScaledStepToS(&this->dyna.actor.shape.rot.y, yawTarget, (s32)(fabsf(this->dyna.actor.speed) * 40.0f));
         this->dyna.actor.world.rot.y = this->dyna.actor.shape.rot.y;
-        Math_StepToF(&this->dyna.actor.speed, speedTarget, 0.05f);
+        Math_StepToF(&this->dyna.actor.speed, speedTarget,
+                     (OotmmSession_IsActive() && (this->dyna.actor.params == 0x47F) &&
+                      ((this->direction < 0) || (this->curPointIndex < 0xC)))
+                         ? 0.2f
+                         : 0.05f);
         Actor_MoveWithGravity(&this->dyna.actor);
         if (this->dyna.actor.speed != 0.0f) {
             Actor_PlaySfx_Flagged(&this->dyna.actor, NA_SE_EV_PIRATE_SHIP - SFX_FLAG);

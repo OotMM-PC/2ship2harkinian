@@ -5,6 +5,8 @@
  */
 
 #include "z_en_toto.h"
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
@@ -692,6 +694,10 @@ void func_80BA4CB4(EnToto* this, PlayState* play) {
 void EnToto_Update(Actor* thisx, PlayState* play) {
     EnToto* this = (EnToto*)thisx;
     s32 pad;
+
+    if (OotmmSession_IsActive() && ENTOTO_WEEK_EVENT_FLAGS && !OotmmNpcChecks_IsCollected("MM_MASK_TROUPE_LEADER")) {
+        OotmmNpcChecks_Collect("MM_MASK_TROUPE_LEADER");
+    }
 
     if (Cutscene_IsCueInChannel(play, CS_CMD_ACTOR_CUE_525)) {
         func_80BA4CB4(this, play);

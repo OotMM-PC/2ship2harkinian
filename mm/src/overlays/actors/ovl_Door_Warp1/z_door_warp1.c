@@ -809,6 +809,10 @@ void func_808BA10C(DoorWarp1* this, PlayState* play) {
         }
         play->nextEntrance = play->setupExitList[DOORWARP1_GET_FF00_3(&this->dyna.actor)];
         Scene_SetExitFade(play);
+        if (OotmmSession_ErIndoors() && (play->sceneId == SCENE_DEKUTES)) {
+            play->nextEntrance = ENTRANCE(DEKU_PALACE, 4);
+            gSaveContext.respawnFlag = 0;
+        }
         play->transitionTrigger = TRANS_TRIGGER_START;
     } else {
         func_80169FDC(play);

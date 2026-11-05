@@ -76,7 +76,8 @@ void func_80B3C39C(ObjGhaka* this, PlayState* play) {
     } else if ((this->dyna.actor.xzDistToPlayer < 100.0f) || this->dyna.actor.isLockedOn) {
         if ((yaw <= -0x5556) || (yaw >= 0x5556)) {
             Actor_OfferTalkNearColChkInfoCylinder(&this->dyna.actor, play);
-            if (player->transformation == PLAYER_FORM_GORON) {
+            if ((player->transformation == PLAYER_FORM_GORON) ||
+                (OotmmSession_IsActive() && (Player_GetStrength() >= PLAYER_STRENGTH_GORON))) {
                 this->dyna.actor.textId = 0xCF3;
             } else {
                 this->dyna.actor.textId = 0xCF2;

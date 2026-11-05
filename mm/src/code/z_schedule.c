@@ -1,5 +1,24 @@
 #include "global.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmItemApply.h"
+#include "2s2h/OotmmSession.h"
+
+static s32 Schedule_OwnsTradeItem(u8 item) {
+    u8 owned[16];
+    s32 count;
+    s32 i;
+
+    if (!OotmmSession_IsActive()) {
+        return INV_CONTENT(item) == item;
+    }
+    count = OotmmItemApply_OwnedTradeItems(gItemSlots[item], owned, ARRAY_COUNT(owned));
+    for (i = 0; i < count; i++) {
+        if (owned[i] == item) {
+            return true;
+        }
+    }
+    return false;
+}
 
 s32 Schedule_CheckWeekEventRegS(PlayState* play, u8** script, ScheduleOutput* output) {
     ScheduleCmdCheckWeekEventRegS* cmd = (ScheduleCmdCheckWeekEventRegS*)*script;
@@ -105,9 +124,9 @@ s32 Schedule_CheckMiscS(PlayState* play, u8** script, ScheduleOutput* output) {
     ScheduleCmdCheckMiscS* cmd = (ScheduleCmdCheckMiscS*)*script;
 
     if (((cmd->which == SCHEDULE_CHECK_MISC_ROOM_KEY) &&
-         GameInteractor_Should(VB_CHECK_FOR_ROOM_KEY, INV_CONTENT(ITEM_ROOM_KEY) == ITEM_ROOM_KEY)) ||
+         GameInteractor_Should(VB_CHECK_FOR_ROOM_KEY, Schedule_OwnsTradeItem(ITEM_ROOM_KEY))) ||
         ((cmd->which == SCHEDULE_CHECK_MISC_LETTER_TO_KAFEI) &&
-         (INV_CONTENT(ITEM_LETTER_TO_KAFEI) == ITEM_LETTER_TO_KAFEI)) ||
+         Schedule_OwnsTradeItem(ITEM_LETTER_TO_KAFEI)) ||
         ((cmd->which == SCHEDULE_CHECK_MISC_MASK_ROMANI) && (Player_GetMask(play) == PLAYER_MASK_ROMANI))) {
         *script += cmd->offset;
     }

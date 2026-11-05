@@ -22,6 +22,7 @@
 
 extern "C" {
 #include "functions.h"
+#include "z64snap.h"
 #include "macros.h"
 #include "variables.h"
 #include "src/overlays/actors/ovl_Bg_Dy_Yoseizo/z_bg_dy_yoseizo.h"
@@ -467,6 +468,78 @@ void LoadPurchaseText(u16* textId, bool* loadFromMessageTable, const std::string
     *loadFromMessageTable = false;
 }
 
+void RegisterBankText() {
+    GameInteractor::Instance->RegisterGameHookForID<GameInteractor::OnOpenText>(
+        0x44C, [](u16* textId, bool* loadFromMessageTable) {
+            if (!OotmmSession_IsActive()) {
+                return;
+            }
+            const u32 bank = HIGH_SCORE(HS_BANK_RUPEES);
+            const u32 fee = gSaveContext.save.isNight ? 4 : 0;
+            auto entry = CustomMessage::LoadVanillaMessageTableEntry(*textId);
+            entry.msg = "You have %p" + std::to_string(bank) + " Rupee" + (bank != 1 ? "s" : "") +
+                        "%w in the bank.\x11\xC3" + (bank >= 99999 ? "%r" : "%g") + " Deposit\x11" +
+                        (bank <= fee ? "%r" : "%g") + " Withdraw\x11%g Cancel";
+            entry.autoFormat = false;
+            CustomMessage::ReplaceColorChars(&entry.msg);
+            CustomMessage::EnsureMessageEnd(&entry.msg);
+            CustomMessage::LoadCustomMessageIntoFont(entry);
+            *loadFromMessageTable = false;
+        });
+}
+
+const char* PictoSubject() {
+    const u32 flags = gSaveContext.save.saveInfo.pictoFlags0;
+    const u32 lulu = (1u << PICTO_VALID_LULU_HEAD) | (1u << PICTO_VALID_LULU_RIGHT_ARM) | (1u << PICTO_VALID_LULU_LEFT_ARM);
+    if (flags & (1u << PICTO_VALID_MONKEY)) {
+        return "picture of a monkey";
+    }
+    if (flags & (1u << PICTO_VALID_BIG_OCTO)) {
+        return "picture of a big octo";
+    }
+    if (flags & (1u << PICTO_VALID_DEKU_KING)) {
+        return "picture of the Deku King";
+    }
+    if ((flags & lulu) == lulu) {
+        return "good picture of Lulu";
+    }
+    if (flags & (1u << PICTO_VALID_LULU_HEAD)) {
+        return "bad picture of Lulu";
+    }
+    if (flags & (1u << PICTO_VALID_SCARECROW)) {
+        return "picture of a scarecrow";
+    }
+    if (flags & (1u << PICTO_VALID_TINGLE)) {
+        return "picture of Tingle";
+    }
+    if (flags & (1u << PICTO_VALID_PIRATE_GOOD)) {
+        return "good picture of a pirate";
+    }
+    if (flags & (1u << PICTO_VALID_PIRATE_TOO_FAR)) {
+        return "bad picture of a pirate";
+    }
+    if (flags & (1u << PICTO_VALID_IN_SWAMP)) {
+        return "picture of the swamp";
+    }
+    return "picture";
+}
+
+void RegisterPictoText() {
+    GameInteractor::Instance->RegisterGameHookForID<GameInteractor::OnOpenText>(
+        0xF8, [](u16* textId, bool* loadFromMessageTable) {
+            if (!OotmmSession_IsActive()) {
+                return;
+            }
+            auto entry = CustomMessage::LoadVanillaMessageTableEntry(*textId);
+            entry.msg = std::string("Keep this %r") + PictoSubject() + "%w?%g\xC2YesNo";
+            entry.autoFormat = false;
+            CustomMessage::ReplaceColorChars(&entry.msg);
+            CustomMessage::EnsureMessageEnd(&entry.msg);
+            CustomMessage::LoadCustomMessageIntoFont(entry);
+            *loadFromMessageTable = false;
+        });
+}
+
 void RegisterPurchaseTexts() {
     static constexpr const char* kCantBuy = "You can't buy that right now!";
     for (const uint16_t id : { 0x3466, 0x3490 }) {
@@ -839,7 +912,7 @@ const char* GreatFairySite(int32_t type) {
 }
 
 bool BankRewardDue(const char* nativeId, int32_t threshold, const char* previous) {
-    return HS_GET_BANK_RUPEES() >= threshold && !IsCollectedId(nativeId) &&
+    return HIGH_SCORE(HS_BANK_RUPEES) >= static_cast<u32>(threshold) && !IsCollectedId(nativeId) &&
            (previous == nullptr || IsCollectedId(previous));
 }
 
@@ -1041,14 +1114,26 @@ extern "C" int OotmmNpcChecks_RemainsReady(PlayState* play) {
     if (placement == nullptr) {
         return 1;
     }
+    Player* player = GET_PLAYER(play);
+    const auto idle = [&](const Ship::OotmmPlacement& shown) {
+        return player != nullptr && !OotmmIpc_IsCheckPresentationPending(shown.CheckId) &&
+               Message_GetState(&play->msgCtx) == TEXT_STATE_NONE && !Play_InCsMode(play) &&
+               !(player->stateFlags1 & (PLAYER_STATE1_400 | PLAYER_STATE1_20000000));
+    };
+    if (const auto* oath = Find("MM_SONG_ORDER"); oath != nullptr) {
+        if (!IsCollected(*oath)) {
+            OotmmNpcChecks_Collect("MM_SONG_ORDER");
+            return 0;
+        }
+        if (!IsCollected(*placement) && !idle(*oath)) {
+            return 0;
+        }
+    }
     if (!IsCollected(*placement)) {
         OotmmNpcChecks_Collect(site.NativeId);
         return 0;
     }
-    Player* player = GET_PLAYER(play);
-    return player != nullptr && !OotmmIpc_IsCheckPresentationPending(placement->CheckId) &&
-           Message_GetState(&play->msgCtx) == TEXT_STATE_NONE && !Play_InCsMode(play) &&
-           !(player->stateFlags1 & (PLAYER_STATE1_400 | PLAYER_STATE1_20000000));
+    return idle(*placement);
 }
 
 extern "C" void OotmmNpcChecks_DrawRemainsReward(Actor* actor, PlayState* play) {
@@ -1076,9 +1161,13 @@ extern "C" void OotmmNpcChecks_DrawRemainsReward(Actor* actor, PlayState* play) 
 }
 
 extern "C" int OotmmNpcChecks_CanFinishSilentOffer(const char* nativeId) {
+    const bool wasChecking = sCheckingOfferText;
+    sCheckingOfferText = true;
+    const int32_t state = gPlayState != nullptr ? Message_GetState(&gPlayState->msgCtx) : TEXT_STATE_NONE;
+    sCheckingOfferText = wasChecking;
     const auto* placement = Find(nativeId);
     if (gPlayState == nullptr || placement == nullptr || !OotmmNpcChecks_IsCollected(nativeId) ||
-        OotmmIpc_IsCheckPresentationPending(placement->CheckId) || Message_GetState(&gPlayState->msgCtx) != TEXT_STATE_NONE) {
+        OotmmIpc_IsCheckPresentationPending(placement->CheckId) || state != TEXT_STATE_NONE) {
         return 0;
     }
     const Player* player = GET_PLAYER(gPlayState);
@@ -1092,20 +1181,65 @@ extern "C" int OotmmNpcChecks_CanFinishMessageOffer(Actor* actor) {
 
 extern "C" void OotmmNpcChecks_FinishMessageOffer(Actor* actor) {
     sCompletedMessageOffers.erase(actor);
+    sTextDoneOffers.erase(actor);
+}
+
+extern "C" void OotmmNpcChecks_SetUpdatingActor(Actor* actor) {
+    sUpdatingActor = actor;
+    const auto offer = sTextDoneOffers.find(actor);
+    if (actor != nullptr && offer != sTextDoneOffers.end() && (offer->second.Read || --offer->second.Frames <= 0)) {
+        sTextDoneOffers.erase(offer);
+    }
+}
+
+extern "C" int OotmmNpcChecks_OfferTextDone(void) {
+    if (sUpdatingActor == nullptr || sCheckingOfferText) {
+        return 0;
+    }
+    const auto offer = sTextDoneOffers.find(sUpdatingActor);
+    if (offer == sTextDoneOffers.end()) {
+        return 0;
+    }
+    const bool ready = OotmmNpcChecks_CanFinishMessageOffer(sUpdatingActor) != 0;
+    if (ready) {
+        offer->second.Read = true;
+    }
+    return ready ? 1 : 0;
 }
 
 void OotmmNpcChecks_Init(void) {
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>([]() {
+        static int sFrames = 0;
+        static std::string sLast;
+        if (gPlayState == nullptr || !OotmmSession_IsActive() || ++sFrames < 20) {
+            return;
+        }
+        sFrames = 0;
+        std::string body = Ship::OotmmItemGrant::BuildVitals(Ship::OotmmGrantGame::Mm, VitalFree);
+        if (body != sLast) {
+            Ship::OotmmItemGrant::WriteVitals(OotmmSession_GetState().GetBootConfig().StatePath + ".vitals.mm", body);
+            sLast = std::move(body);
+        }
+    });
     RegisterTinglePrices();
     RegisterPurchaseTexts();
+    RegisterBankText();
+    RegisterPictoText();
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnActorDestroy>(
         [](Actor* actor) {
             sPendingOffers.erase(actor);
             sCompletedMessageOffers.erase(actor);
+            sTextDoneOffers.erase(actor);
+            if (sUpdatingActor == actor) {
+                sUpdatingActor = nullptr;
+            }
         });
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSceneInit>(
         [](s16, s8) {
             sPendingOffers.clear();
             sCompletedMessageOffers.clear();
+            sTextDoneOffers.clear();
+            sUpdatingActor = nullptr;
             ClearPurchaseStatus();
         });
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>([](s16) {
@@ -1167,6 +1301,8 @@ void OotmmNpcChecks_Init(void) {
             actor->parent = &GET_PLAYER(gPlayState)->actor;
             sPendingOffers.erase(actor);
             sCompletedMessageOffers[actor] = site;
+            sTextDoneOffers[actor].Frames = 30;
+            sTextDoneOffers[actor].Read = false;
         }
     });
     REGISTER_VB_SHOULD(VB_SMITHY_START_UPGRADING_SWORD, {
@@ -1195,6 +1331,14 @@ void OotmmNpcChecks_Init(void) {
             }
             return;
         }
+        if (actor->id == ACTOR_EN_DNH && cmdId == MSCRIPT_CMD_ID_CHECK_WEEK_EVENT_REG && OotmmNpcChecks_IsShuffled("MM_KOUME_HEART_PIECE")) {
+            const auto* cmd = reinterpret_cast<const MsgScriptCmdCheckWeekEventReg*>(script);
+            if (PACK_WEEKEVENTREG_FLAG(cmd->flagByte, cmd->flagMask) == WEEKEVENTREG_26_40 &&
+                script[sizeof(MsgScriptCmdCheckWeekEventReg)] == MSCRIPT_CMD_ID_CHECK_EVENT_INF) {
+                *should = false;
+            }
+            return;
+        }
         if (cmdId != MSCRIPT_CMD_ID_CHECK_ITEM) {
             return;
         }
@@ -1203,7 +1347,8 @@ void OotmmNpcChecks_Init(void) {
         if ((actor->id == ACTOR_EN_PM && checked == ITEM_MASK_POSTMAN &&
              OotmmNpcChecks_IsShuffled("MM_MASK_POSTMAN")) ||
             (actor->id == ACTOR_EN_DNH && checked == ITEM_PICTOGRAPH_BOX &&
-             OotmmNpcChecks_IsShuffled("MM_KOUME_PICTOGRAPH_BOX"))) {
+             OotmmNpcChecks_IsShuffled("MM_KOUME_PICTOGRAPH_BOX")) ||
+            (actor->id == ACTOR_EN_GO && checked == ITEM_POWDER_KEG && OotmmNpcChecks_IsShuffled("MM_GORON_KEG"))) {
             *should = false;
         }
     });
@@ -1235,6 +1380,12 @@ void OotmmNpcChecks_Init(void) {
         if (OotmmNpcChecks_IsShuffled("MM_MASK_GORON")) {
             *should = OotmmNpcChecks_IsCollected("MM_MASK_GORON");
         }
+    });
+    REGISTER_VB_SHOULD(VB_CHECK_FOR_ROOM_KEY, {
+        uint8_t owned[16];
+        const int32_t count =
+            OotmmItemApply_OwnedTradeItems(SLOT_TRADE_KEY_MAMA, owned, static_cast<int32_t>(std::size(owned)));
+        *should = *should || (std::find(owned, owned + count, static_cast<uint8_t>(ITEM_ROOM_KEY)) != owned + count);
     });
     REGISTER_VB_SHOULD(VB_CONSIDER_MIKAU_HEALED, {
         const int whenGone = va_arg(args, int);
@@ -1320,14 +1471,67 @@ void OotmmNpcChecks_Init(void) {
             *should = false;
         }
     });
+    REGISTER_VB_SHOULD(VB_GIVE_ITEM_FROM_MNK, {
+        if (DeferCollect("MM_SONG_AWAKENING")) {
+            *should = false;
+        }
+    });
+    REGISTER_VB_SHOULD(VB_GIVE_ITEM_FROM_GK_LULLABY, {
+        if (DeferCollect("MM_GORON_BABY")) {
+            *should = false;
+        }
+    });
+    REGISTER_VB_SHOULD(VB_GIVE_ITEM_FROM_JG, {
+        if (DeferCollect("MM_GORON_ELDER")) {
+            *should = false;
+        }
+    });
+    REGISTER_VB_SHOULD(VB_GIVE_ITEM_FROM_OSN, {
+        if (DeferCollect("MM_SONG_HEALING")) {
+            *should = false;
+        }
+    });
+    REGISTER_VB_SHOULD(VB_GIVE_ITEM_FROM_ROMANI, {
+        if (DeferCollect("MM_SONG_EPONA")) {
+            *should = false;
+        }
+    });
+    REGISTER_VB_SHOULD(VB_GIVE_ITEM_FROM_KNIGHT, {
+        if (DeferCollect("MM_SONG_EMPTINESS")) {
+            *should = false;
+        }
+    });
+    REGISTER_VB_SHOULD(VB_GIVE_ROSA_SISTERS_HEART_PIECE, {
+        if (*should && DeferCollect("MM_ROSA_HEART_PIECE")) {
+            *should = false;
+        }
+    });
+    REGISTER_VB_SHOULD(VB_GIVE_SONG_OF_SOARING, {
+        if (OotmmNpcChecks_IsShuffled("MM_SONG_SOARING")) {
+            if (!OotmmNpcChecks_IsCollected("MM_SONG_SOARING")) {
+                DeferCollect("MM_SONG_SOARING");
+            }
+            *should = false;
+        }
+    });
+    REGISTER_VB_SHOULD(VB_GIVE_SONG_OF_STORMS, {
+        if (DeferCollect("MM_SONG_STORMS")) {
+            *should = false;
+        }
+    });
+    REGISTER_VB_SHOULD(VB_GIVE_OATH_TO_ORDER, {
+        if (*should && DeferCollect("MM_SONG_ORDER")) {
+            *should = false;
+        }
+    });
     REGISTER_VB_SHOULD(VB_GIVE_NEW_WAVE_BOSSA_NOVA, {
         if (OotmmNpcChecks_Collect("MM_SONG_ZORA")) {
             *should = false;
         }
     });
     REGISTER_VB_SHOULD(VB_JG_THINK_YOU_KNOW_LULLABY, {
-        if (OotmmNpcChecks_IsShuffled("MM_GORON_ELDER")) {
-            *should = OotmmNpcChecks_IsCollected("MM_GORON_ELDER");
+        if (OotmmNpcChecks_IsShuffled("MM_GORON_ELDER") && OotmmNpcChecks_IsCollected("MM_GORON_ELDER")) {
+            *should = true;
         }
     });
     REGISTER_VB_SHOULD(VB_ROMANI_CONSIDER_EPONA_SONG_GIVEN, {

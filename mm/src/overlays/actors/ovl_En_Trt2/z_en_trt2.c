@@ -6,6 +6,7 @@
 
 #include "z_en_trt2.h"
 #include "objects/object_trt/object_trt.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
 
@@ -361,7 +362,7 @@ void func_80AD3DA4(EnTrt2* this, PlayState* play) {
         this->unk_3B2 = 11;
         return;
     } else if (this->unk_3A8 == 0x88F) {
-        if (Inventory_HasEmptyBottle()) {
+        if ((OotmmSession_IsActive() || Inventory_HasEmptyBottle())) {
             this->unk_3B2 = 11;
         } else {
             this->unk_3B2 = 10;
@@ -373,7 +374,7 @@ void func_80AD3DA4(EnTrt2* this, PlayState* play) {
 
 void func_80AD3E34(EnTrt2* this, PlayState* play) {
     if ((Message_GetState(&play->msgCtx) == TEXT_STATE_EVENT) && Message_ShouldAdvance(play)) {
-        if (Inventory_HasEmptyBottle()) {
+        if ((OotmmSession_IsActive() || Inventory_HasEmptyBottle())) {
             play->msgCtx.msgMode = MSGMODE_TEXT_CLOSING;
             play->msgCtx.stateTimer = 4;
             this->unk_3B2 = 12;
@@ -391,7 +392,7 @@ void func_80AD3EF0(EnTrt2* this, PlayState* play) {
 
     if (talkState == TEXT_STATE_DONE) {
         if (Message_ShouldAdvance(play)) {
-            if ((Inventory_HasEmptyBottle() && !CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_RED_POTION_FOR_KOUME)) ||
+            if (((OotmmSession_IsActive() || Inventory_HasEmptyBottle()) && !CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_RED_POTION_FOR_KOUME)) ||
                 !CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_KOTAKE_BOTTLE)) {
                 this->unk_3B2 = 12;
             } else {

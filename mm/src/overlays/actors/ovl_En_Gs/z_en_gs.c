@@ -11,6 +11,9 @@
 #include "objects/object_gs/object_gs.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmSongs.h"
+#include "2s2h/OotmmSongsPlayer.h"
 
 #define FLAGS                                                                                  \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -288,6 +291,17 @@ void func_80998040(EnGs* this, PlayState* play) {
 void func_8099807C(EnGs* this, PlayState* play) {
     switch (play->msgCtx.ocarinaMode) {
         case OCARINA_MODE_EVENT:
+            if (OotmmSession_IsActive() &&
+                ((OotmmSongs_Played() == OOTMM_SONG_ZELDA) || (OotmmSongs_Played() == OOTMM_SONG_SARIA))) {
+                if (!Flags_GetSwitch(play, this->switchFlag)) {
+                    Actor_Spawn(&play->actorCtx, play, ACTOR_EN_ELF, this->actor.world.pos.x,
+                                this->actor.world.pos.y + 40.0f, this->actor.world.pos.z, 0, 0, 0,
+                                FAIRY_PARAMS(FAIRY_TYPE_2, false, 0));
+                    Actor_PlaySfx(&this->actor, NA_SE_EV_BUTTERFRY_TO_FAIRY);
+                    Flags_SetSwitch(play, this->switchFlag);
+                }
+                break;
+            }
             switch (play->msgCtx.lastPlayedSong) {
                 case OCARINA_SONG_HEALING:
                 case OCARINA_SONG_EPONAS:

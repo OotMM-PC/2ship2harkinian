@@ -6,6 +6,7 @@
 
 #include "z_obj_snowball.h"
 #include "2s2h/OotmmXflags.h"
+#include "2s2h/OotmmSession.h"
 #include "objects/object_goroiwa/object_goroiwa.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -444,6 +445,8 @@ void func_80B03FF8(ObjSnowball* this, PlayState* play) {
 
     if (sp18->unk_04 != NULL) {
         sp18->unk_04(this, play);
+    } else if (OotmmSession_IsActive()) {
+        func_80B02D58(this, play);
     }
 
     Actor_PlaySfx(&this->actor, NA_SE_EV_SNOWBALL_BROKEN);

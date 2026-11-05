@@ -5,6 +5,7 @@
  */
 
 #include "z_bg_ingate.h"
+#include "2s2h/OotmmSession.h"
 #include "objects/object_sichitai_obj/object_sichitai_obj.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED)
@@ -74,7 +75,7 @@ void func_80953B40(BgIngate* this) {
 
     if (!CHECK_EVENTINF(EVENTINF_35)) {
         this->timePathTotalTime = 4 * 1000;
-        this->timePathTimeSpeed = 4;
+        this->timePathTimeSpeed = OotmmSession_IsActive() ? 8 : 4;
     } else {
         this->timePathTotalTime = 1 * 2000;
         this->timePathTimeSpeed = 1;
@@ -188,7 +189,8 @@ void func_80953F9C(BgIngate* this, PlayState* play) {
             this->unk160 &= ~0x10;
         }
 
-        if (this->unk160 & 2) {
+        if ((this->unk160 & 2) ||
+            (OotmmSession_IsActive() && CHECK_EVENTINF(EVENTINF_35) && (gSaveContext.minigameScore >= 20))) {
 
             if (this->timePath->additionalPathIndex != ADDITIONAL_PATH_INDEX_NONE) {
                 func_80953E38(play);

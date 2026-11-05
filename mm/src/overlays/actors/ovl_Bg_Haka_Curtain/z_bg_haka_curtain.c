@@ -5,6 +5,7 @@
  */
 
 #include "z_bg_haka_curtain.h"
+#include "2s2h/OotmmSession.h"
 #include "objects/object_haka_obj/object_haka_obj.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
@@ -77,6 +78,17 @@ void func_80B6DCEC(BgHakaCurtain* this) {
 }
 
 void func_80B6DD00(BgHakaCurtain* this, PlayState* play) {
+    if (OotmmSession_IsActive()) {
+        f32 max = this->dyna.actor.home.pos.y + 150.0f;
+
+        if (this->dyna.actor.world.pos.y < max) {
+            this->dyna.actor.world.pos.y += 1.0f;
+        }
+        if (this->dyna.actor.world.pos.y > max) {
+            this->dyna.actor.world.pos.y = max;
+        }
+        return;
+    }
     if (CutsceneManager_IsNext(this->dyna.actor.csId)) {
         CutsceneManager_StartWithPlayerCs(this->dyna.actor.csId, &this->dyna.actor);
         func_80B6DD5C(this);

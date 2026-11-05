@@ -8,6 +8,7 @@
  */
 
 #include "z_en_dnp.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -404,6 +405,14 @@ void func_80B3D47C(EnDnp* this, PlayState* play) {
 }
 
 void func_80B3D558(EnDnp* this, PlayState* play) {
+    if (OotmmSession_IsActive()) {
+        play->nextEntrance = ENTRANCE(DEKU_KINGS_CHAMBER, 0);
+        play->transitionTrigger = TRANS_TRIGGER_START;
+        play->transitionType = TRANS_TYPE_FADE_BLACK;
+        SET_WEEKEVENTREG(WEEKEVENTREG_23_20);
+        Actor_Kill(&this->actor);
+        return;
+    }
     if (CutsceneManager_IsNext(this->actor.csId)) {
         CutsceneManager_StartWithPlayerCs(this->actor.csId, &this->actor);
         SET_WEEKEVENTREG(WEEKEVENTREG_23_20);

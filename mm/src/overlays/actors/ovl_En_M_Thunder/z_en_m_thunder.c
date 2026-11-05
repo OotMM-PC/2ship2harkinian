@@ -12,6 +12,7 @@
 #include "2s2h/BenGui/CosmeticEditor.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmSpinUpgrade.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -373,6 +374,10 @@ void func_808B5EEC(EnMThunder* this, PlayState* play) {
 
 void EnMThunder_Spin_Attack(EnMThunder* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
+
+    if (OotmmSession_IsActive() && (player->stateFlags1 & PLAYER_STATE1_400)) {
+        return;
+    }
 
     if (Math_StepToF(&this->lightColorFrac, 0.0f, 0.0625f)) {
         Actor_Kill(&this->actor);

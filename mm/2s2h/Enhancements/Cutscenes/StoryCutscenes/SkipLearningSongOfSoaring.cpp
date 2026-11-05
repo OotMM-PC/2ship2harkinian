@@ -28,7 +28,7 @@ void RegisterSkipLearningSongOfSoaring() {
 
     // Then, once this textId is opened for the first time, give the player the reward.
     COND_ID_HOOK(OnOpenText, ENGRAVING_TEXT_ID, CVAR, [](u16* textId, bool* loadFromMessageTable) {
-        if (!CHECK_QUEST_ITEM(QUEST_SONG_SOARING)) {
+        if (GameInteractor_Should(VB_GIVE_SONG_OF_SOARING, !CHECK_QUEST_ITEM(QUEST_SONG_SOARING))) {
             GameInteractor::Instance->events.emplace_back(GIEventGiveItem{
                 .showGetItemCutscene = !CVarGetInteger("gEnhancements.Cutscenes.SkipGetItemCutscenes", 0),
                 .giveItem =

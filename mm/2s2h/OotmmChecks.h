@@ -11,6 +11,7 @@ void OotmmChecks_OpenChestSilently(struct PlayState* play, struct Player* player
 extern "C" {
 #endif
 
+short OotmmChecks_CheckScene(short sceneId);
 int OotmmChecks_HeartPieceDone(struct PlayState* play, struct Actor* actor, int vanillaDone);
 int OotmmChecks_BossContainerDone(struct PlayState* play, int vanillaDone);
 int OotmmChecks_BossContainerIsShuffled(struct PlayState* play);

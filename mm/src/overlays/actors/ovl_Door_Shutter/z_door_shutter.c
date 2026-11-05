@@ -22,6 +22,7 @@
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmDungeons.h"
+#include "2s2h/OotmmSession.h"
 #include "2s2h/OotmmSmallKeyDoors.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
@@ -375,7 +376,7 @@ void func_808A1090(DoorShutter* this, PlayState* play) {
             }
 
             if (this->doorType == DOORSHUTTER_TYPE_6) {
-                if (GameInteractor_Should(VB_DOOR_HEALTH_CHECK_FAIL,
+                if (!OotmmSession_IsActive() && GameInteractor_Should(VB_DOOR_HEALTH_CHECK_FAIL,
                                           gSaveContext.save.saveInfo.playerData.healthCapacity <
                                               (DOORSHUTTER_GET_1F(&this->slidingDoor.dyna.actor) * 0x10),
                                           this)) {

@@ -7,6 +7,7 @@
 #include "z_en_aob_01.h"
 #include "overlays/actors/ovl_En_Racedog/z_en_racedog.h"
 #include "overlays/actors/ovl_En_Dg/z_en_dg.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -1083,6 +1084,10 @@ void EnAob01_InitializeDogTextOffsets(void) {
     for (i = 0; i < RACEDOG_COUNT; i++) {
         u8 dogTextOffsetsTemp = dogTextOffsets[i];
         u8 j = i / 2;
+
+        if (OotmmSession_IsActive() && (INV_CONTENT(ITEM_MASK_TRUTH) == ITEM_MASK_TRUTH)) {
+            dogTextOffsetsTemp = (i == 9) ? 0 : 13;
+        }
 
         if (i % 2) {
             //! @note sets text offsets for both even and odd entry.

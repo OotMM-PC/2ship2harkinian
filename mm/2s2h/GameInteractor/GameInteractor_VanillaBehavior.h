@@ -2179,6 +2179,30 @@ typedef enum {
     // #### `args`
     // - `*f32` (speed)
     VB_ZTARGET_SPEED_CHECK,
+
+    // #### `result`
+    // ```c
+    // !CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_ROSA_SISTERS_HEART_PIECE)
+    // ```
+    VB_GIVE_ROSA_SISTERS_HEART_PIECE,
+
+    // #### `result`
+    // ```c
+    // !CHECK_QUEST_ITEM(QUEST_SONG_SOARING)
+    // ```
+    VB_GIVE_SONG_OF_SOARING,
+
+    // #### `result`
+    // ```c
+    // true
+    // ```
+    VB_GIVE_SONG_OF_STORMS,
+
+    // #### `result`
+    // ```c
+    // gSaveContext.save.saveInfo.unk_EA8[1] == 1
+    // ```
+    VB_GIVE_OATH_TO_ORDER,
 } GIVanillaBehavior;
 
 #endif

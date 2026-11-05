@@ -7886,7 +7886,11 @@ s32 func_8083868C(PlayState* play, Player* this) {
     if (this->unk_AA5 == PLAYER_UNKAA5_3) {
         if (func_800B7118(this)) {
             if (this->transformation == PLAYER_FORM_HUMAN) {
-                camMode = OotmmAdultLink_IsAdult() ? CAM_MODE_BOWARROW : CAM_MODE_SLINGSHOT;
+                camMode = (OotmmAdultLink_IsAdult() ||
+                           (OotmmSession_IsActive() && (this->heldItemAction == PLAYER_IA_HOOKSHOT) &&
+                            (this->stateFlags1 & PLAYER_STATE1_8000000)))
+                              ? CAM_MODE_BOWARROW
+                              : CAM_MODE_SLINGSHOT;
             } else if (this->transformation == PLAYER_FORM_DEKU) {
                 camMode = CAM_MODE_DEKUSHOOT;
             } else {
@@ -12620,7 +12624,8 @@ void Player_UpdateInterface(PlayState* play, Player* this) {
             doActionA = DO_ACTION_JUMP;
         } else if (this->stateFlags3 & PLAYER_STATE3_1000) {
             doActionA = DO_ACTION_RETURN;
-        } else if (!Player_IsZTargeting(this) && (this->stateFlags1 & PLAYER_STATE1_8000000) && !sp38) {
+        } else if (!Player_IsZTargeting(this) && (this->stateFlags1 & PLAYER_STATE1_8000000) && !sp38 &&
+                   (!OotmmSession_IsActive() || (this->transformation == PLAYER_FORM_ZORA))) {
             doActionA = DO_ACTION_SURFACE;
         } else if (((this->transformation != PLAYER_FORM_DEKU) &&
                     (sp38 || ((this->stateFlags1 & PLAYER_STATE1_8000000) &&

@@ -440,6 +440,14 @@ extern "C" int32_t OotmmSouls_AdjustSpawnParams(PlayState* play, int16_t actorId
     return params;
 }
 
+extern "C" int32_t OotmmSouls_HasComposerBros(void) {
+    return !OotmmSession_IsActive() || OwnsSoul("NPC_COMPOSER_BROS");
+}
+
+extern "C" int32_t OotmmSouls_HasTwinmold(void) {
+    return !OotmmSession_IsActive() || OwnsSoul("BOSS_TWINMOLD");
+}
+
 extern "C" void OotmmSouls_ResetRoomState(void) {
     sRoomHidesEnemy = false;
 }

@@ -436,7 +436,7 @@ void GiveNewBottles(const std::string& itemId, uint32_t already, uint32_t count)
 }
 
 bool IsConsumable(uint8_t item) {
-    return item == ITEM_DEKU_STICK || item == ITEM_DEKU_NUT || item == ITEM_BOMB;
+    return item == ITEM_DEKU_STICK || item == ITEM_DEKU_NUT || item == ITEM_BOMB || item == ITEM_MAGIC_BEANS;
 }
 
 void GiveUnits(PlayState* play, const std::string& itemId, uint8_t item, uint32_t already, uint32_t count) {

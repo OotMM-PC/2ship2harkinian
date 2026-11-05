@@ -4,6 +4,7 @@
  */
 
 #include "z64actor.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include "2s2h/OotmmXflags.h"
 #include "z64door.h"
 
@@ -33,6 +34,7 @@
 #include "2s2h/ObjectExtension/ActorListIndex.h"
 #include "2s2h/OotmmAdultLink.h"
 #include "2s2h/OotmmSouls.h"
+#include "2s2h/OotmmSession.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
 // bss
@@ -2753,7 +2755,9 @@ Actor* Actor_UpdateActor(UpdateActor_Params* params) {
                 }
 
                 if (GameInteractor_ShouldActorUpdate(actor)) {
+                    OotmmNpcChecks_SetUpdatingActor(actor);
                     actor->update(actor, play);
+                    OotmmNpcChecks_SetUpdatingActor(NULL);
                     GameInteractor_ExecuteOnActorUpdate(actor);
                 }
                 DynaPoly_UnsetAllInteractFlags(play, &play->colCtx.dyna, actor);
@@ -3737,7 +3741,7 @@ Actor* Actor_SpawnAsChildAndCutscene(ActorContext* actorCtx, PlayState* play, s1
     objectSlot = Object_GetSlot(&play->objectCtx, profile->objectId);
     if ((objectSlot <= OBJECT_SLOT_NONE) ||
         ((profile->type == ACTORCAT_ENEMY) && Flags_GetClear(play, play->roomCtx.curRoom.num) &&
-         (profile->id != ACTOR_BOSS_05))) {
+         (profile->id != ACTOR_BOSS_05) && !OotmmSession_ShuffledWallmaster(profile->id))) {
         Actor_FreeOverlay(&gActorOverlayTable[index]);
         return NULL;
     }

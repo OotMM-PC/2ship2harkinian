@@ -6,6 +6,8 @@
 
 #include "prevent_bss_reordering.h"
 #include "z_en_test3.h"
+#include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmNpcChecks.h"
 
 #include "z64malloc.h"
 
@@ -915,7 +917,7 @@ s32 func_80A3FFD0(EnTest3* this, PlayState* play2) {
             D_80A41D68 = 1;
         }
     } else if (D_80A41D68 == 1) {
-        if (func_80A3E9DC(this, play)) {
+        if (OotmmSession_IsActive() || func_80A3E9DC(this, play)) {
             D_80A41D68 = 2;
         }
     } else {
@@ -1109,6 +1111,11 @@ void func_80A40A6C(EnTest3* this, PlayState* play) {
 void EnTest3_Update(Actor* thisx, PlayState* play2) {
     PlayState* play = play2;
     EnTest3* this = (EnTest3*)thisx;
+
+    if (OotmmSession_IsActive() && D_80A41D68 == 2 && !OotmmNpcChecks_IsCollected("MM_MASK_COUPLE") &&
+        this->player.actor.xzDistToPlayer < 100.0f && fabsf(this->player.actor.playerHeightRel) < 50.0f) {
+        OotmmNpcChecks_Collect("MM_MASK_COUPLE");
+    }
 
     sKafeiControlInput.rel.button = sKafeiControlInput.cur.button;
     sKafeiControlInput.cur.button = 0;

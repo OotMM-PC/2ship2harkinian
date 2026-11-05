@@ -24,7 +24,8 @@ void RegisterSkipRosaSistersDance() {
                 enRz->actionFunc = func_80BFC270;
                 // Queue the item check, as Actor_OfferGetItem won't work normally
                 // WEEKEVENTREG_RECEIVED_ROSA_SISTERS_HEART_PIECE is set once the player obtains this Heart Piece.
-                if (!CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_ROSA_SISTERS_HEART_PIECE)) {
+                if (GameInteractor_Should(VB_GIVE_ROSA_SISTERS_HEART_PIECE,
+                                          !CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_ROSA_SISTERS_HEART_PIECE))) {
                     GameInteractor::Instance->events.emplace_back(GIEventGiveItem{
                         .showGetItemCutscene = true,
                         .param = GID_HEART_PIECE,

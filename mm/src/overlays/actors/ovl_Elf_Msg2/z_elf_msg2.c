@@ -5,6 +5,7 @@
  */
 
 #include "z_elf_msg2.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -142,6 +143,10 @@ void func_8096EFD0(ElfMsg2* this, PlayState* play) {
 
 void ElfMsg2_Update(Actor* thisx, PlayState* play) {
     ElfMsg2* this = (ElfMsg2*)thisx;
+
+    if (OotmmSession_IsActive()) {
+        return;
+    }
 
     if (!func_8096EC4C(this, play)) {
         this->actionFunc(this, play);

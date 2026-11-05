@@ -52,6 +52,16 @@ void Scene_CommandSpawnList(PlayState* play, SOH::ISceneCommand* cmd) {
 
     play->linkActorEntry = &entries[play->setupEntranceList[play->curSpawn].spawn];
 
+    if (OotmmSession_IsActive()) {
+        const s32 spawn = play->setupEntranceList[play->curSpawn].spawn;
+
+        if (((play->sceneId == SCENE_10YUKIYAMANOMURA) || (play->sceneId == SCENE_IKANA)) && (spawn == 7)) {
+            play->linkActorEntry->params = (play->linkActorEntry->params & 0xF0FF) | 0x0200;
+        } else if ((play->sceneId == SCENE_BOTI) && (spawn == 5)) {
+            play->linkActorEntry->params = (play->linkActorEntry->params & 0xF0FF) | 0x0B00;
+        }
+    }
+
     if ((PLAYER_GET_START_MODE(play->linkActorEntry) == PLAYER_START_MODE_TELESCOPE) ||
         ((gSaveContext.respawnFlag == 2) && (gSaveContext.respawn[RESPAWN_MODE_RETURN].playerParams ==
                                              PLAYER_PARAMS(0xFF, PLAYER_START_MODE_TELESCOPE)))) {

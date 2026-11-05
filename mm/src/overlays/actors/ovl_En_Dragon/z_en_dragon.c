@@ -6,6 +6,7 @@
 
 #include "z_en_dragon.h"
 #include "overlays/actors/ovl_En_Ot/z_en_ot.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS                                                                                 \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOSTILE | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -204,6 +205,9 @@ static ColliderJntSphInit sJntSphInit = {
 
 void EnDragon_Init(Actor* thisx, PlayState* play) {
     EnDragon* this = (EnDragon*)thisx;
+
+    sDamageTable.attack[7] = OotmmSession_IsActive() ? DMG_ENTRY(1, DEEP_PYTHON_DMGEFF_DAMAGE)
+                                                     : DMG_ENTRY(0, DEEP_PYTHON_DMGEFF_NONE);
 
     SkelAnime_InitFlex(play, &this->skelAnime, &gDeepPythonSkel, &gDeepPythonSmallSideSwayAnim, this->jointTable,
                        this->morphTable, DEEP_PYTHON_LIMB_MAX);

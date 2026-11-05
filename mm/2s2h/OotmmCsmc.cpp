@@ -1,4 +1,5 @@
 #include "OotmmCsmc.h"
+#include "OotmmChecks.h"
 
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -39,7 +40,7 @@ const Ship::OotmmPlacement* ChestPlacement(PlayState* play, EnBox* chest) {
         return nullptr;
     }
     return OotmmSession_GetState().FindCheck(Ship::OotmmGame::Mm,
-                                             Play_GetOriginalSceneId(play->sceneId), "chest",
+                                             OotmmChecks_CheckScene(play->sceneId), "chest",
                                              ENBOX_GET_CHEST_FLAG(&chest->dyna.actor));
 }
 

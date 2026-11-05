@@ -9,6 +9,7 @@
 #include "objects/object_dblue_object/object_dblue_object.h"
 #include "overlays/actors/ovl_Obj_Hunsui/z_obj_hunsui.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED)
 
@@ -402,9 +403,9 @@ void func_80A2A444(BgDblueMovebg* this, PlayState* play) {
     Player* temp_a3;
     s16 temp_v0;
 
-    this->unk_188++;
+    this->unk_188 += OotmmSession_IsActive() ? 2 : 1;
     if (GameInteractor_Should(VB_GREAT_BAY_GEAR_CLAMP_PUSH_SPEED, true, this)) {
-        this->unk_188 = CLAMP_MAX(this->unk_188, 5);
+        this->unk_188 = CLAMP_MAX(this->unk_188, OotmmSession_IsActive() ? 30 : 5);
     }
 
     sp20 = Math_StepToS(&this->unk_18A, 900, this->unk_188);
@@ -492,9 +493,9 @@ void func_80A2A7F8(BgDblueMovebg* this, PlayState* play) {
     s16 sp26;
     s32 temp;
 
-    this->unk_188++;
+    this->unk_188 += OotmmSession_IsActive() ? 2 : 1;
     if (GameInteractor_Should(VB_GREAT_BAY_GEAR_CLAMP_PUSH_SPEED, true, this)) {
-        this->unk_188 = CLAMP_MAX(this->unk_188, 5);
+        this->unk_188 = CLAMP_MAX(this->unk_188, OotmmSession_IsActive() ? 30 : 5);
     }
 
     sp28 = Math_StepToS(&this->unk_18A, 900, this->unk_188);

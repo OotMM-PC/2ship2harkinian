@@ -5,6 +5,7 @@
  */
 
 #include "z_obj_iceblock.h"
+#include "2s2h/OotmmSession.h"
 #include "objects/object_ice_block/object_ice_block.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -1162,8 +1163,9 @@ void func_80A25E3C(ObjIceblock* this) {
 void func_80A25E50(ObjIceblock* this, PlayState* play) {
     s32 pad;
     f32 temp_f0 = this->unk_268 - *this->unk_264;
-    f32 temp_f2 = (Math_SinS(fabsf(temp_f0) * 546.13336f) * 2.8f) + 1.2f;
-    s32 sp38 = Math_StepToF(this->unk_264, this->unk_268, CLAMP_MAX(temp_f2, 3.5f));
+    f32 speedScale = OotmmSession_IsActive() ? 3.0f : 1.0f;
+    f32 temp_f2 = ((Math_SinS(fabsf(temp_f0) * 546.13336f) * 2.8f) + 1.2f) * speedScale;
+    s32 sp38 = Math_StepToF(this->unk_264, this->unk_268, CLAMP_MAX(temp_f2, 3.5f * speedScale));
     s32 pad2;
     Vec3f sp28;
 

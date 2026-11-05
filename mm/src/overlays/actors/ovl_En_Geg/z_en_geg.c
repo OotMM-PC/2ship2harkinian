@@ -11,6 +11,7 @@
 #include "objects/object_hakugin_demo/object_hakugin_demo.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
 
@@ -531,7 +532,11 @@ void func_80BB2520(EnGeg* this, PlayState* play) {
     }
 
     if (CutsceneManager_IsNext(this->csId)) {
-        CutsceneManager_StartWithPlayerCsAndSetFlag(this->csId, &this->actor);
+        if (OotmmSession_IsActive() && (this->csId == this->csIdList[7])) {
+            this->csIdList[7] = 0x180;
+        } else {
+            CutsceneManager_StartWithPlayerCsAndSetFlag(this->csId, &this->actor);
+        }
         this->unk_230 |= 0x10;
 
         switch (this->unk_496) {
@@ -831,7 +836,7 @@ void func_80BB30B4(EnGeg* this, PlayState* play) {
 void func_80BB31B8(EnGeg* this, PlayState* play) {
     s32 getItemId = GI_MASK_DON_GERO;
 
-    if (INV_CONTENT(ITEM_MASK_DON_GERO) == ITEM_MASK_DON_GERO) {
+    if (!OotmmSession_IsActive() && (INV_CONTENT(ITEM_MASK_DON_GERO) == ITEM_MASK_DON_GERO)) {
         if (Player_GetMask(play) == PLAYER_MASK_DON_GERO) {
             this->unk_496 = 0xD8B;
             getItemId = GI_RUPEE_PURPLE;
@@ -866,13 +871,13 @@ void func_80BB32AC(EnGeg* this, PlayState* play) {
 
 void func_80BB3318(EnGeg* this, PlayState* play) {
     static Vec3f D_80BB4044[] = {
-        { -550.0f, 8.0f, 550.0f },
-        { 220.0f, 43.0f, 525.0f },
+        { -550.0f, 8.0f, 550.0f }, { 220.0f, 43.0f, 525.0f },   { 960.0f, 90.0f, 525.0f },
+        { 2060.0f, 16.0f, 925.0f }, { 2710.0f, -40.0f, 1980.0f }, { 3510.0f, -90.0f, 2380.0f },
     };
     s16 sp46;
     f32 sp40;
 
-    if (this->unk_4D8 < 2) {
+    if (this->unk_4D8 < (OotmmSession_IsActive() ? 6 : 2)) {
         sp46 = Math_Vec3f_Yaw(&this->actor.world.pos, &D_80BB4044[this->unk_4D8]);
         sp40 = Math_Vec3f_DistXZ(&this->actor.world.pos, &D_80BB4044[this->unk_4D8]);
         Math_SmoothStepToS(&this->actor.world.rot.y, sp46, 4, 0x3E8, 1);
@@ -884,7 +889,7 @@ void func_80BB3318(EnGeg* this, PlayState* play) {
                       this->actor.shape.rot.y, this->actor.floorPoly, this->actor.floorBgId);
     }
 
-    if (CutsceneManager_GetCurrentCsId() != this->csIdList[7]) {
+    if (OotmmSession_IsActive() ? (--this->csIdList[7] == 0) : (CutsceneManager_GetCurrentCsId() != this->csIdList[7])) {
         func_800AEF44(Effect_GetByIndex(this->unk_4DC));
         Actor_Kill(&this->actor);
     } else {

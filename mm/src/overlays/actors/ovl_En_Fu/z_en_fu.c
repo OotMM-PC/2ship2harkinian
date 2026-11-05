@@ -10,6 +10,7 @@
 #include "overlays/actors/ovl_Bg_Fu_Kaiten/z_bg_fu_kaiten.h"
 #include "overlays/actors/ovl_En_Bom/z_en_bom.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
+#include "2s2h/OotmmSession.h"
 
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
@@ -1051,7 +1052,8 @@ void func_809639D0(EnFu* this, PlayState* play) {
     switch (CURRENT_DAY) {
         case 1:
             if (GET_PLAYER_FORM == PLAYER_FORM_HUMAN) {
-                if (CUR_UPG_VALUE(UPG_BOMB_BAG) == 0) {
+                if ((CUR_UPG_VALUE(UPG_BOMB_BAG) == 0) &&
+                    !(OotmmSession_IsActive() && (INV_CONTENT(ITEM_BOMBCHU) == ITEM_BOMBCHU))) {
                     Message_StartTextbox(play, 0x2853, &this->actor);
                     this->unk_552 = 0x2853;
                 } else if (CHECK_WEEKEVENTREG(WEEKEVENTREG_22_10)) {

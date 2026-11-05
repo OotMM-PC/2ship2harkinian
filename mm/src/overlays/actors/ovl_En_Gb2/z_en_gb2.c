@@ -6,6 +6,7 @@
 
 #include "z_en_gb2.h"
 #include "2s2h/OotmmSongEvents.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS                                                                                  \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -161,7 +162,7 @@ u16 func_80B0F7FC(EnGb2* this) {
                 return 0x14E4;
             }
 
-            if (gSaveContext.save.saveInfo.playerData.health > 0x30) {
+            if (gSaveContext.save.saveInfo.playerData.health >= (OotmmSession_IsActive() ? 0x30 : 0x31)) {
                 return 0x14D2;
             }
 
@@ -169,7 +170,7 @@ u16 func_80B0F7FC(EnGb2* this) {
             return 0x14D3;
 
         case 0x14E4:
-            if (gSaveContext.save.saveInfo.playerData.health > 0x30) {
+            if (gSaveContext.save.saveInfo.playerData.health >= (OotmmSession_IsActive() ? 0x30 : 0x31)) {
                 return 0x14D2;
             }
 
@@ -521,7 +522,7 @@ void func_80B10344(EnGb2* this, PlayState* play) {
         }
     }
 
-    if (gSaveContext.save.saveInfo.playerData.health <= 0x30) {
+    if (gSaveContext.save.saveInfo.playerData.health < (OotmmSession_IsActive() ? 0x30 : 0x31)) {
         gSaveContext.timerStates[TIMER_ID_MINIGAME_1] = TIMER_STATE_STOP;
         SET_EVENTINF(EVENTINF_46);
         SET_EVENTINF(EVENTINF_45);

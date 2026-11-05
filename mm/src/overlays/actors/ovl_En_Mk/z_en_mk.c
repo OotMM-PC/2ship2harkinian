@@ -5,6 +5,7 @@
  */
 
 #include "z_en_mk.h"
+#include "2s2h/OotmmSession.h"
 #include "GameInteractor/GameInteractor.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED)
@@ -443,7 +444,7 @@ void func_80959E18(EnMk* this, PlayState* play) {
         this->unk_27A |= 1;
     } else if ((this->unk_27A & 2) && (func_80959524(play) >= 7)) {
         this->actionFunc = func_80959C94;
-    } else if ((this->actor.xzDistToPlayer < 120.0f) && (ABS_ALT(sp22) <= 0x4300)) {
+    } else if ((this->actor.xzDistToPlayer < (OotmmSession_IsActive() ? 256.0f : 120.0f)) && (ABS_ALT(sp22) <= 0x4300)) {
         this->unk_27A |= 1;
         Actor_OfferTalk(&this->actor, play, 200.0f);
         if (!CHECK_WEEKEVENTREG(WEEKEVENTREG_20_40) && CHECK_WEEKEVENTREG(WEEKEVENTREG_19_40)) {

@@ -4,6 +4,7 @@
 #include "GameInteractor/GameInteractor.h"
 #include "2s2h/Enhancements/Audio/AudioEditor.h"
 #include "2s2h/OotmmOcarinaButtons.h"
+#include "2s2h/OotmmAdultLink.h"
 #include "2s2h/OotmmSession.h"
 #include "2s2h/OotmmSongs.h"
 #include <libultraship/bridge/consolevariablebridge.h>
@@ -4484,8 +4485,12 @@ void Audio_PlaySfx_GiantsMaskUnused(Vec3f* pos, u16 sfxId) {
 }
 
 void Audio_PlaySfx_GiantsMask(Vec3f* pos, u16 sfxId) {
-    AudioSfx_PlaySfx((sfxId & 0x681F) + 0x20, pos, 4, &sGiantsMaskFreq, &gSfxDefaultFreqAndVolScale,
-                     &sGiantsMaskReverbAdd);
+    u16 giantSfxId = (sfxId & 0x681F) + 0x20;
+
+    if (OotmmAdultLink_IsAdult()) {
+        giantSfxId -= 0x20;
+    }
+    AudioSfx_PlaySfx(giantSfxId, pos, 4, &sGiantsMaskFreq, &gSfxDefaultFreqAndVolScale, &sGiantsMaskReverbAdd);
 }
 
 void Audio_PlaySfx_Randomized(Vec3f* pos, u16 baseSfxId, u8 randLim) {

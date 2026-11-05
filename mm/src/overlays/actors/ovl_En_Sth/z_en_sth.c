@@ -9,6 +9,7 @@
 
 #include "z_en_sth.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY)
 
@@ -204,6 +205,14 @@ void EnSth_Init(Actor* thisx, PlayState* play) {
             this->actionFunc = EnSth_DefaultIdle;
             break;
     }
+
+    if (OotmmSession_IsActive() && (STH_GET_TYPE(&this->actor) == STH_TYPE_OCEANSIDE_SPIDER_HOUSE_GREET) &&
+        (Inventory_GetSkullTokenCount(play->sceneId) < SPIDER_HOUSE_TOKENS_REQUIRED)) {
+        if (Object_GetSlot(&play->objectCtx, OBJECT_SSH) <= OBJECT_SLOT_NONE) {
+            Object_SpawnPersistent(&play->objectCtx, OBJECT_SSH);
+        }
+        Actor_Spawn(&play->actorCtx, play, ACTOR_EN_SSH, -110.0f, 650.0f, 250.0f, 0, 0, 0, 0);
+    }
 }
 
 void EnSth_Destroy(Actor* thisx, PlayState* play) {
@@ -379,9 +388,10 @@ void EnSth_HandleOceansideSpiderHouseConversation(EnSth* this, PlayState* play) 
                         // This flag prevents multiple rewards, switching to secondary dialogue after
                         SET_WEEKEVENTREG(WEEKEVENTREG_OCEANSIDE_SPIDER_HOUSE_COLLECTED_REWARD);
 
-                        switch (day) {
+                        switch (OotmmSession_IsActive() ? 0 : day) {
                             case 0: // first day
-                                if (CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_OCEANSIDE_WALLET_UPGRADE)) {
+                                if (!OotmmSession_IsActive() &&
+                                    CHECK_WEEKEVENTREG(WEEKEVENTREG_RECEIVED_OCEANSIDE_WALLET_UPGRADE)) {
                                     STH_GI_ID(&this->actor) = GI_RUPEE_SILVER;
                                 } else {
                                     // This flag prevents getting two wallets from the same place.

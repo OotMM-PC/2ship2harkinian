@@ -245,6 +245,7 @@ typedef enum Item00Type {
     /* 0x1D */ ITEM00_MUSHROOM_CLOUD,
 
     ITEM00_BOMBCHU = 0x1E,
+    ITEM00_OOTMM_SEEDS = 0x1F,
 
     /* 0xFF */ ITEM00_NO_DROP = -1
 } Item00Type;

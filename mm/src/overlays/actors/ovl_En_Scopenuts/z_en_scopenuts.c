@@ -7,6 +7,7 @@
 #include "z_en_scopenuts.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS                                                                                  \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -261,7 +262,7 @@ void func_80BCB078(EnScopenuts* this, PlayState* play) {
         }
     }
 
-    if (this->unk_334 >= (this->path->count - 2)) {
+    if (!OotmmSession_IsActive() && (this->unk_334 >= (this->path->count - 2))) {
         Math_ApproachF(&this->actor.speed, 1.5f, 0.2f, 1.0f);
     } else {
         Math_ApproachF(&this->actor.speed, 5.0f, 0.2f, 1.0f);
@@ -726,7 +727,7 @@ void EnScopenuts_Init(Actor* thisx, PlayState* play) {
     s32 pad;
     EnScopenuts* this = (EnScopenuts*)thisx;
 
-    if (!CHECK_WEEKEVENTREG(WEEKEVENTREG_74_40) &&
+    if (!OotmmSession_IsActive() && !CHECK_WEEKEVENTREG(WEEKEVENTREG_74_40) &&
         GameInteractor_Should(VB_SCOPENUTS_CONSIDER_FIRST_CYCLE,
                               gSaveContext.save.saveInfo.inventory.items[ITEM_OCARINA_OF_TIME] == ITEM_NONE)) {
         Actor_Kill(&this->actor);

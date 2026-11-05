@@ -51,7 +51,7 @@ const Ship::OotmmPlacement* FindBossContainer(uint32_t scene) {
 }
 
 const Ship::OotmmPlacement* FindToken(const Actor* actor, const PlayState* play) {
-    return FindChest(Play_GetOriginalSceneId(play->sceneId), ENSI_GET_CHEST_FLAG(actor));
+    return FindChest(OotmmChecks_CheckScene(play->sceneId), ENSI_GET_CHEST_FLAG(actor));
 }
 
 constexpr const char* kTownFairy = "MM_STRAY_FAIRY_TOWN";
@@ -64,7 +64,7 @@ const Ship::OotmmPlacement* FindStrayFairy(const Actor* actor, const PlayState* 
         case STRAY_FAIRY_TYPE_RETURNING_TO_FOUNTAIN:
             return nullptr;
         default:
-            return OotmmSession_GetState().FindCheck(Ship::OotmmGame::Mm, Play_GetOriginalSceneId(play->sceneId),
+            return OotmmSession_GetState().FindCheck(Ship::OotmmGame::Mm, OotmmChecks_CheckScene(play->sceneId),
                                                      "sf", STRAY_FAIRY_GET_FLAG(actor));
     }
 }
@@ -130,7 +130,7 @@ void SweepSavedBossContainers() {
         }
         const uint32_t scene = *placement.CheckScene;
         uint32_t flags = gSaveContext.cycleSceneFlags[scene].collectible;
-        if (gPlayState != nullptr && static_cast<uint32_t>(Play_GetOriginalSceneId(gPlayState->sceneId)) == scene) {
+        if (gPlayState != nullptr && static_cast<uint32_t>(OotmmChecks_CheckScene(gPlayState->sceneId)) == scene) {
             flags |= gPlayState->actorCtx.sceneFlags.collectible[0];
         }
         if ((flags & (1u << 0x1F)) != 0 && !OotmmIpc_IsCheckCompleted(placement.CheckId)) {
@@ -162,9 +162,9 @@ void SweepSavedChests() {
         if (scene >= ARRAY_COUNT(gSaveContext.cycleSceneFlags) || flag > 31) {
             continue;
         }
-        uint32_t chestBits = gSaveContext.cycleSceneFlags[scene].chest;
+        uint32_t chestBits = gSaveContext.cycleSceneFlags[scene == SCENE_F41 ? SCENE_F40 : scene].chest;
         if (gPlayState != nullptr &&
-            static_cast<uint32_t>(Play_GetOriginalSceneId(gPlayState->sceneId)) == scene) {
+            static_cast<uint32_t>(OotmmChecks_CheckScene(gPlayState->sceneId)) == scene) {
             chestBits |= gPlayState->actorCtx.sceneFlags.chest;
         }
         if ((chestBits & (1u << flag)) != 0 && !OotmmIpc_IsCheckCompleted(placement.CheckId)) {
@@ -174,6 +174,10 @@ void SweepSavedChests() {
 }
 
 } // namespace
+
+extern "C" short OotmmChecks_CheckScene(short sceneId) {
+    return sceneId == SCENE_F41 ? sceneId : Play_GetOriginalSceneId(sceneId);
+}
 
 extern "C" void* OotmmChecks_SkulltulaDL(Actor* skulltula, const char* part, void* vanilla) {
     if (gPlayState == nullptr || OotmmSession_GetState().GetStringSetting("housesSkulltulaTokens", "none") == "none") {
@@ -196,25 +200,25 @@ extern "C" int OotmmChecks_HeartPieceDone(PlayState* play, Actor* actor, int van
         return vanillaDone;
     }
     const auto* placement = OotmmSession_GetState().FindCheck(
-        Ship::OotmmGame::Mm, Play_GetOriginalSceneId(play->sceneId), "collectible",
+        Ship::OotmmGame::Mm, OotmmChecks_CheckScene(play->sceneId), "collectible",
         reinterpret_cast<EnItem00*>(actor)->collectibleFlag);
     return placement == nullptr ? vanillaDone : IsCollected(*placement);
 }
 
 extern "C" int OotmmChecks_BossContainerDone(PlayState* play, int vanillaDone) {
-    const auto* placement = play != nullptr ? FindBossContainer(Play_GetOriginalSceneId(play->sceneId)) : nullptr;
+    const auto* placement = play != nullptr ? FindBossContainer(OotmmChecks_CheckScene(play->sceneId)) : nullptr;
     return placement == nullptr ? vanillaDone : IsCollected(*placement);
 }
 
 extern "C" int OotmmChecks_BossContainerIsShuffled(PlayState* play) {
-    return play != nullptr && FindBossContainer(Play_GetOriginalSceneId(play->sceneId)) != nullptr;
+    return play != nullptr && FindBossContainer(OotmmChecks_CheckScene(play->sceneId)) != nullptr;
 }
 
 extern "C" int OotmmChecks_TryCollectBossContainer(Actor* actor, PlayState* play) {
     if (actor == nullptr || play == nullptr) {
         return 0;
     }
-    const auto* placement = FindBossContainer(Play_GetOriginalSceneId(play->sceneId));
+    const auto* placement = FindBossContainer(OotmmChecks_CheckScene(play->sceneId));
     if (placement == nullptr) {
         return 0;
     }
@@ -238,7 +242,7 @@ extern "C" int OotmmChecks_DrawBossContainer(Actor* actor, PlayState* play) {
     if (actor == nullptr || play == nullptr) {
         return 0;
     }
-    const auto* placement = FindBossContainer(Play_GetOriginalSceneId(play->sceneId));
+    const auto* placement = FindBossContainer(OotmmChecks_CheckScene(play->sceneId));
     if (placement == nullptr) {
         return 0;
     }
@@ -287,7 +291,7 @@ void OotmmChecks_Init() {
             if (flagType != FLAG_CYCL_SCENE_CHEST) {
                 return;
             }
-            if (const auto* placement = FindChest(Play_GetOriginalSceneId(sceneId), flag)) {
+            if (const auto* placement = FindChest(OotmmChecks_CheckScene(sceneId), flag)) {
                 if (!OotmmCheckLedger_Contains(placement->CheckId)) {
                     Report(*placement);
                 }
@@ -297,7 +301,7 @@ void OotmmChecks_Init() {
     REGISTER_VB_SHOULD(VB_GIVE_ITEM_FROM_CHEST, {
         EnBox* chest = va_arg(args, EnBox*);
         Player* player = GET_PLAYER(gPlayState);
-        sActiveChest = FindChest(Play_GetOriginalSceneId(gPlayState->sceneId),
+        sActiveChest = FindChest(OotmmChecks_CheckScene(gPlayState->sceneId),
                                  ENBOX_GET_CHEST_FLAG(&chest->dyna.actor));
         if (sActiveChest == nullptr && gPlayState->sceneId == SCENE_TAKARAYA && chest->getItemId == GI_HEART_PIECE) {
             sActiveChest = OotmmSession_GetState().FindCheck(Ship::OotmmGame::Mm, "npc", "MM_CHEST_GAME");
@@ -363,7 +367,7 @@ void OotmmChecks_Init() {
         }
         const int flag = reinterpret_cast<EnItem00*>(actor)->collectibleFlag;
         const auto* placement = OotmmSession_GetState().FindCheck(
-            Ship::OotmmGame::Mm, Play_GetOriginalSceneId(gPlayState->sceneId), "collectible", flag);
+            Ship::OotmmGame::Mm, OotmmChecks_CheckScene(gPlayState->sceneId), "collectible", flag);
         if (placement != nullptr && !IsCollected(*placement)) {
             OotmmDrops_Adopt(actor, *placement, flag);
         }

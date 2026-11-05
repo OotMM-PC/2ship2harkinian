@@ -5,6 +5,7 @@
  */
 
 #include "z_tg_sw.h"
+#include "2s2h/OotmmSession.h"
 
 #include "z64debug_display.h"
 #include "overlays/actors/ovl_En_Sw/z_en_sw.h"
@@ -64,6 +65,9 @@ void TGSw_Die(TGSw* this, PlayState* play) {
         if (TGSW_GET_FC(&this->actor) == ENSW_GET_FC(actorIter)) {
             actorIter->parent = &this->actor;
             actorIter->speed = ABS_ALT(this->actor.world.rot.x);
+            if (OotmmSession_IsActive()) {
+                actorIter->csId = CS_ID_NONE;
+            }
             break;
         }
         actorIter = actorIter->next;
@@ -80,6 +84,9 @@ void TGSw_Die(TGSw* this, PlayState* play) {
         if (TGSW_GET_FC(&this->actor) == ENSW_GET_FC(actorIter)) {
             actorIter->parent = &this->actor;
             actorIter->speed = ABS_ALT(this->actor.world.rot.x);
+            if (OotmmSession_IsActive()) {
+                actorIter->csId = CS_ID_NONE;
+            }
             break;
         }
         actorIter = actorIter->next;

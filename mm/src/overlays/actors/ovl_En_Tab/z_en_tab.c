@@ -6,6 +6,7 @@
 
 #include "z_en_tab.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS                                                                                  \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -467,7 +468,7 @@ s32 func_80BE0C04(EnTab* this, Actor* actor, f32 arg2) {
 }
 
 s32 func_80BE0D38(Actor* thisx, PlayState* play) {
-    return Inventory_HasEmptyBottle();
+    return OotmmSession_IsActive() || Inventory_HasEmptyBottle();
 }
 
 s32 func_80BE0D60(Actor* thisx, PlayState* play) {

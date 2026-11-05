@@ -2256,6 +2256,7 @@ void Play_Init(GameState* thisx) {
     // #endregion
 
     OotmmClocks_FixupSpawnTime();
+    OotmmSession_FixupPlayInit();
 
     if ((gSaveContext.nextCutsceneIndex == 0xFFEF) || (gSaveContext.nextCutsceneIndex == 0xFFF0)) {
         scene = ((void)0, gSaveContext.save.entrance) >> 9;

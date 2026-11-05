@@ -26,6 +26,7 @@
 #include "z64rumble.h"
 #include "objects/object_rd/object_rd.h"
 #include "overlays/actors/ovl_Obj_Ice_Poly/z_obj_ice_poly.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS                                                                                 \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOSTILE | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -327,6 +328,10 @@ void EnRd_UpdateParentForOtherRedeads(PlayState* play, Actor* thisx, s32 setPare
 s32 EnRd_ShouldNotDance(PlayState* play) {
     if ((Player_GetMask(play) == PLAYER_MASK_GIBDO) || (Player_GetMask(play) == PLAYER_MASK_CAPTAIN) ||
         (Player_GetMask(play) == PLAYER_MASK_GARO)) {
+        return false;
+    }
+
+    if (OotmmSession_IsActive() && (AudioSeq_GetActiveSeqId(SEQ_PLAYER_BGM_SUB) == NA_BGM_SARIAS_SONG)) {
         return false;
     }
 

@@ -6,6 +6,7 @@
 
 #include "z_en_gg2.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_REACT_TO_LENS)
 
@@ -388,7 +389,7 @@ void EnGg2_Init(Actor* thisx, PlayState* play2) {
         return;
     }
 
-    if (CHECK_WEEKEVENTREG(WEEKEVENTREG_91_10)) {
+    if (OotmmSession_IsActive() || CHECK_WEEKEVENTREG(WEEKEVENTREG_91_10)) {
         Actor_Kill(&this->actor);
         return;
     }

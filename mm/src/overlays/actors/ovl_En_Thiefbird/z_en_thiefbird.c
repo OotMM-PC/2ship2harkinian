@@ -7,6 +7,7 @@
 #include "z_en_thiefbird.h"
 #include "overlays/actors/ovl_En_Clear_Tag/z_en_clear_tag.h"
 #include "2s2h/Enhancements/FrameInterpolation/FrameInterpolation.h"
+#include "2s2h/OotmmSession.h"
 
 #include "2s2h/GameInteractor/GameInteractor.h"
 
@@ -224,6 +225,10 @@ s32 func_80C10B0C(EnThiefbird* this, PlayState* play) {
     s32 slotId = SLOT_BOTTLE_1;
     s32 itemId1;
     s16 itemId2 = 0;
+
+    if (OotmmSession_IsActive()) {
+        return false;
+    }
 
     for (; slotId < ITEM_NUM_SLOTS; slotId++) {
         if ((gSaveContext.save.saveInfo.inventory.items[slotId] >= ITEM_BOTTLE) &&

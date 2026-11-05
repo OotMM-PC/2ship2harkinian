@@ -8,6 +8,7 @@
 #include "overlays/actors/ovl_En_Clear_Tag/z_en_clear_tag.h"
 #include "objects/object_bigpo/object_bigpo.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
+#include "2s2h/OotmmSession.h"
 
 #define FLAGS                                                                                 \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_HOSTILE | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -885,7 +886,7 @@ void EnBigpo_SelectRandomFireLocations(EnBigpo* this, PlayState* play) {
     // for available possiblefires, pick three to be random fires
     for (fireIndex = 0; fireIndex < ARRAY_COUNT(this->fires); fireIndex++, fireCount--) {
         enemyPtr = GET_FIRST_ENEMY(play);
-        randomIndex = ((s32)Rand_ZeroFloat(fireCount)) % fireCount;
+        randomIndex = (OotmmSession_IsActive() ? 8 : (s32)Rand_ZeroFloat(fireCount)) % fireCount;
 
         while (enemyPtr != NULL) {
             if ((enemyPtr->id == ACTOR_EN_BIGPO) && (enemyPtr->params == BIG_POE_TYPE_POSSIBLE_FIRE)) {

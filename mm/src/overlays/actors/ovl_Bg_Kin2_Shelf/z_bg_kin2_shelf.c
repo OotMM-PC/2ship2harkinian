@@ -5,6 +5,7 @@
  */
 
 #include "z_bg_kin2_shelf.h"
+#include "2s2h/OotmmSession.h"
 #include "objects/object_kin2_obj/object_kin2_obj.h"
 
 #define FLAGS 0x00000000
@@ -281,8 +282,14 @@ void func_80B70230(BgKin2Shelf* this, PlayState* play) {
 
     if ((BGKIN2SHELF_GET_1(&this->dyna.actor)) == 0) {
         phi_f2 = (Math_SinS(this->unk_160 * 0x8000) * 0.012f) + 0.014f;
+        if (OotmmSession_IsActive()) {
+            phi_f2 *= 3.0f;
+        }
     } else {
         phi_f2 = (Math_SinS(this->unk_160 * 0x8000) * 0.003f) + 0.009f;
+        if (OotmmSession_IsActive()) {
+            phi_f2 *= 3.0f;
+        }
     }
     this->unk_160 += phi_f2;
 
@@ -331,7 +338,7 @@ void func_80B704B4(BgKin2Shelf* this, PlayState* play) {
     s32 pad;
     s16 sp36 = this->dyna.actor.shape.rot.y;
 
-    this->unk_160 += (Math_SinS(this->unk_160 * 0x8000) * 0.022f) + 0.022f;
+    this->unk_160 += ((Math_SinS(this->unk_160 * 0x8000) * 0.022f) + 0.022f) * (OotmmSession_IsActive() ? 3.0f : 1.0f);
 
     if (this->unk_160 >= 1.0f) {
         Player* player = GET_PLAYER(play);
