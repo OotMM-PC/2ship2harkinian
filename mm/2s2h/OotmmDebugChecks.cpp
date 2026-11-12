@@ -619,6 +619,13 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
             }
         } else if (key == "switch" && gPlayState != nullptr && gPlayState->sceneId == first && second >= 0 && second < 128) {
             Flags_SetSwitch(gPlayState, static_cast<s32>(second));
+        } else if (key == "unchest" && first >= 0 &&
+                   first < static_cast<long>(ARRAY_COUNT(gSaveContext.cycleSceneFlags)) && second >= 0 && second < 32) {
+            gSaveContext.cycleSceneFlags[first].chest &= ~(1u << second);
+            gSaveContext.save.saveInfo.permanentSceneFlags[first].chest &= ~(1u << second);
+            if (gPlayState != nullptr && Play_GetOriginalSceneId(gPlayState->sceneId) == first) {
+                gPlayState->actorCtx.sceneFlags.chest &= ~(1u << second);
+            }
         } else if (key == "clear" && gPlayState != nullptr && gPlayState->sceneId == first && second >= 0 && second < 32) {
             Flags_SetClear(gPlayState, static_cast<s32>(second));
             Flags_SetClearTemp(gPlayState, static_cast<s32>(second));
