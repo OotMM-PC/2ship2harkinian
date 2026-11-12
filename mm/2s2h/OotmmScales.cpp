@@ -78,7 +78,7 @@ void OnGameStateUpdate() {
         return;
     }
     Player* player = GET_PLAYER(gPlayState);
-    if (player == nullptr) {
+    if (player == nullptr || player->actor.update != PlayerCall_Update) {
         return;
     }
 
