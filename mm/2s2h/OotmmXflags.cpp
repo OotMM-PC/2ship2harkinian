@@ -738,6 +738,7 @@ extern "C" int OotmmXflags_Collect(Actor* actor) {
         return 0;
     }
     OotmmDrops_Report(placement->CheckId, placement->ItemId, placement->ItemId != "NOTHING");
+    OotmmDrops_ShowPickup(gPlayState, *placement);
     return 1;
 }
 

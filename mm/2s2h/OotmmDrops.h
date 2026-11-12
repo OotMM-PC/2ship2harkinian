@@ -14,5 +14,6 @@ Actor* OotmmDrops_SpawnPlacement(PlayState* play, float x, float y, float z,
                                  const Ship::OotmmPlacement& placement, int collectibleFlag = -1);
 bool OotmmDrops_Adopt(Actor* actor, const Ship::OotmmPlacement& placement, int collectibleFlag);
 bool OotmmDrops_HasCheck(const std::string& checkId);
+bool OotmmDrops_ShowPickup(PlayState* play, const Ship::OotmmPlacement& placement);
 void OotmmDrops_Report(const std::string& checkId, const std::string& itemId, bool present);
 void OotmmDrops_Init();

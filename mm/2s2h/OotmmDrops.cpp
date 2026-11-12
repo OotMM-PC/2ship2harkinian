@@ -159,6 +159,31 @@ void OotmmDrops_Report(const std::string& checkId, const std::string& itemId, bo
     }
 }
 
+bool OotmmDrops_ShowPickup(PlayState* play, const Ship::OotmmPlacement& placement) {
+    if (play == nullptr || !Ship::OotmmItemCatalog::IsFast(placement.ItemId)) {
+        return false;
+    }
+    Player* player = GET_PLAYER(play);
+    if (player == nullptr) {
+        return false;
+    }
+    Vec3f pos = player->actor.world.pos;
+    Actor* item = Item_DropCollectible(play, &pos, ITEM00_RUPEE_GREEN);
+    if (item == nullptr) {
+        return false;
+    }
+    Track(item, PlacementDrop(placement, -1));
+    const auto it = sDrops.find(item);
+    if (it == sDrops.end() || !FloatAboveHead(reinterpret_cast<EnItem00*>(item), it->second)) {
+        Actor_Kill(item);
+        if (it != sDrops.end()) {
+            sDrops.erase(it);
+        }
+        return false;
+    }
+    return true;
+}
+
 bool OotmmDrops_HasCheck(const std::string& checkId) {
     for (const auto& [actor, drop] : sDrops) {
         if (drop.CheckId == checkId) {
