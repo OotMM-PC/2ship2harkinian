@@ -53,10 +53,8 @@ CHILD_SYM(gLinkChildLeftFistNearDL);
 CHILD_SYM(gLinkChildLeftHandUpNearDL);
 CHILD_SYM(gLinkChildRightHandNearDL);
 CHILD_SYM(gLinkChildRightHandClosedNearDL);
-CHILD_SYM(gLinkChildRightHandHoldingSlingshotNearDL);
 CHILD_SYM(gLinkChildRightHandHoldingFairyOcarinaNearDL);
 CHILD_SYM(gLinkChildRightShoulderNearDL);
-CHILD_SYM(gLinkChildRightArmStretchedSlingshotDL);
 CHILD_SYM(gLinkChildEyesOpenTex);
 CHILD_SYM(gLinkChildEyesHalfTex);
 CHILD_SYM(gLinkChildEyesClosedfTex);
@@ -113,8 +111,6 @@ const DlPatch kDlPatches[] = {
     { &gPlayerRightHandOpenDLs[kHumanFar], CHILD_DL(gLinkChildRightHandNearDL) },
     { &gPlayerRightHandClosedDLs[kHumanNear], CHILD_DL(gLinkChildRightHandClosedNearDL) },
     { &gPlayerRightHandClosedDLs[kHumanFar], CHILD_DL(gLinkChildRightHandClosedNearDL) },
-    { &gPlayerRightHandBowDLs[kHumanNear], CHILD_DL(gLinkChildRightHandHoldingSlingshotNearDL) },
-    { &gPlayerRightHandBowDLs[kHumanFar], CHILD_DL(gLinkChildRightHandHoldingSlingshotNearDL) },
     { &gPlayerRightHandInstrumentDLs[kHumanNear], CHILD_DL(gLinkChildRightHandHoldingFairyOcarinaNearDL) },
     { &gPlayerRightHandInstrumentDLs[kHumanFar], CHILD_DL(gLinkChildRightHandHoldingFairyOcarinaNearDL) },
     { &gPlayerRightHandHookshotDLs[kHumanNear], CHILD_DL(gLinkChildRightHandClosedNearDL) },
@@ -124,7 +120,6 @@ const DlPatch kDlPatches[] = {
     { &sPlayerFirstPersonLeftForearmDLs[kHuman], sChildEmptyDL },
     { &sPlayerFirstPersonLeftHandDLs[kHuman], CHILD_DL(gLinkChildLeftFistNearDL) },
     { &sPlayerFirstPersonRightShoulderDLs[kHuman], CHILD_DL(gLinkChildRightShoulderNearDL) },
-    { &sPlayerFirstPersonRightHandDLs[kHuman], CHILD_DL(gLinkChildRightArmStretchedSlingshotDL) },
     { &sPlayerFirstPersonRightHandHookshotDLs[kHuman], CHILD_DL(gLinkChildRightHandClosedNearDL) },
 };
 
@@ -139,6 +134,8 @@ const HoldPatch kHoldPatches[] = {
     { &gPlayerHandHoldingShields[1], OOTMM_HOLD_HEROS_SHIELD, gLinkChildRightHandClosedNearDL },
     { &gPlayerHandHoldingShields[2], OOTMM_HOLD_MIRROR_SHIELD, gLinkChildRightHandClosedNearDL },
     { &gPlayerHandHoldingShields[3], OOTMM_HOLD_MIRROR_SHIELD, gLinkChildRightHandClosedNearDL },
+    { &gPlayerRightHandBowDLs[kHumanNear], OOTMM_HOLD_BOW, gLinkChildRightHandClosedNearDL },
+    { &gPlayerRightHandBowDLs[kHumanFar], OOTMM_HOLD_BOW, gLinkChildRightHandClosedNearDL },
     { &gPlayerLeftHandTwoHandSwordDLs[kHumanNear], OOTMM_HOLD_GREAT_FAIRYS_SWORD, gLinkChildLeftFistNearDL },
     { &gPlayerLeftHandTwoHandSwordDLs[kHumanFar], OOTMM_HOLD_GREAT_FAIRYS_SWORD, gLinkChildLeftFistNearDL },
     { &gPlayerLeftHandOneHandSwordDLs[kHumanNear], OOTMM_HOLD_KOKIRI_SWORD, gLinkChildLeftFistNearDL },

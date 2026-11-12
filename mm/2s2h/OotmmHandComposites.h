@@ -3,6 +3,7 @@
 
 #define OOTMM_HOLD_HEROS_SHIELD "objects/object_link_child/gLinkHumanRightHandHoldingHerosShieldDL"
 #define OOTMM_HOLD_MIRROR_SHIELD "objects/object_link_child/gLinkHumanRightHandHoldingMirrorShieldDL"
+#define OOTMM_HOLD_BOW "objects/object_link_child/gLinkHumanRightHandHoldingBowDL"
 #define OOTMM_HOLD_KOKIRI_SWORD "objects/object_link_child/gLinkHumanLeftHandHoldingKokiriSwordDL"
 #define OOTMM_HOLD_RAZOR_SWORD "objects/object_link_child/gLinkHumanLeftHandHoldingRazorSwordDL"
 #define OOTMM_HOLD_GILDED_SWORD "objects/object_link_child/gLinkHumanLeftHandHoldingGildedSwordDL"

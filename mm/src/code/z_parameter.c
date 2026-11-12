@@ -4066,7 +4066,7 @@ void Interface_Dpad_LoadItemIconImpl(PlayState* play, u8 btn) {
     } else if (DPAD_GET_CUR_FORM_BTN_ITEM(btn) < ARRAY_COUNT(gItemIcons)) {
         interfaceCtx->iconItemSegment[DPAD_BUTTON(btn) + EQUIP_SLOT_MAX] = gItemIcons[DPAD_GET_CUR_FORM_BTN_ITEM(btn)];
     } else {
-        interfaceCtx->iconItemSegment[btn] = gEmptyTexture;
+        interfaceCtx->iconItemSegment[DPAD_BUTTON(btn) + EQUIP_SLOT_MAX] = gEmptyTexture;
     }
 }
 
@@ -9012,13 +9012,13 @@ void Interface_Draw(PlayState* play) {
 
         // Draw Rupee Icon
         s16 walletColor = OotmmWallet_Bottomless() ? 4 : CUR_UPG_VALUE(UPG_WALLET);
+        gDPSetEnvColor(OVERLAY_DISP++, sRupeeCounterIconEnvColors[walletColor].r,
+                       sRupeeCounterIconEnvColors[walletColor].g, sRupeeCounterIconEnvColors[walletColor].b, 255);
         if (OotmmWallet_HasWallet()) {
             gDPSetPrimColorOverride(OVERLAY_DISP++, 0, 0, sRupeeCounterIconPrimColors[walletColor].r,
                                     sRupeeCounterIconPrimColors[walletColor].g,
                                     sRupeeCounterIconPrimColors[walletColor].b, interfaceCtx->magicAlpha,
                                     COSMETIC_ELEMENT_RUPEE_ICON);
-            gDPSetEnvColor(OVERLAY_DISP++, sRupeeCounterIconEnvColors[walletColor].r,
-                           sRupeeCounterIconEnvColors[walletColor].g, sRupeeCounterIconEnvColors[walletColor].b, 255);
             HudEditor_SetActiveElement(HUD_EDITOR_ELEMENT_RUPEE_COUNTER);
             OVERLAY_DISP =
                 Gfx_DrawTexRectIA8(OVERLAY_DISP, gRupeeCounterIconTex, 16, 16, 26, 206, 16, 16, 1 << 10, 1 << 10);
