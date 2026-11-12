@@ -813,6 +813,9 @@ void ToggleForm(PlayState* play, Player* player, s8 form) {
         return;
     }
     gSaveContext.save.playerForm = gSaveContext.save.playerForm == form ? PLAYER_FORM_HUMAN : form;
+    if (player->transformation == PLAYER_FORM_HUMAN) {
+        player->prevMask = PLAYER_MASK_NONE;
+    }
     player->av1.actionVar1 = 0;
     player->actor.update = func_8012301C;
     player->actor.draw = nullptr;
