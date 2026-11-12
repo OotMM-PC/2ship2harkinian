@@ -488,10 +488,6 @@ bool EquipmentMissing(uint8_t item) {
         return GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SWORD) <
                static_cast<u16>(item - ITEM_SWORD_KOKIRI + EQUIP_VALUE_SWORD_KOKIRI);
     }
-    if (item >= ITEM_SHIELD_HERO && item <= ITEM_SHIELD_MIRROR) {
-        return GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD) <
-               static_cast<u16>(item - ITEM_SHIELD_HERO + EQUIP_VALUE_SHIELD_HERO);
-    }
     return false;
 }
 
@@ -924,6 +920,11 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                     } else if (IsConsumable(found->second)) {
                         if (count > already) {
                             GiveUnits(play, itemId, found->second, already, count);
+                        }
+                    } else if (found->second >= ITEM_SHIELD_HERO && found->second <= ITEM_SHIELD_MIRROR) {
+                        if (count > already) {
+                            ApplyOnce(play, itemId, found->second);
+                            sLedger.SetApplied(itemId, count);
                         }
                     } else if (already == 0 || EquipmentMissing(found->second)) {
                         ApplyOnce(play, itemId, found->second);
