@@ -639,6 +639,13 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
             if (gPlayState != nullptr && Play_GetOriginalSceneId(gPlayState->sceneId) == first) {
                 gPlayState->actorCtx.sceneFlags.switches[second / 32] |= 1u << (second % 32);
             }
+        } else if (key == "dpad" && first >= EQUIP_SLOT_D_RIGHT && first <= EQUIP_SLOT_D_UP && second >= 0 &&
+                   second < static_cast<long>(ARRAY_COUNT(info.inventory.items))) {
+            DPAD_BUTTON_ITEM_EQUIP(0, first) = info.inventory.items[second];
+            DPAD_SLOT_EQUIP(0, first) = static_cast<u8>(second);
+            if (gPlayState != nullptr) {
+                Interface_Dpad_LoadItemIcon(gPlayState, static_cast<u8>(first));
+            }
         } else if (key == "c" && first >= EQUIP_SLOT_C_LEFT && first <= EQUIP_SLOT_C_RIGHT && second >= 0 &&
                    (second < static_cast<long>(ARRAY_COUNT(info.inventory.items)) ||
                     OotmmCustomItems_IsCustomSlot(static_cast<uint8_t>(second)))) {
