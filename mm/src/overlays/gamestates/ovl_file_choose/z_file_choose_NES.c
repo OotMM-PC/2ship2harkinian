@@ -257,6 +257,9 @@ void FileSelect_UpdateMainMenu(GameState* thisx) {
         if (this->buttonIndex <= FS_BTN_MAIN_FILE_3) {
             if (!gSaveContext.flashSaveAvailable) {
                 if (!NO_FLASH_SLOT_OCCUPIED(sramCtx, this->buttonIndex)) {
+                    if (!OotmmSession_RequestFileSelection(this->buttonIndex)) {
+                        return;
+                    }
                     Audio_PlaySfx(NA_SE_SY_FSEL_DECIDE_L);
                     this->configMode = CM_ROTATE_TO_NAME_ENTRY;
                     this->kbdButton = FS_KBD_BTN_NONE;
@@ -281,6 +284,9 @@ void FileSelect_UpdateMainMenu(GameState* thisx) {
                     this->nextTitleLabel = FS_TITLE_OPEN_FILE;
                 }
             } else if (!SLOT_OCCUPIED(this, this->buttonIndex)) {
+                if (!OotmmSession_RequestFileSelection(this->buttonIndex)) {
+                    return;
+                }
                 Audio_PlaySfx(NA_SE_SY_FSEL_DECIDE_L);
                 this->configMode = CM_ROTATE_TO_NAME_ENTRY;
                 this->kbdButton = FS_KBD_BTN_NONE;
