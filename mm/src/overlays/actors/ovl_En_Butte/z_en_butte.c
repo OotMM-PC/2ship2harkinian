@@ -316,12 +316,13 @@ void func_8091CBB4(EnButte* this, PlayState* play) {
     s32 pad;
     s16 pad2;
     s16 yaw;
+    s32 quickTransform = OotmmXflags_IsShuffled(&this->actor);
 
     func_8091C5EC(this);
     Math_SmoothStepToF(&this->actor.speed, sp5C->unk_04, sp5C->unk_08, sp5C->unk_0C, 0.0f);
     sp40 = 0.0f;
 
-    if ((this->unk_24E != 0) && (this->unk_24C < 12)) {
+    if (quickTransform || ((this->unk_24E != 0) && (this->unk_24C < 12))) {
         sp48.x = player->meleeWeaponInfo[0].tip.x + (Math_SinS(player->actor.shape.rot.y) * 10.0f);
         sp48.y = player->meleeWeaponInfo[0].tip.y;
         sp48.z = player->meleeWeaponInfo[0].tip.z + (Math_CosS(player->actor.shape.rot.y) * 10.0f);
@@ -359,7 +360,7 @@ void func_8091CBB4(EnButte* this, PlayState* play) {
     if ((player->heldItemAction != PLAYER_IA_DEKU_STICK) || !(fabsf(player->actor.speed) < 1.8f) ||
         (this->unk_252 > 0) || !(distSq < SQ(320.0f))) {
         func_8091C748(this);
-    } else if ((distSq > SQ(240.0f)) &&
+    } else if (((distSq > SQ(240.0f)) || quickTransform) &&
                (Math3D_Dist2DSq(player->meleeWeaponInfo[0].tip.x, player->meleeWeaponInfo[0].tip.z,
                                 this->actor.world.pos.x, this->actor.world.pos.z) < SQ(60.0f))) {
         func_8091CF64(this);
