@@ -426,7 +426,27 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
         const long first = std::strtol(value.c_str(), nullptr, 0);
         const long second = colon == std::string::npos ? 0 : std::strtol(value.c_str() + colon + 1, nullptr, 0);
         auto& info = gSaveContext.save.saveInfo;
-        if (key == "drop") {
+        if (key == "remote") {
+            Ship::GameIpcItemPresentation presentation;
+            presentation.ItemId = value;
+            presentation.ItemName = value;
+            presentation.ItemGame = value.starts_with("MM_") ? "mm" : "oot";
+            for (const auto& placement : OotmmSession_GetState().GetPlacements()) {
+                if (placement.ItemId == value) {
+                    presentation.ItemName = placement.ItemName;
+                    presentation.ItemGame = placement.ItemGame;
+                    break;
+                }
+            }
+            presentation.DestinationGame = presentation.ItemGame == "mm" || presentation.ItemGame == "oot"
+                                               ? presentation.ItemGame
+                                               : "mm";
+            presentation.SourcePlayer = 2;
+            presentation.RecipientPlayer = 1;
+            presentation.ViewerPlayer = 1;
+            presentation.Background = true;
+            OotmmItemPresentation_Queue(presentation);
+        } else if (key == "drop") {
             const Ship::OotmmPlacement* match = nullptr;
             for (const auto& placement : OotmmSession_GetState().GetPlacements()) {
                 if (placement.ItemId == value) {
@@ -949,6 +969,7 @@ void OotmmDebugChecks_Init() {
                 { "rupees", gSaveContext.save.saveInfo.playerData.rupees },
                 { "trapState", {
                     { "burning", GET_PLAYER(gPlayState)->bodyIsBurning },
+                    { "shock", GET_PLAYER(gPlayState)->bodyShockTimer },
                     { "invincibility", GET_PLAYER(gPlayState)->invincibilityTimer },
                     { "applied", OotmmItemApply_TrapsApplied() }
                 } },
@@ -992,7 +1013,7 @@ void OotmmDebugChecks_Init() {
                 { "shield", player->currentShield }, { "shieldEquip", GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD) },
                 { "pvp", { { "enabled", gOotmmPvpEnabled }, { "sent", gOotmmPvpHitsSent },
                            { "received", gOotmmPvpHitsReceived }, { "applied", gOotmmPvpHitsApplied } } },
-                { "messageState", Message_GetState(&gPlayState->msgCtx) }, { "fanfare", { { "resolved", OotmmItemPresentation_DebugLastFanfare() }, { "seq", AudioSeq_GetActiveSeqId(SEQ_PLAYER_FANFARE) }, { "font", gAudioCtx.seqPlayers[SEQ_PLAYER_FANFARE].defaultFont } } },
+                { "messageState", Message_GetState(&gPlayState->msgCtx) }, { "presentationPending", OotmmItemPresentation_IsPending() ? 1 : 0 }, { "backgroundShown", OotmmItemPresentation_DebugBackgroundShown() }, { "fanfare", { { "resolved", OotmmItemPresentation_DebugLastFanfare() }, { "seq", AudioSeq_GetActiveSeqId(SEQ_PLAYER_FANFARE) }, { "font", gAudioCtx.seqPlayers[SEQ_PLAYER_FANFARE].defaultFont } } },
                 { "messageMode", gPlayState->msgCtx.msgMode },
                 { "ocarinaMode", gPlayState->msgCtx.ocarinaMode },
                 { "ocarinaStaff", gPlayState->msgCtx.msgMode != MSGMODE_OCARINA_PLAYING

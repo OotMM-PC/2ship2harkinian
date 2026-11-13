@@ -273,6 +273,10 @@ void GivePresentation(Actor* actor, PlayState* play) {
 int OotmmItemPresentation_DebugLastFanfare() {
     return sLastFanfare;
 }
+
+int OotmmItemPresentation_DebugBackgroundShown() {
+    return sBackgroundShown;
+}
 #endif
 
 extern "C" void OotmmItemPresentation_PlayGetItemFanfare(void) {

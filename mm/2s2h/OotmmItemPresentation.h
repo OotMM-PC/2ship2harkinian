@@ -13,6 +13,7 @@ bool OotmmItemPresentation_PlayerReceiving(const Player* player);
 void OotmmItemPresentation_Update();
 #if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
 int OotmmItemPresentation_DebugLastFanfare();
+int OotmmItemPresentation_DebugBackgroundShown();
 #endif
 
 extern "C" {
