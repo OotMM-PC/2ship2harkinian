@@ -35,12 +35,14 @@ namespace {
 std::unordered_map<int16_t, Ship::GameIpcItemPresentation> sPresentations;
 std::deque<int16_t> sPresentationOrder;
 std::unordered_set<int16_t> sPendingPresentations;
+std::deque<int16_t> sBackgroundPresentations;
 int32_t sNextPresentation = 1;
 std::unordered_map<std::string, uint32_t> sDeliveredChecks;
 std::optional<Ship::GameIpcItemPresentation> sCutscenePresentation;
 #if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
 int sLastFanfare = -1;
 #endif
+int sBackgroundShown = 0;
 
 const Ship::GameIpcItemPresentation* FindPresentation(int16_t id) {
     const auto presentation = sPresentations.find(id);
@@ -200,22 +202,53 @@ void PlayItemFanfare(const Ship::GameIpcItemPresentation& presentation, bool isS
     }
 }
 
-void GivePresentation(Actor* actor, PlayState* play) {
-    sPendingPresentations.erase(static_cast<int16_t>(CUSTOM_ITEM_PARAM));
-    const auto* presentation = FindPresentation(static_cast<int16_t>(CUSTOM_ITEM_PARAM));
-    if (presentation == nullptr) {
-        return;
-    }
-
-    sPresentationOrder.push_back(static_cast<int16_t>(CUSTOM_ITEM_PARAM));
+void RememberPresentation(int16_t id) {
+    sPendingPresentations.erase(id);
+    sPresentationOrder.push_back(id);
     if (sPresentationOrder.size() > 32) {
         sPresentations.erase(sPresentationOrder.front());
         sPresentationOrder.pop_front();
     }
+}
 
-    if (presentation->Background && Ship::OotmmItemCatalog::IsFast(presentation->ItemId)) {
-        CUSTOM_ITEM_FLAGS |= CustomItem::QUIET_PICKUP;
-        PlayItemFanfare(*presentation, true);
+void PumpBackgroundPresentation() {
+    if (sBackgroundPresentations.empty() || gPlayState == nullptr) {
+        return;
+    }
+    Player* player = GET_PLAYER(gPlayState);
+    if (player == nullptr || gPlayState->msgCtx.msgMode != MSGMODE_NONE || gPlayState->pauseCtx.state != 0 ||
+        gPlayState->transitionTrigger != TRANS_TRIGGER_OFF || gSaveContext.gameMode != GAMEMODE_NORMAL ||
+        Player_InBlockingCsMode(gPlayState, player) || (player->stateFlags1 & PLAYER_STATE1_DEAD) ||
+        !std::holds_alternative<GIEventNone>(GameInteractor::Instance->currentEvent)) {
+        return;
+    }
+    const int16_t id = sBackgroundPresentations.front();
+    sBackgroundPresentations.pop_front();
+    RememberPresentation(id);
+    sBackgroundShown++;
+    const auto* presentation = FindPresentation(id);
+    if (presentation == nullptr) {
+        return;
+    }
+    EnItem00* overhead = CustomItem::Spawn(
+        player->actor.world.pos.x, player->actor.world.pos.y, player->actor.world.pos.z, 0,
+        CustomItem::GIVE_OVERHEAD | CustomItem::KEEP_ON_PLAYER | CustomItem::STOP_BOBBING | CustomItem::QUIET_PICKUP,
+        id, nullptr, DrawPresentation);
+    if (overhead != nullptr) {
+        overhead->unk152 = 15;
+    }
+    PlayItemFanfare(*presentation, true);
+    if (!Ship::OotmmItemCatalog::IsFast(presentation->ItemId)) {
+        const std::string message = BuildMessage(*presentation);
+        CustomMessage::Entry entry = { .textboxType = 2, .msg = message };
+        CustomMessage::StartTextbox(entry.msg + "\x1C\x02\x10", entry);
+    }
+}
+
+void GivePresentation(Actor* actor, PlayState* play) {
+    const auto* presentation = FindPresentation(static_cast<int16_t>(CUSTOM_ITEM_PARAM));
+    RememberPresentation(static_cast<int16_t>(CUSTOM_ITEM_PARAM));
+    if (presentation == nullptr) {
         return;
     }
 
@@ -262,8 +295,12 @@ void OotmmItemPresentation_Queue(Ship::GameIpcItemPresentation presentation) {
         sNextPresentation == std::numeric_limits<int16_t>::max() ? 1 : sNextPresentation + 1;
     sPresentations[id] = std::move(presentation);
     sPendingPresentations.emplace(id);
+    if (background) {
+        sBackgroundPresentations.push_back(id);
+        return;
+    }
     GameInteractor::Instance->events.emplace_back(GIEventGiveItem{
-        .showGetItemCutscene = !background,
+        .showGetItemCutscene = true,
         .param = id,
         .giveItem = GivePresentation,
         .drawItem = DrawPresentation,
@@ -284,6 +321,7 @@ bool OotmmItemPresentation_IsPending() {
 }
 
 void OotmmItemPresentation_Update() {
+    PumpBackgroundPresentation();
     if (gPlayState == nullptr || sDeliveredChecks.empty()) {
         return;
     }
