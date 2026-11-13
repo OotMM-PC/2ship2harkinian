@@ -16,6 +16,7 @@ bool OotmmIpc_SendCrossGameTransition(const Ship::OotmmEntranceMapping& mapping,
                                       std::optional<uint32_t> ootAge);
 bool OotmmIpc_ConsumeTransitionAccepted();
 const Ship::OotmmInventory& OotmmIpc_GetInventory();
+const Ship::GameIpcSettings& OotmmIpc_GetSettings();
 bool OotmmIpc_SetDebugItemValue(const std::string& itemId, uint32_t value);
 bool OotmmIpc_RequestDebugItemPresentation(const std::string& itemId, uint32_t recipientPlayer);
 bool OotmmIpc_TryPopItemPresentation(Ship::GameIpcItemPresentation& presentation);

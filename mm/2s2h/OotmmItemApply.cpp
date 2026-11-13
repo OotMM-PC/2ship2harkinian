@@ -36,6 +36,8 @@ extern "C" {
 extern PlayState* gPlayState;
 void func_80833B18(PlayState* play, Player* player, s32 arg2, f32 speed, f32 velocityY, s16 arg5,
                    s32 invincibilityTimer);
+void Player_Action_82(Player* thisx, PlayState* play);
+void Player_Action_83(Player* thisx, PlayState* play);
 }
 
 namespace {
@@ -1174,30 +1176,53 @@ bool InShop(Player* player) {
            (actor->id == ACTOR_EN_OSSAN || actor->id == ACTOR_EN_TRT || actor->id == ACTOR_EN_SOB1);
 }
 
-void HurtForTrap(Player* player, s32 response, f32 speed, f32 yVelocity, s16 yaw) {
-    player->actor.colChkInfo.damage = 0;
+constexpr f32 kKnockbackLift = 10.0f / 0.7f;
+constexpr f32 kKnockbackFramesPerUnit = 20.0f * 1.5f;
+
+void HurtForTrap(Player* player, s32 response, f32 speed, f32 yVelocity, s16 yaw, s32 damage = 0) {
+    player->actor.colChkInfo.damage = static_cast<u8>(std::clamp(damage, 0, 255));
     func_80833B18(gPlayState, player, response, speed, yVelocity, yaw, 20);
+}
+
+void ApplyKnockback(Player* player) {
+    const auto& traps = OotmmIpc_GetSettings().Traps;
+    const s16 yaw = static_cast<s16>(Rand_Next() & 0xFFFF);
+    if (const auto* chance = traps.PickKnockback(Rand_ZeroFloat(100.0f)); chance != nullptr) {
+        const f32 lift = chance->Distance > 0.0f ? kKnockbackLift : 0.0f;
+        HurtForTrap(player, 1, chance->Distance / kKnockbackFramesPerUnit, lift, yaw);
+        return;
+    }
+    HurtForTrap(player, 1, Rand_ZeroFloat(20.0f), Rand_ZeroFloat(15.0f), yaw);
 }
 
 bool ApplyTrap(size_t type, Player* player) {
     auto& playerData = gSaveContext.save.saveInfo.playerData;
     switch (type) {
         case 0:
-            HurtForTrap(player, 3, 0, 0, 0);
+            HurtForTrap(player, 3, 0, 0, 0, OotmmIpc_GetSettings().Traps.IceDamage);
+            if (player->actionFunc == Player_Action_82) {
+                player->av2.actionVar2 = static_cast<s16>(100 - OotmmIpc_GetSettings().Traps.IceBreakoutPercent);
+            }
             return true;
         case 1:
             if (player->transformation == PLAYER_FORM_GORON ||
                 OotmmCustomItems_EquippedTunic() == OOTMM_TUNIC_GORON) {
                 return true;
             }
-            HurtForTrap(player, 0, 0, 0, 0);
-            player->bodyIsBurning = true;
-            for (int part = 0; part < PLAYER_BODYPART_MAX; part++) {
-                player->bodyFlameTimers[part] = Rand_S16Offset(0, 200);
+            HurtForTrap(player, 0, 0, 0, 0, OotmmIpc_GetSettings().Traps.FireDamage);
+            if (OotmmIpc_GetSettings().Traps.FireDuration > 0) {
+                player->bodyIsBurning = true;
+                for (int part = 0; part < PLAYER_BODYPART_MAX; part++) {
+                    player->bodyFlameTimers[part] =
+                        Rand_S16Offset(0, static_cast<s16>(OotmmIpc_GetSettings().Traps.FireDuration));
+                }
             }
             return true;
         case 2:
-            HurtForTrap(player, 4, 0, 0, 0);
+            HurtForTrap(player, 4, 0, 0, 0, OotmmIpc_GetSettings().Traps.ShockDamage);
+            if (player->actionFunc == Player_Action_83) {
+                player->av2.actionVar2 = static_cast<s16>(OotmmIpc_GetSettings().Traps.ShockDuration);
+            }
             return true;
         case 3:
             playerData.health = 1;
@@ -1209,7 +1234,7 @@ bool ApplyTrap(size_t type, Player* player) {
             HurtForTrap(player, 0, 0, 0, 0);
             return true;
         case 5:
-            HurtForTrap(player, 1, Rand_ZeroFloat(20.0f), Rand_ZeroFloat(15.0f), static_cast<s16>(Rand_Next() & 0xFFFF));
+            ApplyKnockback(player);
             return true;
         case 6:
             Rupees_ChangeBy(-10);

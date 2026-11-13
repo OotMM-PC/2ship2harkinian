@@ -149,6 +149,10 @@ bool OotmmIpc_ConsumeTransitionAccepted() {
     return sSession.ConsumeTransitionAccepted();
 }
 
+const Ship::GameIpcSettings& OotmmIpc_GetSettings() {
+    return sSettings;
+}
+
 const Ship::OotmmInventory& OotmmIpc_GetInventory() {
     return sInventory;
 }
