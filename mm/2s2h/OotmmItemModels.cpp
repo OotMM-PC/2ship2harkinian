@@ -70,6 +70,7 @@ enum ForeignModelKind {
     FM_FAIRY_CONTAINER,
     FM_MOONS_TEAR,
     FM_REMAINS,
+    FM_CLOCK,
 };
 
 struct ForeignModel {
@@ -755,6 +756,23 @@ bool DrawForeignModel(PlayState* play, const ForeignModel& model) {
             gSPDisplayList(gfxCtx->polyXlu.p++, dl[1]);
             break;
         }
+        case FM_CLOCK: {
+            const s16 faceRotation = gSaveContext.save.isNight ? 0 : 0xc000;
+            const s16 panelRotation = gSaveContext.save.isNight ? 0x8000 : 0;
+            Matrix_Scale(0.015f, 0.015f, 0.015f, MTXMODE_APPLY);
+            Gfx_SetupDL25_Opa(gfxCtx);
+            loadOpa();
+            gSPDisplayList(gfxCtx->polyOpa.p++, dl[0]);
+            gSPDisplayList(gfxCtx->polyOpa.p++, dl[1]);
+            Matrix_RotateZF((-faceRotation * 2) * (M_PI / 32768.0f), MTXMODE_APPLY);
+            loadOpa();
+            gSPDisplayList(gfxCtx->polyOpa.p++, dl[2]);
+            Matrix_Translate(0.0f, -1112.0f, -19.6f, MTXMODE_APPLY);
+            Matrix_RotateYF(panelRotation * (M_PI / 32768.0f), MTXMODE_APPLY);
+            loadOpa();
+            gSPDisplayList(gfxCtx->polyOpa.p++, dl[3]);
+            break;
+        }
         case FM_REMAINS:
             Matrix_Scale(0.02f, 0.02f, 0.02f, MTXMODE_APPLY);
             Gfx_SetupDL25_Opa(gfxCtx);
@@ -1122,8 +1140,8 @@ std::optional<ForeignModelKind> LocalRenderKind(Ship::OotmmRenderKind kind) {
         case Ship::OotmmRenderKind::POND_FISH:
         case Ship::OotmmRenderKind::RUSTY_KEY:
         case Ship::OotmmRenderKind::STRAY_FAIRY:
+        case Ship::OotmmRenderKind::CLOCK: return FM_CLOCK;
         case Ship::OotmmRenderKind::TRAP:
-        case Ship::OotmmRenderKind::CLOCK:
         case Ship::OotmmRenderKind::OWL_STATUE:
             return std::nullopt;
     }
