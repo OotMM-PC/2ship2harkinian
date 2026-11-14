@@ -21,6 +21,7 @@ int OotmmChecks_DrawToken(struct Actor* actor, struct PlayState* play);
 void* OotmmChecks_SkulltulaDL(struct Actor* skulltula, const char* part, void* vanilla);
 void* OotmmChecks_CowRingDL(struct Actor* cow, void* vanilla);
 int OotmmChecks_StrayFairyIsShuffled(struct Actor* actor, struct PlayState* play);
+int OotmmChecks_DrawStrayFairy(struct Actor* actor, struct PlayState* play);
 
 #ifdef __cplusplus
 }

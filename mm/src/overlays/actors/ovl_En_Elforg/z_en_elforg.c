@@ -644,6 +644,10 @@ void EnElforg_Draw(Actor* thisx, PlayState* play) {
     s32 pad;
     EnElforg* this = (EnElforg*)thisx;
 
+    if (OotmmChecks_DrawStrayFairy(thisx, play)) {
+        return;
+    }
+
     OPEN_DISPS(play->state.gfxCtx);
 
     Gfx_SetupDL25_Xlu(play->state.gfxCtx);

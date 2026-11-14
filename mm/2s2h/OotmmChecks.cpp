@@ -281,6 +281,43 @@ extern "C" int OotmmChecks_StrayFairyIsShuffled(Actor* actor, PlayState* play) {
     return FindStrayFairy(actor, play) != nullptr;
 }
 
+extern "C" int OotmmChecks_DrawStrayFairy(Actor* actor, PlayState* play) {
+    if (actor == nullptr || play == nullptr) {
+        return 0;
+    }
+    const Ship::OotmmPlacement* placement = nullptr;
+    switch (play->sceneId) {
+        case SCENE_TOWN:
+        case SCENE_ALLEY:
+            placement = OotmmSession_GetState().FindCheck(Ship::OotmmGame::Mm, "npc", kTownFairy);
+            break;
+        case SCENE_MITURIN:
+        case SCENE_HAKUGIN:
+        case SCENE_SEA:
+        case SCENE_INISIE_N:
+        case SCENE_INISIE_R:
+            placement = FindStrayFairy(actor, play);
+            break;
+        default:
+            break;
+    }
+    if (placement == nullptr) {
+        return 0;
+    }
+    const bool cloaked = !placement->CloakItemId.empty();
+    s16 angle = static_cast<s16>((play->state.frames % 100) * (0x10000 / 100));
+    if (cloaked) {
+        angle = -angle;
+    }
+    Matrix_Push();
+    Matrix_Translate(actor->world.pos.x, actor->world.pos.y, actor->world.pos.z, MTXMODE_NEW);
+    Matrix_Scale(0.35f, 0.35f, 0.35f, MTXMODE_APPLY);
+    Matrix_RotateYS(angle, MTXMODE_APPLY);
+    DrawPlacementItem(play, *placement, GID_FAIRY);
+    Matrix_Pop();
+    return 1;
+}
+
 void OotmmChecks_OpenChestSilently(PlayState* play, Player* player) {
     Player_SetupWaitForPutAway(play, player, ChestOpenAfterPutAway);
 }
