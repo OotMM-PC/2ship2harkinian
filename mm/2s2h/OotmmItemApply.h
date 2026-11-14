@@ -12,6 +12,8 @@ int32_t OotmmWallet_HasWallet(void);
 int32_t OotmmWallet_Bottomless(void);
 void OotmmItemApply_AddBombchuAmmo(int32_t amount);
 int32_t OotmmItemApply_SelectBombDrop(int32_t bombDrop, int32_t bombchuDrop);
+struct PlayState;
+int32_t OotmmItemApply_TrapDamageTick(struct PlayState* play, int32_t kind);
 
 int32_t OotmmItemApply_TradeSlotCandidates(uint8_t slot, uint8_t* outItems, int32_t capacity);
 

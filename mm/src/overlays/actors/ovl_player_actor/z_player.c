@@ -50,6 +50,7 @@
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/OotmmSession.h"
 #include "2s2h/OotmmItemPresentation.h"
+#include "2s2h/OotmmItemApply.h"
 #include "2s2h/OotmmSpinUpgrade.h"
 #include "2s2h/OotmmCustomItems.h"
 #include "2s2h/OotmmCustomItemsPlayer.h"
@@ -6274,7 +6275,7 @@ s32 Player_UpdateBodyBurn(PlayState* play, Player* this) {
 
     if (spawnedFlame) {
         Player_PlaySfx(this, NA_SE_EV_TORCH - SFX_FLAG);
-        if ((play->gameplayFrames % 4) == 0) {
+        if (!OotmmItemApply_TrapDamageTick(play, 1) && (play->gameplayFrames % 4) == 0) {
             Player_InflictDamage(play, -1);
         }
     } else {
@@ -19710,7 +19711,7 @@ void Player_Action_82(Player* this, PlayState* play) {
                 this->av2.actionVar2 = -0x28;
                 this->av1.actionVar1 = 1;
                 this->speedXZ = 0.0f;
-            } else if (play->gameplayFrames % 4 == 0) {
+            } else if (!OotmmItemApply_TrapDamageTick(play, 0) && play->gameplayFrames % 4 == 0) {
                 Player_InflictDamage(play, -1);
             }
         }
@@ -19726,7 +19727,8 @@ void Player_Action_83(Player* this, PlayState* play) {
     PlayerAnimation_Update(play, &this->skelAnime);
     func_808345A8(this);
 
-    if (((this->av2.actionVar2 % 25) != 0) || (func_808339D4(play, this, -1) != 0)) {
+    s32 trapDamage = OotmmItemApply_TrapDamageTick(play, 2);
+    if (((this->av2.actionVar2 % 25) != 0) || trapDamage || (func_808339D4(play, this, -1) != 0)) {
         if (DECR(this->av2.actionVar2) == 0) {
             func_80836988(this, play);
         }

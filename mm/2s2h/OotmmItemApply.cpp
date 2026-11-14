@@ -38,6 +38,7 @@ void func_80833B18(PlayState* play, Player* player, s32 arg2, f32 speed, f32 vel
                    s32 invincibilityTimer);
 void Player_Action_82(Player* thisx, PlayState* play);
 void Player_Action_83(Player* thisx, PlayState* play);
+s32 Player_InflictDamage(PlayState* play, s32 damage);
 }
 
 namespace {
@@ -1178,9 +1179,37 @@ bool InShop(Player* player) {
 
 constexpr f32 kKnockbackLift = 10.0f / 0.7f;
 constexpr f32 kKnockbackFramesPerUnit = 20.0f * 1.5f;
+constexpr f32 kKnockbackRandomLift = 15.0f;
 
-void HurtForTrap(Player* player, s32 response, f32 speed, f32 yVelocity, s16 yaw, s32 damage = 0) {
-    player->actor.colChkInfo.damage = static_cast<u8>(std::clamp(damage, 0, 255));
+enum TrapDotKind { kTrapDotIce, kTrapDotFire, kTrapDotShock, kTrapDotCount };
+constexpr f32 kTrapDotUnitsPerFrame[kTrapDotCount] = { 1.0f / 4.0f, 1.0f / 4.0f, 1.0f / 25.0f };
+constexpr u32 kTrapDotGapFrames = 8;
+
+struct TrapDot {
+    bool Active = false;
+    u32 LastFrame = 0;
+    f32 Pending = 0.0f;
+};
+TrapDot sTrapDot[kTrapDotCount];
+
+int TrapDamagePercent(int kind) {
+    const auto& traps = OotmmIpc_GetSettings().Traps;
+    switch (kind) {
+        case kTrapDotIce:
+            return traps.IceDamagePercent;
+        case kTrapDotFire:
+            return traps.FireDamagePercent;
+        default:
+            return traps.ShockDamagePercent;
+    }
+}
+
+void StartTrapDot(int kind) {
+    sTrapDot[kind] = { true, gPlayState != nullptr ? gPlayState->gameplayFrames : 0u, 0.0f };
+}
+
+void HurtForTrap(Player* player, s32 response, f32 speed, f32 yVelocity, s16 yaw) {
+    player->actor.colChkInfo.damage = 0;
     func_80833B18(gPlayState, player, response, speed, yVelocity, yaw, 20);
 }
 
@@ -1188,20 +1217,26 @@ void ApplyKnockback(Player* player) {
     const auto& traps = OotmmIpc_GetSettings().Traps;
     const s16 yaw = static_cast<s16>(Rand_Next() & 0xFFFF);
     if (const auto* chance = traps.PickKnockback(Rand_ZeroFloat(100.0f)); chance != nullptr) {
-        const f32 lift = chance->Distance > 0.0f ? kKnockbackLift : 0.0f;
-        HurtForTrap(player, 1, chance->Distance / kKnockbackFramesPerUnit, lift, yaw);
+        if (chance->MaxDistance > chance->MinDistance) {
+            const f32 distance = chance->MinDistance + Rand_ZeroFloat(chance->MaxDistance - chance->MinDistance);
+            HurtForTrap(player, 1, distance / kKnockbackFramesPerUnit, Rand_ZeroFloat(kKnockbackRandomLift), yaw);
+            return;
+        }
+        const f32 lift = chance->MaxDistance > 0.0f ? kKnockbackLift : 0.0f;
+        HurtForTrap(player, 1, chance->MaxDistance / kKnockbackFramesPerUnit, lift, yaw);
         return;
     }
-    HurtForTrap(player, 1, Rand_ZeroFloat(20.0f), Rand_ZeroFloat(15.0f), yaw);
+    HurtForTrap(player, 1, Rand_ZeroFloat(20.0f), Rand_ZeroFloat(kKnockbackRandomLift), yaw);
 }
 
 bool ApplyTrap(size_t type, Player* player) {
     auto& playerData = gSaveContext.save.saveInfo.playerData;
     switch (type) {
         case 0:
-            HurtForTrap(player, 3, 0, 0, 0, OotmmIpc_GetSettings().Traps.IceDamage);
+            HurtForTrap(player, 3, 0, 0, 0);
             if (player->actionFunc == Player_Action_82) {
                 player->av2.actionVar2 = static_cast<s16>(100 - OotmmIpc_GetSettings().Traps.IceBreakoutPercent);
+                StartTrapDot(kTrapDotIce);
             }
             return true;
         case 1:
@@ -1209,9 +1244,10 @@ bool ApplyTrap(size_t type, Player* player) {
                 OotmmCustomItems_EquippedTunic() == OOTMM_TUNIC_GORON) {
                 return true;
             }
-            HurtForTrap(player, 0, 0, 0, 0, OotmmIpc_GetSettings().Traps.FireDamage);
+            HurtForTrap(player, 0, 0, 0, 0);
             if (OotmmIpc_GetSettings().Traps.FireDuration > 0) {
                 player->bodyIsBurning = true;
+                StartTrapDot(kTrapDotFire);
                 for (int part = 0; part < PLAYER_BODYPART_MAX; part++) {
                     player->bodyFlameTimers[part] =
                         Rand_S16Offset(0, static_cast<s16>(OotmmIpc_GetSettings().Traps.FireDuration));
@@ -1219,9 +1255,10 @@ bool ApplyTrap(size_t type, Player* player) {
             }
             return true;
         case 2:
-            HurtForTrap(player, 4, 0, 0, 0, OotmmIpc_GetSettings().Traps.ShockDamage);
+            HurtForTrap(player, 4, 0, 0, 0);
             if (player->actionFunc == Player_Action_83) {
                 player->av2.actionVar2 = static_cast<s16>(OotmmIpc_GetSettings().Traps.ShockDuration);
+                StartTrapDot(kTrapDotShock);
             }
             return true;
         case 3:
@@ -1302,6 +1339,33 @@ extern "C" int32_t OotmmItemApply_BombchuCapacity(void) {
     }
     EnsureLedger();
     return sLedgerValid ? BombchuCapacity() : 0;
+}
+
+
+extern "C" int32_t OotmmItemApply_TrapDamageTick(PlayState* play, int32_t kind) {
+    if (play == nullptr || kind < 0 || kind >= kTrapDotCount || !OotmmSession_IsActive()) {
+        return 0;
+    }
+    TrapDot& dot = sTrapDot[kind];
+    if (!dot.Active) {
+        return 0;
+    }
+    if (play->gameplayFrames - dot.LastFrame > kTrapDotGapFrames) {
+        dot.Active = false;
+        return 0;
+    }
+    dot.LastFrame = play->gameplayFrames;
+    const int percent = TrapDamagePercent(kind);
+    if (percent == 100) {
+        return 0;
+    }
+    dot.Pending += kTrapDotUnitsPerFrame[kind] * static_cast<f32>(percent) / 100.0f;
+    const s32 units = static_cast<s32>(dot.Pending);
+    if (units > 0) {
+        dot.Pending -= static_cast<f32>(units);
+        Player_InflictDamage(play, -units);
+    }
+    return 1;
 }
 
 extern "C" int32_t OotmmItemApply_SelectBombDrop(int32_t bombDrop, int32_t bombchuDrop) {
