@@ -93,6 +93,9 @@ static ColliderCylinderInit sCylinderInit = {
 
 u8 D_80A5EAEC = true;
 s16 D_80A5EAF0 = 0;
+static u32 sLastFrameCount;
+static u32 sDrawIndex;
+static u8 sDisturbed;
 Vec3s D_80A5EAF4 = { 0, 0, 0 };
 Vec3s D_80A5EAFC = { 0, 0, 0 };
 Vec3s D_80A5EB04 = { 0, 0, 0 };
@@ -320,6 +323,7 @@ void func_80A5BD14(EnKusa2* this, PlayState* play, s32 arg2) {
     EnKusa2* kusa2 = this->unk_1C0;
 
     if (kusa2 != NULL) {
+        sDisturbed = true;
         if (kusa2->unk_1BC > 8) {
             kusa2->unk_1BC = 8;
         }
@@ -869,6 +873,8 @@ void EnKusa2_Init(Actor* thisx, PlayState* play) {
 
     Actor_ProcessInitChain(&this->actor, sInitChain);
     if (!ENKUSA2_GET_1(&this->actor)) {
+        sLastFrameCount = play->state.frames - 1;
+        sDrawIndex = 0;
         this->actor.update = func_80A5E604;
         this->actor.draw = NULL;
         this->actor.flags |= ACTOR_FLAG_DRAW_CULLING_DISABLED;
@@ -1374,6 +1380,24 @@ void func_80A5E80C(PlayState* play, s32 arg1) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+static Gfx* EnKusa2_BushDL(EnKusa2* this, PlayState* play) {
+    s32 slice;
+
+    if (this->unk_1C0 == NULL) {
+        return gKusaBushType1DL;
+    }
+    if (sDisturbed) {
+        slice = this->unk_1C0->unk_1BC;
+    } else {
+        if (sLastFrameCount != play->state.frames) {
+            sLastFrameCount = play->state.frames;
+            sDrawIndex = 0;
+        }
+        slice = (sDrawIndex++ + (play->state.frames / 5) % 9) % 9;
+    }
+    return (Gfx*)OotmmXflags_CsmcSliceDL(&this->unk_1C0->actor, slice, "Bush", gKusaBushType1DL);
+}
+
 void EnKusa2_Draw(Actor* thisx, PlayState* play) {
     EnKusa2* this = (EnKusa2*)thisx;
 
@@ -1384,7 +1408,7 @@ void EnKusa2_Draw(Actor* thisx, PlayState* play) {
             (this->actor.projectedPos.z < 400.0f)) {
             func_80A5B954(&D_80A60908[this->unk_1CE], 0.0015f);
         }
-        Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(thisx, "Bush", gKusaBushType1DL));
+        Gfx_DrawDListOpa(play, EnKusa2_BushDL(this, play));
     } else if (this->actor.projectedPos.z < 1300.0f) {
         func_80A5E80C(play, (1300.0f - this->actor.projectedPos.z) * 2.55f);
     }
@@ -1400,14 +1424,14 @@ void func_80A5E9B4(Actor* thisx, PlayState* play) {
     sp18.z = thisx->shape.rot.z + D_80A5EAFC.z;
     Matrix_SetTranslateRotateYXZ(thisx->world.pos.x, thisx->world.pos.y, thisx->world.pos.z, &sp18);
     Matrix_Scale(thisx->scale.x, thisx->scale.y, thisx->scale.z, MTXMODE_APPLY);
-    Gfx_DrawDListOpa(play, gKusaBushType1DL);
+    Gfx_DrawDListOpa(play, EnKusa2_BushDL((EnKusa2*)thisx, play));
 }
 
 void func_80A5EA48(Actor* thisx, PlayState* play) {
     EnKusa2* this = (EnKusa2*)thisx;
 
     if (this->unk_1CF == 0xFF) {
-        Gfx_DrawDListOpa(play, gKusaBushType1DL);
+        Gfx_DrawDListOpa(play, EnKusa2_BushDL(this, play));
     } else {
         func_80A5E80C(play, this->unk_1CF);
     }
@@ -1415,5 +1439,6 @@ void func_80A5EA48(Actor* thisx, PlayState* play) {
 
 void EnKusa2_Reset(void) {
     D_80A5EAEC = 1;
+    sDisturbed = false;
     D_80A5EAF0 = 0;
 }
