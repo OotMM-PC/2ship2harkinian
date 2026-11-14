@@ -243,7 +243,7 @@ ResourceFactoryXMLSkeletonLimbV0::ReadResource(std::shared_ptr<Ship::File> file,
         limbData.lodLimb.dLists[0] = nullptr;
     }
 
-    limbData.lodLimb.dLists[1] = nullptr;
+    limbData.lodLimb.dLists[1] = limbData.lodLimb.dLists[0];
 
     limbData.lodLimb.child = skelLimb->childIndex;
     limbData.lodLimb.sibling = skelLimb->siblingIndex;
