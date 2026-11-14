@@ -604,6 +604,17 @@ void PresenceTick() {
         return;
     }
     const uint16_t localPlayer = static_cast<uint16_t>(OotmmSession_GetState().GetPlayerId());
+    for (auto& [id, slot] : gPuppets) {
+        if (slot.actor != nullptr && !ActorStillSpawned(gPlayState, slot.actor)) {
+            if (slot.state != nullptr && slot.state->colliderReady) {
+                Collider_DestroyCylinder(gPlayState, &slot.state->collider);
+                slot.state->colliderReady = false;
+            }
+            gStateByActor.erase(slot.actor);
+            slot.actor = nullptr;
+            slot.taggedName.clear();
+        }
+    }
 
     Ship::OotmmPlayerPose pose;
     pose.PlayerId = localPlayer;
@@ -721,6 +732,7 @@ void PresenceTick() {
                                                 (ActorFunc)PuppetActionFunc, (ActorFunc)PuppetDrawFunc);
             if (shell != nullptr) {
                 slot.actor = &shell->actor;
+                slot.actor->room = -1;
                 slot.actor->update = (ActorFunc)PuppetActionFunc;
                 slot.actor->flags |= ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED;
                 slot.actor->shape.yOffset = 0.0f;
