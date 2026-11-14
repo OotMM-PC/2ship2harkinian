@@ -425,6 +425,14 @@ extern "C" void* OotmmPuppet_MouthTexture(int32_t playerForm, int32_t mouthIndex
 
 namespace {
 
+int PresencePlace(PlayState* play) {
+    if (play->sceneId != SCENE_KAKUSIANA) {
+        return 0;
+    }
+    const RespawnData& grotto = gSaveContext.respawn[RESPAWN_MODE_UNK_3];
+    return 0x10000 | (((grotto.entrance >> 9) & 0x7F) << 8) | static_cast<u8>(grotto.data);
+}
+
 bool ActorStillSpawned(PlayState* play, const Actor* target) {
     for (const auto& list : play->actorCtx.actorLists) {
         for (const Actor* actor = list.first; actor != nullptr; actor = actor->next) {
@@ -621,6 +629,7 @@ void PresenceTick() {
     pose.Game = "mm";
     pose.SceneId = gPlayState->sceneId;
     pose.RoomId = gPlayState->roomCtx.curRoom.num;
+    pose.Place = PresencePlace(gPlayState);
     pose.Pos[0] = player->actor.world.pos.x;
     pose.Pos[1] = player->actor.world.pos.y;
     pose.Pos[2] = player->actor.world.pos.z;
@@ -717,7 +726,8 @@ void PresenceTick() {
     }
 
     for (const Ship::OotmmPlayerPose& remote : roster) {
-        if (remote.PlayerId == localPlayer || remote.Game != "mm" || remote.SceneId != gPlayState->sceneId) {
+        if (remote.PlayerId == localPlayer || remote.Game != "mm" || remote.SceneId != gPlayState->sceneId ||
+            remote.Place != pose.Place) {
             continue;
         }
         PuppetSlot& slot = gPuppets[remote.PlayerId];
