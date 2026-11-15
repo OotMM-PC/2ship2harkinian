@@ -21,6 +21,7 @@ extern "C" {
 #include "overlays/actors/ovl_Obj_Grass/z_obj_grass.h"
 #include "overlays/actors/ovl_En_Elf/z_en_elf.h"
 #include "overlays/actors/ovl_Obj_Grass_Carry/z_obj_grass_carry.h"
+#include "overlays/actors/ovl_Obj_Mure/z_obj_mure.h"
 
 extern PlayState* gPlayState;
 Gfx* ResourceMgr_LoadGfxByName(const char* path);
@@ -206,7 +207,7 @@ void AliasRock(Xflag& xf) {
     }
 }
 
-void AliasFreestandingRupee(Xflag& xf) {
+bool AliasFreestandingRupee(Xflag& xf) {
     switch (xf.Scene) {
         case SCENE_21MITURINMAE:
             if (xf.Setup == 2) {
@@ -215,6 +216,9 @@ void AliasFreestandingRupee(Xflag& xf) {
             }
             break;
         case SCENE_ALLEY:
+            if (xf.Id == 0x13 || xf.Id == 0x16 || xf.Id == 0x19) {
+                return false;
+            }
             Remap(xf.Id, { { 0x14, 0x13 }, { 0x15, 0x13 }, { 0x17, 0x16 }, { 0x18, 0x16 }, { 0x1A, 0x19 }, { 0x1B, 0x19 } });
             break;
         case SCENE_17SETUGEN:
@@ -227,6 +231,7 @@ void AliasFreestandingRupee(Xflag& xf) {
             }
             break;
     }
+    return true;
 }
 
 void AliasFlowerpot(Xflag& xf) {
@@ -336,10 +341,7 @@ bool Alias(const Actor* actor, Xflag& xf) {
             AliasRock(xf);
             return true;
         case ACTOR_EN_ITEM00:
-            if (IsFreestandingRupee(actor)) {
-                AliasFreestandingRupee(xf);
-            }
-            return true;
+            return !IsFreestandingRupee(actor) || AliasFreestandingRupee(xf);
         case ACTOR_OBJ_FLOWERPOT:
             AliasFlowerpot(xf);
             return true;
@@ -365,6 +367,12 @@ bool Alias(const Actor* actor, Xflag& xf) {
         case ACTOR_OBJ_SWPRIZE:
             if (xf.Scene == SCENE_30GYOSON) {
                 xf.Setup = 0;
+            }
+            return true;
+        case ACTOR_OBJ_MURE:
+            if (OBJ_MURE_GET_TYPE(actor) == OBJMURE_TYPE_BUTTERFLY && xf.Scene == SCENE_30GYOSON && xf.Setup == 0) {
+                xf.Setup = 1;
+                xf.Id += 69;
             }
             return true;
         default:
