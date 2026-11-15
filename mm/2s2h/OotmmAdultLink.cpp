@@ -38,7 +38,6 @@ extern Gfx* sPlayerFirstPersonLeftForearmDLs[PLAYER_FORM_MAX];
 extern Gfx* sPlayerFirstPersonLeftHandDLs[PLAYER_FORM_MAX];
 extern Gfx* sPlayerFirstPersonRightShoulderDLs[PLAYER_FORM_MAX];
 extern Gfx* sPlayerFirstPersonRightHandDLs[PLAYER_FORM_MAX];
-extern Gfx* sPlayerFirstPersonRightHandHookshotDLs[PLAYER_FORM_MAX];
 extern TexturePtr sPlayerEyesTextures[PLAYER_FORM_MAX][PLAYER_EYES_MAX];
 extern TexturePtr sPlayerMouthTextures[PLAYER_FORM_MAX][PLAYER_MOUTH_MAX];
 extern PlayerAgeProperties sPlayerAgeProperties[PLAYER_FORM_MAX];
@@ -60,8 +59,6 @@ ADULT_SYM(gLinkAdultRightHandClosedNearDL);
 ADULT_SYM(gLinkAdultRightHandHoldingBowNearDL);
 ADULT_SYM(gLinkAdultRightHandHoldingBowFirstPersonDL);
 ADULT_SYM(gLinkAdultRightHandHoldingOotNearDL);
-ADULT_SYM(gLinkAdultRightHandHoldingHookshotNearDL);
-ADULT_SYM(gLinkAdultRightHandHoldingHookshotFarDL);
 ADULT_SYM(gLinkAdultHandHoldingBottleDL);
 ADULT_SYM(gLinkAdultRightShoulderNearDL);
 ADULT_SYM(gLinkAdultBowStringDL);
@@ -132,15 +129,12 @@ const DlPatch kDlPatches[] = {
     { &gPlayerRightHandBowDLs[kHumanFar], ADULT_DL(gLinkAdultRightHandHoldingBowNearDL) },
     { &gPlayerRightHandInstrumentDLs[kHumanNear], ADULT_DL(gLinkAdultRightHandHoldingOotNearDL) },
     { &gPlayerRightHandInstrumentDLs[kHumanFar], ADULT_DL(gLinkAdultRightHandHoldingOotNearDL) },
-    { &gPlayerRightHandHookshotDLs[kHumanNear], ADULT_DL(gLinkAdultRightHandHoldingHookshotNearDL) },
-    { &gPlayerRightHandHookshotDLs[kHumanFar], ADULT_DL(gLinkAdultRightHandHoldingHookshotNearDL) },
     { &gPlayerLeftHandBottleDLs[kHumanNear], ADULT_DL(gLinkAdultHandHoldingBottleDL) },
     { &gPlayerLeftHandBottleDLs[kHumanFar], ADULT_DL(gLinkAdultHandHoldingBottleDL) },
     { &sPlayerFirstPersonLeftForearmDLs[kHuman], sAdultEmptyDL },
     { &sPlayerFirstPersonLeftHandDLs[kHuman], ADULT_DL(gLinkAdultLeftHandClosedNearDL) },
     { &sPlayerFirstPersonRightShoulderDLs[kHuman], ADULT_DL(gLinkAdultRightShoulderNearDL) },
     { &sPlayerFirstPersonRightHandDLs[kHuman], ADULT_DL(gLinkAdultRightHandHoldingBowFirstPersonDL) },
-    { &sPlayerFirstPersonRightHandHookshotDLs[kHuman], ADULT_DL(gLinkAdultRightHandHoldingHookshotFarDL) },
 };
 
 struct HoldPatch {
@@ -154,6 +148,8 @@ const HoldPatch kHoldPatches[] = {
     { &gPlayerHandHoldingShields[1], OOTMM_HOLD_HEROS_SHIELD, gLinkAdultRightHandClosedNearDL },
     { &gPlayerHandHoldingShields[2], OOTMM_HOLD_MIRROR_SHIELD, gLinkAdultRightHandClosedNearDL },
     { &gPlayerHandHoldingShields[3], OOTMM_HOLD_MIRROR_SHIELD, gLinkAdultRightHandClosedNearDL },
+    { &gPlayerRightHandHookshotDLs[kHumanNear], OOTMM_HOLD_HOOKSHOT, gLinkAdultRightHandClosedNearDL },
+    { &gPlayerRightHandHookshotDLs[kHumanFar], OOTMM_HOLD_HOOKSHOT, gLinkAdultRightHandClosedNearDL },
     { &gPlayerLeftHandTwoHandSwordDLs[kHumanNear], OOTMM_HOLD_GREAT_FAIRYS_SWORD, gLinkAdultLeftHandClosedNearDL },
     { &gPlayerLeftHandTwoHandSwordDLs[kHumanFar], OOTMM_HOLD_GREAT_FAIRYS_SWORD, gLinkAdultLeftHandClosedNearDL },
     { &gPlayerLeftHandOneHandSwordDLs[kHumanNear], OOTMM_HOLD_KOKIRI_SWORD, gLinkAdultLeftHandClosedNearDL },

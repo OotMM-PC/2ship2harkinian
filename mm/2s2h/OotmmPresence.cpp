@@ -43,6 +43,8 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
                      PostLimbDrawFlex postLimbDraw, Actor* actor);
 }
 
+#include "OotmmHandComposites.h"
+
 const char* gOotmmEquipDlCapture[4] = { NULL, NULL, NULL, NULL };
 int32_t gOotmmPvpHitsSent = 0;
 int32_t gOotmmPvpHitsReceived = 0;
@@ -61,6 +63,8 @@ extern "C" void OotmmPresence_CaptureEquipDl(int32_t index, void* dl) {
     }
     if (dl == NULL) {
         gOotmmEquipDlCapture[index] = "-";
+    } else if (const char* native = OotmmHandComposites_NativePath(dl); native != nullptr) {
+        gOotmmEquipDlCapture[index] = native;
     } else if (std::strncmp(static_cast<const char*>(dl), "__OTR__", 7) == 0) {
         gOotmmEquipDlCapture[index] = static_cast<const char*>(dl);
     } else {

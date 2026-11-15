@@ -34,7 +34,6 @@ extern Gfx* sPlayerFirstPersonLeftForearmDLs[PLAYER_FORM_MAX];
 extern Gfx* sPlayerFirstPersonLeftHandDLs[PLAYER_FORM_MAX];
 extern Gfx* sPlayerFirstPersonRightShoulderDLs[PLAYER_FORM_MAX];
 extern Gfx* sPlayerFirstPersonRightHandDLs[PLAYER_FORM_MAX];
-extern Gfx* sPlayerFirstPersonRightHandHookshotDLs[PLAYER_FORM_MAX];
 extern TexturePtr sPlayerEyesTextures[PLAYER_FORM_MAX][PLAYER_EYES_MAX];
 extern TexturePtr sPlayerMouthTextures[PLAYER_FORM_MAX][PLAYER_MOUTH_MAX];
 
@@ -113,14 +112,11 @@ const DlPatch kDlPatches[] = {
     { &gPlayerRightHandClosedDLs[kHumanFar], CHILD_DL(gLinkChildRightHandClosedNearDL) },
     { &gPlayerRightHandInstrumentDLs[kHumanNear], CHILD_DL(gLinkChildRightHandHoldingFairyOcarinaNearDL) },
     { &gPlayerRightHandInstrumentDLs[kHumanFar], CHILD_DL(gLinkChildRightHandHoldingFairyOcarinaNearDL) },
-    { &gPlayerRightHandHookshotDLs[kHumanNear], CHILD_DL(gLinkChildRightHandClosedNearDL) },
-    { &gPlayerRightHandHookshotDLs[kHumanFar], CHILD_DL(gLinkChildRightHandClosedNearDL) },
     { &gPlayerLeftHandBottleDLs[kHumanNear], CHILD_DL(gLinkChildLeftHandUpNearDL) },
     { &gPlayerLeftHandBottleDLs[kHumanFar], CHILD_DL(gLinkChildLeftHandUpNearDL) },
     { &sPlayerFirstPersonLeftForearmDLs[kHuman], sChildEmptyDL },
     { &sPlayerFirstPersonLeftHandDLs[kHuman], CHILD_DL(gLinkChildLeftFistNearDL) },
     { &sPlayerFirstPersonRightShoulderDLs[kHuman], CHILD_DL(gLinkChildRightShoulderNearDL) },
-    { &sPlayerFirstPersonRightHandHookshotDLs[kHuman], CHILD_DL(gLinkChildRightHandClosedNearDL) },
 };
 
 struct HoldPatch {
@@ -136,6 +132,8 @@ const HoldPatch kHoldPatches[] = {
     { &gPlayerHandHoldingShields[3], OOTMM_HOLD_MIRROR_SHIELD, gLinkChildRightHandClosedNearDL },
     { &gPlayerRightHandBowDLs[kHumanNear], OOTMM_HOLD_BOW, gLinkChildRightHandClosedNearDL },
     { &gPlayerRightHandBowDLs[kHumanFar], OOTMM_HOLD_BOW, gLinkChildRightHandClosedNearDL },
+    { &gPlayerRightHandHookshotDLs[kHumanNear], OOTMM_HOLD_HOOKSHOT, gLinkChildRightHandClosedNearDL },
+    { &gPlayerRightHandHookshotDLs[kHumanFar], OOTMM_HOLD_HOOKSHOT, gLinkChildRightHandClosedNearDL },
     { &gPlayerLeftHandTwoHandSwordDLs[kHumanNear], OOTMM_HOLD_GREAT_FAIRYS_SWORD, gLinkChildLeftFistNearDL },
     { &gPlayerLeftHandTwoHandSwordDLs[kHumanFar], OOTMM_HOLD_GREAT_FAIRYS_SWORD, gLinkChildLeftFistNearDL },
     { &gPlayerLeftHandOneHandSwordDLs[kHumanNear], OOTMM_HOLD_KOKIRI_SWORD, gLinkChildLeftFistNearDL },

@@ -39,6 +39,15 @@ bool IsExpanded(uint8_t op) {
 
 } // namespace
 
+extern "C" const char* OotmmHandComposites_NativePath(const void* commands) {
+    for (int i = 0; i < sBufferCount; i++) {
+        if (sBuffers[i].Commands == commands) {
+            return sBuffers[i].NativePath;
+        }
+    }
+    return nullptr;
+}
+
 extern "C" Gfx* OotmmHandComposites_Build(const char* nativePath, const char* portedFistPath) {
     const Gfx* src =
         (const Gfx*)Ship::Context::GetInstance()->GetResourceManager()->GetResourceRawPointer(nativePath);
