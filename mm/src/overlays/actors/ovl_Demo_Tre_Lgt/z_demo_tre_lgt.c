@@ -91,8 +91,7 @@ void DemoTreLgt_Wait(DemoTreLgt* this, PlayState* play) {
 
     if (chest != NULL) {
         if (Animation_OnFrame(&chest->skelAnime, 10.0f)) {
-            Actor_SetScale(&this->actor,
-                           0.01f * chest->dyna.actor.scale.x / (Actor_IsSmallChest(chest) ? 0.0075f : 0.01f));
+            Actor_SetScale(&this->actor, chest->dyna.actor.scale.x);
             DemoTreLgt_SetupAnimate(this, play, chest->skelAnime.curFrame);
         }
     }
