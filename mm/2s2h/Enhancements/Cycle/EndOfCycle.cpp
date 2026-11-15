@@ -102,6 +102,9 @@ void RegisterEndOfCycleSaveHooks() {
             } else {
                 CLEAR_WEEKEVENTREG(WEEKEVENTREG_DRANK_CHATEAU_ROMANI);
             }
+            if (saveInfoCopy.weekEventReg[WEEKEVENTREG_08_80 >> 8] & (WEEKEVENTREG_08_80 & 0xFF)) {
+                SET_WEEKEVENTREG(WEEKEVENTREG_08_80);
+            }
             auto& inventory = gSaveContext.save.saveInfo.inventory;
             for (int slot = SLOT_BOTTLE_1; slot <= SLOT_BOTTLE_6; ++slot) {
                 const auto before = saveInfoCopy.inventory.items[slot];

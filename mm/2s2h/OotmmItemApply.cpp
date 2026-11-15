@@ -848,6 +848,9 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
                     break;
                 }
                 if (op.Slot == "TRANSCENDENT_FAIRY") {
+                    if (count > 0) {
+                        SET_WEEKEVENTREG(WEEKEVENTREG_08_80);
+                    }
                     if (already == 0) {
                         for (const auto& dungeon : kDungeons) {
                             gSaveContext.save.saveInfo.inventory.strayFairies[dungeon.Index] =
@@ -1053,6 +1056,9 @@ void ApplyOne(PlayState* play, const std::string& itemId, uint32_t count) {
             }
             case Ship::OotmmGrantKind::DungeonItem: {
                 if (op.Slot.rfind("STRAY_FAIRY", 0) == 0) {
+                    if (op.Slot == "STRAY_FAIRY_TOWN" && count > 0) {
+                        SET_WEEKEVENTREG(WEEKEVENTREG_08_80);
+                    }
                     if (count <= already) {
                         break;
                     }
