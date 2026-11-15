@@ -466,6 +466,8 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
             }
         } else if (key == "collect") {
             OotmmNpcChecks_Collect(value.c_str());
+        } else if (key == "nextcs") {
+            gSaveContext.nextCutsceneIndex = static_cast<u16>(first);
         } else if (key == "goto" && gPlayState != nullptr) {
             gPlayState->nextEntrance = static_cast<u16>(first);
             gPlayState->transitionTrigger = TRANS_TRIGGER_START;
@@ -567,6 +569,12 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
             gSaveContext.timerStates[TIMER_ID_POSTMAN] = TIMER_STATE_POSTMAN_STOP;
         } else if (key == "einf") {
             SET_EVENTINF(static_cast<s32>(first));
+        } else if (key == "ammoenvfix") {
+            CVarSetInteger("gFixes.FixAmmoCountEnvColor", first != 0 ? 1 : 0);
+        } else if (key == "object" && gPlayState != nullptr) {
+            if (Object_GetSlot(&gPlayState->objectCtx, static_cast<s16>(first)) < 0) {
+                Object_SpawnPersistent(&gPlayState->objectCtx, static_cast<s16>(first));
+            }
         } else if (key == "spawn" && gPlayState != nullptr) {
             const Player* player = GET_PLAYER(gPlayState);
             Actor_Spawn(&gPlayState->actorCtx, gPlayState, static_cast<s16>(first), player->actor.world.pos.x,
@@ -637,6 +645,16 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
             if (gPlayState != nullptr && Play_GetOriginalSceneId(gPlayState->sceneId) == first) {
                 gPlayState->actorCtx.sceneFlags.chest |= 1u << second;
             }
+        } else if (key == "playgroundwin" && gPlayState != nullptr && gPlayState->sceneId == SCENE_DEKUTES) {
+            Flags_SetSwitch(gPlayState, 0x40);
+            Flags_SetSwitch(gPlayState, 0x41);
+            gSaveContext.timerCurTimes[TIMER_ID_MINIGAME_2] = static_cast<OSTime>(first);
+            gSaveContext.respawn[RESPAWN_MODE_DOWN].entrance = ENTRANCE(DEKU_SCRUB_PLAYGROUND, 1);
+            gSaveContext.nextCutsceneIndex = 0;
+            func_80169EFC(gPlayState);
+            gSaveContext.respawnFlag = -2;
+            gPlayState->transitionType = TRANS_TYPE_64;
+            gSaveContext.nextTransitionType = TRANS_TYPE_FADE_BLACK;
         } else if (key == "switch" && gPlayState != nullptr && gPlayState->sceneId == first && second >= 0 && second < 128) {
             Flags_SetSwitch(gPlayState, static_cast<s32>(second));
         } else if (key == "unchest" && first >= 0 &&
@@ -659,6 +677,8 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
             if (gPlayState != nullptr && Play_GetOriginalSceneId(gPlayState->sceneId) == first) {
                 gPlayState->actorCtx.sceneFlags.switches[second / 32] |= 1u << (second % 32);
             }
+        } else if (key == "tatl" && gPlayState != nullptr) {
+            Interface_SetTatlCall(gPlayState, first != 0 ? TATL_STATE_2A : TATL_STATE_2C);
         } else if (key == "dpad" && first >= EQUIP_SLOT_D_RIGHT && first <= EQUIP_SLOT_D_UP && second >= 0 &&
                    second < static_cast<long>(ARRAY_COUNT(info.inventory.items))) {
             DPAD_BUTTON_ITEM_EQUIP(0, first) = info.inventory.items[second];
@@ -673,6 +693,9 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
                                               ? OotmmCustomItems_ItemInSlot(static_cast<uint8_t>(second))
                                               : info.inventory.items[second];
             C_SLOT_EQUIP(0, first) = static_cast<u8>(second);
+            if (gPlayState != nullptr) {
+                Interface_LoadItemIcon(gPlayState, static_cast<u8>(first));
+            }
         } else if (key == "shield") {
             SET_EQUIP_VALUE(EQUIP_TYPE_SHIELD, static_cast<u32>(first));
             if (gPlayState != nullptr && GET_PLAYER(gPlayState) != nullptr) {
