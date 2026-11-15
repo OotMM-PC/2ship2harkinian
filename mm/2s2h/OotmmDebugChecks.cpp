@@ -602,6 +602,8 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
             HS_SET_BANK_RUPEES(static_cast<u32>(first));
         } else if (key == "week" && first >= 0 && first < static_cast<long>(ARRAY_COUNT(info.weekEventReg))) {
             info.weekEventReg[first] |= static_cast<u8>(second);
+        } else if (key == "unweek" && first >= 0 && first < static_cast<long>(ARRAY_COUNT(info.weekEventReg))) {
+            info.weekEventReg[first] &= static_cast<u8>(~second);
         } else if (key == "item" && first >= 0 && first < static_cast<long>(ARRAY_COUNT(info.inventory.items))) {
             info.inventory.items[first] = static_cast<u8>(second);
         } else if (key == "invitem") {
@@ -1031,6 +1033,11 @@ void OotmmDebugChecks_Init() {
                 { "buttons", gPlayState->state.input[0].cur.button }, { "checks", checks },
                 { "cButtons", { BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_C_LEFT), BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_C_DOWN),
                                 BUTTON_ITEM_EQUIP(0, EQUIP_SLOT_C_RIGHT) } },
+                { "equipDl",
+                  { std::string(gOotmmEquipDlCapture[0] != nullptr ? gOotmmEquipDlCapture[0] : ""),
+                    std::string(gOotmmEquipDlCapture[1] != nullptr ? gOotmmEquipDlCapture[1] : ""),
+                    std::string(gOotmmEquipDlCapture[2] != nullptr ? gOotmmEquipDlCapture[2] : ""),
+                    std::string(gOotmmEquipDlCapture[3] != nullptr ? gOotmmEquipDlCapture[3] : "") } },
                 { "buttonStatus", { gSaveContext.buttonStatus[EQUIP_SLOT_C_LEFT], gSaveContext.buttonStatus[EQUIP_SLOT_C_DOWN],
                                     gSaveContext.buttonStatus[EQUIP_SLOT_C_RIGHT] } },
                 { "shield", player->currentShield }, { "shieldEquip", GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD) },
