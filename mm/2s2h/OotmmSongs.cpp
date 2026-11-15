@@ -86,7 +86,10 @@ constexpr std::array<SongDef, OOTMM_SONG_COUNT> kSongs = { {
       ACTOR_OCEFF_WIPE3, 0, nullptr, 0, nullptr },
 } };
 
+constexpr int32_t kPlayedGraceFrames = 20;
+
 int32_t sPlayedSong = OOTMM_SONG_NONE;
+int32_t sPlayedIdleFrames = 0;
 int32_t sActiveSong = OOTMM_SONG_NONE;
 
 struct WarpRequest {
@@ -357,6 +360,13 @@ extern "C" void OotmmSongs_Update(PlayState* play, Player* player) {
         sActiveSong = OOTMM_SONG_NONE;
         ResetWarp();
         return;
+    }
+
+    if (sPlayedSong == OOTMM_SONG_NONE || (player->stateFlags2 & PLAYER_STATE2_USING_OCARINA)) {
+        sPlayedIdleFrames = 0;
+    } else if (++sPlayedIdleFrames > kPlayedGraceFrames) {
+        sPlayedSong = OOTMM_SONG_NONE;
+        sPlayedIdleFrames = 0;
     }
 
     const u16 mode = play->msgCtx.ocarinaMode;
