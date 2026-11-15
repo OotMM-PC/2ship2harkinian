@@ -10,6 +10,7 @@
 #include "BenPort.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmClockSpeed.h"
+#include "2s2h/OotmmDialog.h"
 #include "2s2h/OotmmNpcChecks.h"
 #include "2s2h/OotmmOwls.h"
 #include "2s2h/OotmmSession.h"
@@ -303,6 +304,10 @@ bool Message_ShouldAdvance(PlayState* play) {
         return true;
     }
 
+    if (OotmmDialog_HoldAdvance(play)) {
+        return false;
+    }
+
     if ((msgCtx->textboxEndType == TEXTBOX_ENDTYPE_TWO_CHOICE) ||
         (msgCtx->textboxEndType == TEXTBOX_ENDTYPE_THREE_CHOICE)) {
         if (CHECK_BTN_ALL(controller->press.button, BTN_A)) {
@@ -325,6 +330,10 @@ bool Message_ShouldAdvance(PlayState* play) {
 bool Message_ShouldAdvanceSilent(PlayState* play) {
     MessageContext* msgCtx = &play->msgCtx;
     Input* controller = CONTROLLER1(&play->state);
+
+    if (OotmmDialog_HoldAdvance(play)) {
+        return false;
+    }
 
     if ((msgCtx->textboxEndType == TEXTBOX_ENDTYPE_TWO_CHOICE) ||
         (msgCtx->textboxEndType == TEXTBOX_ENDTYPE_THREE_CHOICE)) {
@@ -674,6 +683,7 @@ void Message_HandleChoiceSelection(PlayState* play, u8 numChoices) {
     } else if (ABS_ALT(input->rel.stick_y) < 30) {
         sAnalogStickHeld = false;
     }
+    OotmmDialog_HandleInput(play);
 }
 
 void func_80148CBC(PlayState* play, Gfx** gfxP, u8 arg2) {
@@ -685,6 +695,7 @@ void func_80148CBC(PlayState* play, Gfx** gfxP, u8 arg2) {
     } else {
         msgCtx->textPosY = msgCtx->unk11FFE[msgCtx->choiceIndex];
     }
+    msgCtx->textPosY = OotmmDialog_CursorY(play, msgCtx->textPosY);
     Message_DrawTextboxIcon(play, gfxP, msgCtx->textPosX, msgCtx->textPosY);
 }
 
@@ -3322,6 +3333,7 @@ void Message_OpenText(PlayState* play, u16 textId) {
     f32 var_fv0;
 
     bool loadFromMessageTable = true;
+    OotmmDialog_Reset();
     GameInteractor_ExecuteOnOpenText(&textId, &loadFromMessageTable);
 
     // BENTODO do this somewhere else
@@ -3503,6 +3515,7 @@ void func_801514B0(PlayState* play, u16 arg1, u8 arg2) {
     D_801F6B08 = temp / 1;
 
     bool loadFromMessageTable = true;
+    OotmmDialog_Reset();
     GameInteractor_ExecuteOnOpenText(&arg1, &loadFromMessageTable);
 
     if (loadFromMessageTable && (arg1 == 0x1709) && (player->transformation == 3)) {

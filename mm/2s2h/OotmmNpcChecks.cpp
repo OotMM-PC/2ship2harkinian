@@ -5,6 +5,8 @@
 #include "OotmmCheckLedger.h"
 #include "OotmmChecks.h"
 #include "OotmmCustomItems.h"
+#include "OotmmDialog.h"
+#include <libultraship/bridge/OotmmDialog.h>
 #include "OotmmIpc.h"
 #include <libultraship/bridge/OotmmItemGrant.h>
 #include <memory>
@@ -289,10 +291,13 @@ void RegisterTinglePrices() {
                 auto entry = CustomMessage::LoadVanillaMessageTableEntry(*textId);
                 entry.firstItemCost = first.value_or(entry.firstItemCost);
                 entry.secondItemCost = second.value_or(entry.secondItemCost);
-                entry.msg = std::string("%g\xC3") + TingleOfferName(location, names[location]) + " - " + std::to_string(entry.firstItemCost) +
-                            " Rupees\x11" + TingleOfferName((location + 1) % 6, names[(location + 1) % 6]) + " - " + std::to_string(entry.secondItemCost) +
-                            " Rupees\x11No thanks";
-                CustomMessage::LoadCustomMessageIntoFont(entry);
+                const uint16_t next = (location + 1) % 6;
+                OotmmDialog::Load(entry, "",
+                                  { TingleOfferName(location, names[location]) + " - %r" +
+                                        Ship::OotmmDialogPrice(entry.firstItemCost),
+                                    TingleOfferName(next, names[next]) + " - %r" +
+                                        Ship::OotmmDialogPrice(entry.secondItemCost),
+                                    "No thanks" });
                 *loadFromMessageTable = false;
             });
     }
@@ -468,6 +473,11 @@ void LoadPurchaseText(u16* textId, bool* loadFromMessageTable, const std::string
     *loadFromMessageTable = false;
 }
 
+void LoadPurchaseChoice(u16* textId, bool* loadFromMessageTable, std::string body, std::vector<std::string> options) {
+    OotmmDialog::Load(CustomMessage::LoadVanillaMessageTableEntry(*textId), std::move(body), std::move(options));
+    *loadFromMessageTable = false;
+}
+
 void RegisterBankText() {
     GameInteractor::Instance->RegisterGameHookForID<GameInteractor::OnOpenText>(
         0x44C, [](u16* textId, bool* loadFromMessageTable) {
@@ -548,10 +558,10 @@ void RegisterPurchaseTexts() {
                 if (!OotmmSession_IsActive() || Find(kGormanMilk.NativeId) == nullptr) {
                     return;
                 }
-                LoadPurchaseText(textId, loadFromMessageTable,
-                                 "%r" + std::to_string(kGormanMilk.Price) + " Rupees%w will do ya for " +
-                                     PurchaseName(kGormanMilk) + "!\x11%g\xC2I'll buy it\x11No thanks",
-                                 true);
+                LoadPurchaseChoice(textId, loadFromMessageTable,
+                                   "%r" + Ship::OotmmDialogPrice(kGormanMilk.Price) + "%w will do ya for " +
+                                       PurchaseName(kGormanMilk) + "!",
+                                   { "I'll buy it", "No thanks" });
             });
     }
     for (const uint16_t id : { 0x3469, 0x347F }) {
@@ -570,12 +580,10 @@ void RegisterPurchaseTexts() {
             }
             const auto line = [](const PurchaseSite& site, const char* vanilla) {
                 const auto name = Find(site.NativeId) != nullptr ? PurchaseName(site, true) : std::string(vanilla);
-                return name == kSoldOut ? name : name + ": %r" + std::to_string(site.Price) + " Rupees%w";
+                return name == kSoldOut ? name : name + ": %r" + Ship::OotmmDialogPrice(site.Price);
             };
-            LoadPurchaseText(textId, loadFromMessageTable,
-                             "\xC3" + line(kMilkBarMilk, "%gRegular Milk%w") + "\x11" +
-                                 line(kMilkBarChateau, "%gChateau%w") + "\x11%gNo Thanks%w",
-                             false);
+            LoadPurchaseChoice(textId, loadFromMessageTable, "",
+                               { line(kMilkBarMilk, "Regular Milk"), line(kMilkBarChateau, "Chateau"), "No Thanks" });
         });
     GameInteractor::Instance->RegisterGameHookForID<GameInteractor::OnOpenText>(
         0x2B0C, [](u16* textId, bool* loadFromMessageTable) {

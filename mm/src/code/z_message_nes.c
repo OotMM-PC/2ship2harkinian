@@ -1,4 +1,5 @@
 #include "global.h"
+#include "2s2h/OotmmDialog.h"
 #include "message_data_fmt_nes.h"
 #include "message_data_static.h"
 #include "assets/interface/message_texture_static/message_texture_static.h"
@@ -370,7 +371,7 @@ Color_RGB16 D_801D07DC[] = {
     { 255, 130, 30 },  // MESSAGE_COLOR_ORANGE
 };
 
-static Color_RGB16 sColorsNormalNES[] = {
+Color_RGB16 sColorsNormalNES[] = {
     { 255, 60, 60 },   // MESSAGE_COLOR_RED
     { 70, 255, 80 },   // MESSAGE_COLOR_GREEN
     { 80, 90, 255 },   // MESSAGE_COLOR_BLUE
@@ -460,6 +461,10 @@ void Message_DrawTextNES(PlayState* play, Gfx** gfxP, u16 textDrawPos) {
     msgCtx->textColorR = msgCtx->unk120C8;
     msgCtx->textColorG = msgCtx->unk120CA;
     msgCtx->textColorB = msgCtx->unk120CC;
+
+    if (textDrawPos == 0) {
+        OotmmDialog_Draw(play, &gfx);
+    }
 
     charTexIndex = 0;
 

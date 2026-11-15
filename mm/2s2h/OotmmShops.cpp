@@ -2,6 +2,8 @@
 
 #include "2s2h/CustomMessage/CustomMessage.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "OotmmDialog.h"
+#include <libultraship/bridge/OotmmDialog.h>
 #include "OotmmIpc.h"
 #include "OotmmItemModels.h"
 #include <libultraship/bridge/OotmmItemGrant.h>
@@ -290,10 +292,10 @@ void BuildShopText(u16* textId, bool* loadFromMessageTable) {
         entry.msg = OotmmNpcChecks_PlacementName(*placement) + "\x11%r" + std::to_string(price) + " Rupees%w" +
                     (needsMushroom ? "\x11\x11%pRequires Magic Mushroom%w\x1A" : "\x1A");
     } else {
-        entry.msg = OotmmNpcChecks_PlacementName(*placement) + "\x11%r" + std::to_string(price) + " Rupees\x11\xC2%gBuy\x11No thanks%w";
-        entry.autoFormat = false;
-        CustomMessage::ReplaceColorChars(&entry.msg);
-        CustomMessage::EnsureMessageEnd(&entry.msg);
+        OotmmDialog::Load(entry, OotmmNpcChecks_PlacementName(*placement) + "\n%r" + Ship::OotmmDialogPrice(price),
+                          { "Buy", "No thanks" });
+        *loadFromMessageTable = false;
+        return;
     }
     CustomMessage::LoadCustomMessageIntoFont(entry);
     *loadFromMessageTable = false;
