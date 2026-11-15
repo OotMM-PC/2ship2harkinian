@@ -388,7 +388,7 @@ static bool shouldEndSceneCommands = false;
 void Scene_CommandAltHeaderList(PlayState* play, SOH::ISceneCommand* cmd) {
     SOH::SetAlternateHeaders* headers = (SOH::SetAlternateHeaders*)cmd;
 
-    if (gSaveContext.sceneLayer != 0) {
+    if (gSaveContext.sceneLayer != 0 && static_cast<size_t>(gSaveContext.sceneLayer) <= headers->headers.size()) {
         SOH::Scene* desiredHeader =
             std::static_pointer_cast<SOH::Scene>(headers->headers[gSaveContext.sceneLayer - 1]).get();
 

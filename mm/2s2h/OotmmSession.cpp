@@ -663,6 +663,9 @@ void UpdateEntranceTransition() {
     }
     if (!mapping->IsCrossGame()) {
         if (const auto target = ResolveMmEntrance(*mapping->ToNativeId); target.has_value()) {
+            if ((*target >> 9) != (nextEntrance >> 9) && gSaveContext.nextCutsceneIndex >= 0xFFF0) {
+                gSaveContext.nextCutsceneIndex = 0xFFEF;
+            }
             gPlayState->nextEntrance = *target;
             sLastResolvedEntrance = *target;
             if (gSaveContext.respawnFlag == -2 &&
