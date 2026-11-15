@@ -395,6 +395,7 @@ void ApplyEnhancements() {
     CVarSetInteger("gEnhancements.Player.FasterPushAndPull", 0);
     CVarSetInteger("gEnhancements.Player.UnderwaterOcarina", 1);
     CVarSetInteger("gFixes.FixEponaStealingSword", 1);
+    CVarSetInteger("gFixes.FixAmmoCountEnvColor", 1);
     gItemPrices[ITEM_GOLD_DUST] = 0;
 }
 

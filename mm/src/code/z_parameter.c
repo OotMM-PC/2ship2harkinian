@@ -6233,6 +6233,9 @@ void Interface_Dpad_DrawAmmoCount(PlayState* play, s16 button, s16 alpha) {
         }
 
         gDPPipeSync(OVERLAY_DISP++);
+        if (CVarGetInteger("gFixes.FixAmmoCountEnvColor", 0)) {
+            gDPSetEnvColor(OVERLAY_DISP++, 0, 0, 0, 255);
+        }
 
         if (((i == ITEM_BOW) && (AMMO(i) == CUR_CAPACITY(UPG_QUIVER))) ||
             ((i == ITEM_BOMB) && (AMMO(i) == CUR_CAPACITY(UPG_BOMB_BAG))) ||
