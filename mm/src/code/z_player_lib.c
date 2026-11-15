@@ -2135,6 +2135,14 @@ PlayerFaceIndices sPlayerFaces[PLAYER_FACE_MAX] = {
 
 // Note the correct pointer to pass as the jointTable is the jointTable pointer from the SkelAnime struct, not the
 // buffer from the Player struct itself since that one may be misaligned.
+void OotmmPlayer_SetClothColor(PlayState* play, Actor* actor) {
+    if (actor->id == ACTOR_PLAYER) {
+        OotmmAdultLink_SetTunicColor(play);
+    } else {
+        OotmmPuppet_SetTunicColor(play);
+    }
+}
+
 void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dListCount, s32 lod,
                      PlayerTransformation playerForm, s32 boots, s32 face, OverrideLimbDrawFlex overrideLimbDraw,
                      PostLimbDrawFlex postLimbDraw, Actor* actor) {
@@ -2192,10 +2200,8 @@ void Player_DrawImpl(PlayState* play, void** skeleton, Vec3s* jointTable, s32 dL
     if (actor->id == ACTOR_PLAYER) {
         OotmmPresence_CaptureCustomHand(0, OOTMM_CUSTOM_HAND_NONE);
         OotmmPresence_CaptureCustomHand(1, OOTMM_CUSTOM_HAND_NONE);
-        OotmmAdultLink_SetTunicColor(play);
-    } else {
-        OotmmPuppet_SetTunicColor(play);
     }
+    OotmmPlayer_SetClothColor(play, actor);
 
     D_801F59E0 = playerForm * 2;
     sPlayerLod = lod;
@@ -2531,6 +2537,8 @@ s32 Player_OverrideLimbDrawGameplayCommon(PlayState* play, s32 limbIndex, Gfx** 
                                           Actor* thisx) {
     s32 pad;
     Player* player = (Player*)thisx;
+
+    OotmmPlayer_SetClothColor(play, thisx);
 
     if (limbIndex == PLAYER_LIMB_ROOT) {
         sPlayerLeftHandType = player->leftHandType;

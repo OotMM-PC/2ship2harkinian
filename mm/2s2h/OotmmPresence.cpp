@@ -226,9 +226,9 @@ void PuppetInitSkeleton(PuppetState* state, PlayState* play, u8 form) {
 
 extern "C" s32 OotmmPuppet_OverrideLimbDraw(PlayState* play, s32 limbIndex, Gfx** dList, Vec3f* pos, Vec3s* rot,
                                             Actor* actor) {
-    (void)play;
     (void)rot;
     (void)actor;
+    OotmmPuppet_SetTunicColor(play);
     if (limbIndex == PLAYER_LIMB_ROOT && gPuppetForm >= 0 && gPuppetForm < PLAYER_FORM_MAX &&
         gPuppetForm != PLAYER_FORM_FIERCE_DEITY) {
         const f32 scale =
