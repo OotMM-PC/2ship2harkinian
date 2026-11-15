@@ -8,6 +8,7 @@
 #include "OotmmPresence.h"
 #include "OotmmDrops.h"
 #include "OotmmCustomItems.h"
+#include "OotmmDialog.h"
 
 extern "C" {
 struct OotmmDebugSfxRequest {
@@ -395,6 +396,23 @@ static nlohmann::json TakarayaMaze() {
 
 static void ApplySetupString(const char* variable, const std::string& setup);
 
+static int sDialogResult = -1;
+
+static void StartTestDialog(const std::string& name) {
+    const char* directory = std::getenv("OOTMM_RUNTIME_TEST_DIR");
+    if (directory == nullptr || gPlayState == nullptr) {
+        return;
+    }
+    std::ifstream file(std::filesystem::u8path(directory) / ("dialog-" + name + ".json"), std::ios::binary);
+    const auto spec = nlohmann::json::parse(file, nullptr, false);
+    if (!spec.is_object()) {
+        return;
+    }
+    sDialogResult = -1;
+    OotmmDialog::Start(spec.value("body", std::string()), spec.value("options", std::vector<std::string>()),
+                       [](int choice) { sDialogResult = choice; });
+}
+
 static void ApplyRuntimeSetup(const char* variable) {
     const char* probe = std::getenv(variable);
     const char* directory = std::getenv("OOTMM_RUNTIME_TEST_DIR");
@@ -600,6 +618,8 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
             info.playerData.health = static_cast<s16>(first);
         } else if (key == "bank") {
             HS_SET_BANK_RUPEES(static_cast<u32>(first));
+        } else if (key == "dialog") {
+            StartTestDialog(value);
         } else if (key == "week" && first >= 0 && first < static_cast<long>(ARRAY_COUNT(info.weekEventReg))) {
             info.weekEventReg[first] |= static_cast<u8>(second);
         } else if (key == "unweek" && first >= 0 && first < static_cast<long>(ARRAY_COUNT(info.weekEventReg))) {
@@ -789,6 +809,7 @@ void OotmmDebugChecks_Init() {
             input.cur.button = pad.Buttons;
             input.cur.stick_x = pad.X;
             input.cur.stick_y = pad.Y;
+            input.cur.right_stick_y = pad.RightY;
             input.press.button = input.cur.button & ~previous.button;
             input.rel.button = previous.button & ~input.cur.button;
             input.press.stick_x = input.cur.stick_x - previous.stick_x;
@@ -1053,6 +1074,16 @@ void OotmmDebugChecks_Init() {
                                                          gPlayState->msgCtx.ocarinaStaff->pos }) },
                 { "pauseState", gPlayState->pauseCtx.state },
                 { "saveSucceeded", OotmmSaveMenu_SaveSucceeded() != 0 },
+                { "dialog",
+                  [] {
+                      const auto dialog = OotmmDialog::Debug();
+                      return nlohmann::json{ { "active", dialog.Active },         { "top", dialog.Top },
+                                             { "total", dialog.Total },           { "choice", dialog.Choice },
+                                             { "cursorRow", dialog.CursorRow },   { "scrollable", dialog.Scrollable },
+                                             { "shown", dialog.Shown },           { "optionRows", dialog.OptionRows },
+                                             { "optionLines", dialog.OptionLines },
+                                             { "result", sDialogResult } };
+                  }() },
                 { "sramStatus", gPlayState->sramCtx.status },
                 { "cycleCount", gSaveContext.save.saveInfo.playerData.threeDayResetCount },
                 { "playerForm", gSaveContext.save.playerForm },
