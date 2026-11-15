@@ -55,6 +55,11 @@ void Heaps_Free(void);
 #endif
 
 void SDL_main(int argc, char** argv /* void* arg*/) {
+    int crashMonitorExit = 0;
+    if (CrashMonitorRunIfRequested(argc, argv, &crashMonitorExit)) {
+        return;
+    }
+    CrashHandler_SetBuildNote();
     SaveManager_RunValidationCommand(argc, argv);
     intptr_t fb;
     intptr_t sysHeap;

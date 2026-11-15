@@ -3,6 +3,7 @@
 #include <ship/utils/StringHelper.h>
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include <ship/resource/ResourceManager.h>
+#include <libultraship/bridge/crashhandlerbridge.h>
 
 extern "C" {
 #include "global.h"
@@ -36,9 +37,19 @@ extern "C" void OTRPlay_InitScene(PlayState* play, s32 spawn) {
     Play_InitEnvironment(play, play->skyboxId);
 }
 
+static void SetSceneNote(const char* state, s32 sceneId, s32 spawn) {
+    char note[240];
+    snprintf(note, sizeof(note), "%s scene 0x%X, spawn %d, entrance 0x%X, layer %d, cutscene 0x%X, day %d time 0x%04X, form %d",
+             state, sceneId, spawn, gSaveContext.save.entrance & 0xFFFF, gSaveContext.sceneLayer,
+             gSaveContext.save.cutsceneIndex & 0xFFFF, gSaveContext.save.day, gSaveContext.save.time & 0xFFFF,
+             gSaveContext.save.playerForm);
+    CrashHandlerSetNote("scene", note);
+}
+
 extern "C" void OTRPlay_SpawnScene(PlayState* play, s32 sceneId, s32 spawn) {
     s32 pad;
     SceneTableEntry* scene = &gSceneTable[sceneId];
+    SetSceneNote("loading", sceneId, spawn);
 
     scene->unk_D = 0;
     play->loadedScene = scene;
@@ -51,6 +62,7 @@ extern "C" void OTRPlay_SpawnScene(PlayState* play, s32 sceneId, s32 spawn) {
     gSegments[2] = (uintptr_t)play->sceneSegment;
     OTRPlay_InitScene(play, spawn);
     Room_SetupFirstRoom(play, &play->roomCtx);
+    SetSceneNote("in", sceneId, spawn);
 }
 
 extern "C" s32 OTRfunc_800973FC(PlayState* play, RoomContext* roomCtx) {

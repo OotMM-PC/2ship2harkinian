@@ -77,3 +77,10 @@ extern "C" void CrashHandler_PrintExt(char* buffer, size_t* pos) {
         }
     }
 }
+
+extern "C" void CrashHandler_SetBuildNote(void) {
+    char note[256];
+    snprintf(note, sizeof(note), "%s, branch %s, commit %s, built %s", (const char*)gBuildVersion,
+             (const char*)gGitBranch, (const char*)gGitCommitHash, (const char*)gBuildDate);
+    CrashHandlerSetNote("build", note);
+}
