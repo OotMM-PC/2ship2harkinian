@@ -39,6 +39,12 @@ constexpr int32_t kVanillaSongEvents[OOTMM_MM_SONG_EVENT_MAX] = {
     14, 15, 17, 12, 12, 12, 12, 12, 14, 14, 16, 3, 19,
 };
 
+constexpr int32_t kEventForms[OOTMM_MM_SONG_EVENT_MAX] = {
+    PLAYER_FORM_DEKU,  PLAYER_FORM_GORON, PLAYER_FORM_ZORA,  -1, PLAYER_FORM_HUMAN,
+    PLAYER_FORM_HUMAN, PLAYER_FORM_HUMAN, PLAYER_FORM_HUMAN, -1, -1,
+    PLAYER_FORM_GORON, -1,                -1,
+};
+
 bool ShuffleEnabled() {
     if (!OotmmSession_IsActive()) {
         return false;
@@ -164,7 +170,11 @@ static int32_t NearbyPadEvent(PlayState* play) {
         const float dy = actor->world.pos.y - player->actor.world.pos.y;
         const float dz = actor->world.pos.z - player->actor.world.pos.z;
         if (sqrtf(dx * dx + dz * dz) < 120.0f && fabsf(dy) < 80.0f) {
-            return actor->params & 0xF;
+            const int32_t eventId = actor->params & 0xF;
+            const int32_t form = eventId < OOTMM_MM_SONG_EVENT_MAX ? kEventForms[eventId] : -1;
+            if (form < 0 || player->transformation == form) {
+                return eventId;
+            }
         }
     }
     return -1;
