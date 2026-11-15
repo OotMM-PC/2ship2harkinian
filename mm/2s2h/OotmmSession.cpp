@@ -651,6 +651,11 @@ void UpdateEntranceTransition() {
         !extendedSource.has_value()) {
         return;
     }
+    if (!playerExit && !extendedSource.has_value() &&
+        Entrance_GetSceneIdAbsolute(static_cast<u16>(nextEntrance)) == gPlayState->sceneId) {
+        sLastResolvedEntrance = nextEntrance;
+        return;
+    }
     const uint32_t source = extendedSource.value_or(OverrideSource(nextEntrance));
     if (sLastResolvedEntrance.has_value() && source == *sLastResolvedEntrance) {
         return;
