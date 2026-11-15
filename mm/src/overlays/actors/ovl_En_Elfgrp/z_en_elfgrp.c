@@ -186,15 +186,21 @@ void EnElfgrp_Init(Actor* thisx, PlayState* play) {
             this->talkedOnceFlag = 1 << ENELFGRP_TYPE_MAGIC;
 
             if (numberInFountain >= STRAY_FAIRY_TOTAL) {
+                s32 human = OotmmNpcChecks_GreatFairyHuman(INV_CONTENT(ITEM_MASK_DEKU) == ITEM_MASK_DEKU);
+                s32 rewardDone =
+                    human ? OotmmNpcChecks_Done("MM_GREAT_FAIRY_TOWN",
+                                                INV_CONTENT(ITEM_MASK_GREAT_FAIRY) == ITEM_MASK_GREAT_FAIRY)
+                          : OotmmNpcChecks_Done("MM_GREAT_FAIRY_TOWN_ALT",
+                                                gSaveContext.save.saveInfo.playerData.isMagicAcquired == true);
+
                 this->actionFunc = func_80A3A520;
 
                 if ((ENELFGRP_GET_SWITCHFLAG_ROT(&this->actor) != 0) &&
-                    Flags_GetSwitch(play, ENELFGRP_GET_SWITCHFLAG_ROT(&this->actor))) {
+                    Flags_GetSwitch(play, ENELFGRP_GET_SWITCHFLAG_ROT(&this->actor)) && rewardDone) {
                     this->actionFunc = EnElfgrp_DoNothing;
-                } else if (OotmmNpcChecks_Done("MM_GREAT_FAIRY_TOWN",
-                                               INV_CONTENT(ITEM_MASK_GREAT_FAIRY) == ITEM_MASK_GREAT_FAIRY)) {
+                } else if (rewardDone) {
                     EnElfgrp_SetCutscene(this, 4);
-                } else if (!OotmmNpcChecks_GreatFairyHuman(INV_CONTENT(ITEM_MASK_DEKU) == ITEM_MASK_DEKU)) {
+                } else if (!human) {
                     EnElfgrp_SetCutscene(this, 5);
                 } else {
                     this->stateFlags |= ELFGRP_STATE_1;
