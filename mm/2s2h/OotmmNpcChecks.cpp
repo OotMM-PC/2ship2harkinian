@@ -124,6 +124,9 @@ Actor* sUpdatingActor = nullptr;
 bool sCheckingOfferText = false;
 int32_t sGrandmaOfferPos = -1;
 std::vector<std::string> sDeferredCollects;
+constexpr const char* kInitialSong = "MM_SONG_HEALING";
+bool sCycleReset = false;
+bool sCycleResetArrived = false;
 uint32_t sDeferredFrame = 0;
 std::string sPendingPurchase;
 uint32_t sPurchaseRetryFrame = 0;
@@ -332,6 +335,23 @@ bool DeferCollect(const char* nativeId) {
     }
     sDeferredFrame = gPlayState != nullptr ? gPlayState->gameplayFrames : 0;
     return true;
+}
+
+void OfferInitialSong() {
+    if (static_cast<uint16_t>(gSaveContext.save.entrance) != ENTRANCE(SOUTH_CLOCK_TOWN, 0)) {
+        if (sCycleResetArrived) {
+            sCycleReset = false;
+            sCycleResetArrived = false;
+        }
+        return;
+    }
+    if (sCycleReset) {
+        sCycleResetArrived = true;
+        return;
+    }
+    if (OotmmSession_IsActive() && !OotmmNpcChecks_IsCollected(kInitialSong)) {
+        DeferCollect(kInitialSong);
+    }
 }
 
 void FlushDeferredCollects() {
@@ -1252,11 +1272,13 @@ void OotmmNpcChecks_Init(void) {
             sTextDoneOffers.clear();
             sUpdatingActor = nullptr;
             ClearPurchaseStatus();
+            OfferInitialSong();
         });
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>([](s16) {
         ClearPurchaseStatus();
         sDeferredCollects.clear();
     });
+    GameInteractor::Instance->RegisterGameHook<GameInteractor::AfterEndOfCycleSave>([]() { sCycleReset = true; });
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(FlushDeferredCollects);
     REGISTER_VB_SHOULD(VB_GIVE_ITEM_FROM_OFFER, {
         GetItemId* item = va_arg(args, GetItemId*);
@@ -1498,7 +1520,7 @@ void OotmmNpcChecks_Init(void) {
         }
     });
     REGISTER_VB_SHOULD(VB_GIVE_ITEM_FROM_OSN, {
-        if (DeferCollect("MM_SONG_HEALING")) {
+        if (OotmmNpcChecks_IsShuffled(kInitialSong)) {
             *should = false;
         }
     });
@@ -1551,9 +1573,8 @@ void OotmmNpcChecks_Init(void) {
         }
     });
     REGISTER_VB_SHOULD(VB_OSN_CONSIDER_ELIGIBLE_FOR_SONG_OF_HEALING, {
-        if (OotmmNpcChecks_IsShuffled("MM_SONG_HEALING")) {
-            *should = gSaveContext.save.saveInfo.inventory.items[SLOT_OCARINA] != ITEM_NONE &&
-                      !OotmmNpcChecks_IsCollected("MM_SONG_HEALING");
+        if (OotmmNpcChecks_IsShuffled(kInitialSong)) {
+            *should = false;
         }
     });
     REGISTER_VB_SHOULD(VB_SPAWN_BOSS_REMAINS, {
