@@ -976,15 +976,18 @@ extern "C" int OotmmNpcChecks_Collect(const char* nativeId) {
 }
 
 std::string OotmmNpcChecks_PlacementName(const Ship::OotmmPlacement& placement) {
-    const bool cloaked = !placement.CloakItemId.empty();
-    std::string name =
-        "%g" + Ship::OotmmItemCatalog::TrimGameSuffix(cloaked ? placement.CloakItemName : placement.ItemName) + "%w";
-    const std::string game = cloaked ? (placement.CloakItemId.starts_with("OOT_") ? "oot" : "mm") : placement.ItemGame;
-    const bool otherPlayer = !placement.IsFor(OotmmSession_GetState().GetPlayerId());
-    if (otherPlayer) {
-        name += " for %bPlayer " + std::to_string(placement.OwnerPlayer) + "%w";
-    } else if (!game.empty() && game != "mm") {
-        name += " for %rOcarina of Time%w";
+    const std::string& raw = placement.CloakItemId.empty() ? placement.ItemName : placement.CloakItemName;
+    std::string name = "%g" + raw + "%w";
+    for (const auto& [suffix, tag] : { std::pair<std::string_view, std::string_view>{ " (OoT)", "\x05OoT" },
+                                       { " (OOT)", "\x05OoT" },
+                                       { " (MM)", "%pMM" } }) {
+        if (raw.ends_with(suffix)) {
+            name = "%g" + raw.substr(0, raw.size() - suffix.size()) + "%w (" + std::string(tag) + "%w)";
+            break;
+        }
+    }
+    if (!placement.IsFor(OotmmSession_GetState().GetPlayerId())) {
+        name += " for %yPlayer " + std::to_string(placement.OwnerPlayer) + "%w";
     }
     return name;
 }

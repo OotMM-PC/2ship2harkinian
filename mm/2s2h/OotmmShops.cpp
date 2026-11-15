@@ -291,6 +291,9 @@ void BuildShopText(u16* textId, bool* loadFromMessageTable) {
                     (needsMushroom ? "\x11\x11%pRequires Magic Mushroom%w\x1A" : "\x1A");
     } else {
         entry.msg = OotmmNpcChecks_PlacementName(*placement) + "\x11%r" + std::to_string(price) + " Rupees\x11\xC2%gBuy\x11No thanks%w";
+        entry.autoFormat = false;
+        CustomMessage::ReplaceColorChars(&entry.msg);
+        CustomMessage::EnsureMessageEnd(&entry.msg);
     }
     CustomMessage::LoadCustomMessageIntoFont(entry);
     *loadFromMessageTable = false;
