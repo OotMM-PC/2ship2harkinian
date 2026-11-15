@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <filesystem>
+#include <unordered_set>
 #include <fstream>
 #include <chrono>
 
@@ -1231,9 +1232,23 @@ extern "C" Gfx* ResourceMgr_LoadGfxByName(const char* path) {
 typedef struct {
     int index;
     Gfx instruction;
+    const void* instructionsPtr;
+    size_t instructionCount;
 } GfxPatch;
 
 std::unordered_map<std::string, std::unordered_map<std::string, GfxPatch>> originalGfx;
+
+static bool GfxPatchInBounds(const std::shared_ptr<Fast::DisplayList>& res, const char* path, int index) {
+    if (res != nullptr && index >= 0 && static_cast<size_t>(index) < res->Instructions.size()) {
+        return true;
+    }
+    static std::unordered_set<std::string> reported;
+    if (reported.insert(path).second) {
+        SPDLOG_WARN("Skipped display list patch at index {} of {}: the loaded list has {} commands", index, path,
+                    res != nullptr ? res->Instructions.size() : 0);
+    }
+    return false;
+}
 
 // Attention! This is primarily for cosmetics & bug fixes. For things like mods and model replacement you should be
 // using OTRs instead (When that is available). Index can be found using the commented out section below.
@@ -1260,6 +1275,10 @@ extern "C" void ResourceMgr_PatchGfxByName(const char* path, const char* patchNa
     // index /= 2;
     // }
 
+    if (!GfxPatchInBounds(res, path, index)) {
+        return;
+    }
+
     // Do not patch custom assets as they most likely do not have the same instructions as authentic assets
     if (res->GetInitData()->IsCustom) {
         return;
@@ -1268,7 +1287,7 @@ extern "C" void ResourceMgr_PatchGfxByName(const char* path, const char* patchNa
     Gfx* gfx = (Gfx*)&res->Instructions[index];
 
     if (!originalGfx.contains(path) || !originalGfx[path].contains(patchName)) {
-        originalGfx[path][patchName] = { index, *gfx };
+        originalGfx[path][patchName] = { index, *gfx, res->Instructions.data(), res->Instructions.size() };
     }
 
     *gfx = instruction;
@@ -1279,6 +1298,10 @@ extern "C" void ResourceMgr_PatchGfxCopyCommandByName(const char* path, const ch
     auto res = std::static_pointer_cast<Fast::DisplayList>(
         Ship::Context::GetInstance()->GetResourceManager()->LoadResource(path));
 
+    if (!GfxPatchInBounds(res, path, destinationIndex) || !GfxPatchInBounds(res, path, sourceIndex)) {
+        return;
+    }
+
     // Do not patch custom assets as they most likely do not have the same instructions as authentic assets
     if (res->GetInitData()->IsCustom) {
         return;
@@ -1288,7 +1311,8 @@ extern "C" void ResourceMgr_PatchGfxCopyCommandByName(const char* path, const ch
     Gfx sourceGfx = *(Gfx*)&res->Instructions[sourceIndex];
 
     if (!originalGfx.contains(path) || !originalGfx[path].contains(patchName)) {
-        originalGfx[path][patchName] = { destinationIndex, *destinationGfx };
+        originalGfx[path][patchName] = { destinationIndex, *destinationGfx, res->Instructions.data(),
+                                         res->Instructions.size() };
     }
 
     *destinationGfx = sourceGfx;
@@ -1299,8 +1323,11 @@ extern "C" void ResourceMgr_UnpatchGfxByName(const char* path, const char* patch
         auto res = std::static_pointer_cast<Fast::DisplayList>(
             Ship::Context::GetInstance()->GetResourceManager()->LoadResource(path));
 
-        Gfx* gfx = (Gfx*)&res->Instructions[originalGfx[path][patchName].index];
-        *gfx = originalGfx[path][patchName].instruction;
+        const GfxPatch& patch = originalGfx[path][patchName];
+        if (res != nullptr && res->Instructions.data() == patch.instructionsPtr &&
+            res->Instructions.size() == patch.instructionCount) {
+            res->Instructions[patch.index] = patch.instruction;
+        }
 
         originalGfx[path].erase(patchName);
     }
@@ -1330,8 +1357,10 @@ extern "C" void ResourceMgr_ResetAllPatchesForDL(const char* path) {
     // Iterate through all patches and restore original instructions
     auto& patches = originalGfx[path];
     for (auto it = patches.begin(); it != patches.end();) {
-        Gfx* gfx = (Gfx*)&res->Instructions[it->second.index];
-        *gfx = it->second.instruction;
+        if (res != nullptr && res->Instructions.data() == it->second.instructionsPtr &&
+            res->Instructions.size() == it->second.instructionCount) {
+            res->Instructions[it->second.index] = it->second.instruction;
+        }
         // erase() returns the next iterator, allowing safe iteration during removal
         it = patches.erase(it);
     }
