@@ -6,6 +6,7 @@
 
 #include "z_en_lift_nuts.h"
 #include "overlays/actors/ovl_En_Gamelupy/z_en_gamelupy.h"
+#include "2s2h/OotmmNpcChecks.h"
 
 #define FLAGS                                                                                  \
     (ACTOR_FLAG_ATTENTION_ENABLED | ACTOR_FLAG_FRIENDLY | ACTOR_FLAG_UPDATE_CULLING_DISABLED | \
@@ -986,6 +987,10 @@ void EnLiftNuts_ResumeConversation(EnLiftNuts* this, PlayState* play) {
                 break;
         }
     } else {
+        if (OotmmNpcChecks_CanFinishMessageOffer(&this->actor)) {
+            OotmmNpcChecks_FinishMessageOffer(&this->actor);
+            this->actor.flags |= ACTOR_FLAG_TALK_OFFER_AUTO_ACCEPTED;
+        }
         Actor_OfferTalkExchangeEquiCylinder(&this->actor, play, 200.0f, PLAYER_IA_MINUS1);
     }
 }
