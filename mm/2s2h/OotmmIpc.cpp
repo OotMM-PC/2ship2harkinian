@@ -97,6 +97,9 @@ void OotmmIpc_Pump() {
         gOotmmShowNames = sSettings.ShowNames ? 1 : 0;
         sSession.AcknowledgeSettings(sSettings.Revision);
     }
+    if (const auto saveRequest = sSession.ConsumeSaveRequest()) {
+        sSession.SendSaveCompleted(*saveRequest, OotmmSession_SaveForLauncher());
+    }
     if (sSettings.ZTargetHold >= 0 && gSaveContext.options.zTargetSetting != sSettings.ZTargetHold) {
         gSaveContext.options.zTargetSetting = static_cast<u8>(sSettings.ZTargetHold);
     }

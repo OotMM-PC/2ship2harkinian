@@ -600,7 +600,7 @@ void KeepStoneTowerOrientation() {
 }
 
 void UpdateEntranceTransition() {
-    if (gPlayState == nullptr) {
+    if (gPlayState == nullptr || gSaveContext.gameMode == GAMEMODE_TITLE_SCREEN) {
         return;
     }
     KeepStoneTowerOrientation();
@@ -1302,4 +1302,16 @@ extern "C" void OotmmSession_RedirectMoonCrashRespawn(void) {
         SPDLOG_INFO("[OoTMM] Moon crash respawn redirected to entrance 0x{:X}", *spawn);
         gSaveContext.save.entrance = *spawn;
     }
+}
+
+bool OotmmSession_SaveForLauncher() {
+    if (!OotmmSession_IsActive() || gPlayState == nullptr || gSaveContext.fileNum == 0xFF) {
+        return true;
+    }
+    if (!PersistTransitionSave()) {
+        SPDLOG_ERROR("[OoTMM] Launcher-requested save failed");
+        return false;
+    }
+    SPDLOG_INFO("[OoTMM] Saved for the launcher");
+    return true;
 }

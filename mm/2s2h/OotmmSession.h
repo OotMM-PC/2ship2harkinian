@@ -41,4 +41,5 @@ void OotmmSession_Init();
 bool OotmmSession_HasPendingInitialSave();
 const Ship::OotmmGameState& OotmmSession_GetState();
 bool OotmmSession_BeginCrossGameTransition(const Ship::OotmmEntranceMapping& mapping);
+bool OotmmSession_SaveForLauncher();
 #endif
