@@ -12,6 +12,8 @@ void OotmmPresence_Init(void);
 extern int32_t gOotmmPvpHitsSent;
 extern int32_t gOotmmPvpHitsReceived;
 extern int32_t gOotmmPvpHitsApplied;
+extern int32_t gOotmmPvpLastSentKind;
+extern int32_t gOotmmPvpLastAppliedKind;
 
 extern const char* gOotmmEquipDlCapture[4];
 typedef enum OotmmCustomHandDl {

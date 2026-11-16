@@ -42,4 +42,5 @@ void OotmmItemApply_RecordBossClear(int dungeonId);
 void OotmmItemApply_ResetLedgerForNewSave();
 void OotmmItemApply_Reconcile();
 nlohmann::json OotmmItemApply_TrapsApplied();
+bool OotmmItemApply_PvpHit(int kind, int damage, int16_t yaw);
 #endif
