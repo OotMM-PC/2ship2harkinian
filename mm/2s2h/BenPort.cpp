@@ -112,6 +112,7 @@ CrowdControl* CrowdControl::Instance;
 #include <ship/window/gui/resource/FontFactory.h>
 #include "2s2h/Enhancements/Audio/AudioCollection.h"
 #include "BenGui/BenInputEditorWindow.h"
+#include <cmath>
 
 OTRGlobals* OTRGlobals::Instance;
 GameInteractor* GameInteractor::Instance;
@@ -398,6 +399,21 @@ static struct {
     bool processing;
 } audio;
 
+static void ApplyMasterVolume(s16* samples, size_t frames) {
+    constexpr size_t channels = 2;
+    static float carried[channels] = {};
+    const float volume = std::max(CVarGetFloat("gSettings.Audio.MasterVolume", 1.0f), 0.0f);
+    if (volume == 1.0f) {
+        return;
+    }
+    for (size_t i = 0; i < frames * channels; i++) {
+        const float wanted = samples[i] * volume + carried[i % channels];
+        const float played = std::clamp(std::round(wanted), -32768.0f, 32767.0f);
+        carried[i % channels] = wanted - played;
+        samples[i] = static_cast<s16>(played);
+    }
+}
+
 void OTRAudio_Thread() {
     while (audio.running) {
         {
@@ -430,6 +446,7 @@ void OTRAudio_Thread() {
                                            num_audio_samples);
         }
 
+        ApplyMasterVolume(audio_buffer, num_audio_samples * AUDIO_FRAMES_PER_UPDATE);
         AudioPlayer_Play((u8*)audio_buffer,
                          num_audio_samples * (sizeof(int16_t) * NUM_AUDIO_CHANNELS * AUDIO_FRAMES_PER_UPDATE));
 
