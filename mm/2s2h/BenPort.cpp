@@ -112,6 +112,7 @@ CrowdControl* CrowdControl::Instance;
 #include <ship/window/gui/resource/FontFactory.h>
 #include "2s2h/Enhancements/Audio/AudioCollection.h"
 #include "BenGui/BenInputEditorWindow.h"
+#include <libultraship/bridge/OotmmRuntimeTest.h>
 #include <cmath>
 
 OTRGlobals* OTRGlobals::Instance;
@@ -2002,6 +2003,9 @@ extern "C" int AudioPlayer_GetDesiredBuffered(void) {
 }
 
 extern "C" void AudioPlayer_Play(const uint8_t* buf, uint32_t len) {
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+    Ship::OotmmRuntimeTest::Get().HearAudio(reinterpret_cast<const int16_t*>(buf), len / sizeof(int16_t));
+#endif
     AudioPlayerPlayFrame(buf, len);
 }
 
