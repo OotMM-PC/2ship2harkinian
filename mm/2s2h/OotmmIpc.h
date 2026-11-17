@@ -32,6 +32,8 @@ bool OotmmIpc_TakeRemotePresence(std::vector<Ship::OotmmPlayerPose>& poses,
 
 bool OotmmIpc_SendCheckCollected(const std::string& checkId, bool present = false);
 bool OotmmIpc_SendRenewalGrant(const std::string& itemId);
+bool OotmmIpc_SendEntranceTaken(uint32_t source);
+bool OotmmIpc_SendLocation(int scene, uint32_t entrance);
 bool OotmmIpc_IsCheckPresentationPending(const std::string& checkId);
 void OotmmIpc_CompleteCheckPresentation(const std::string& checkKey);
 bool OotmmIpc_IsCheckCompleted(const std::string& checkId);

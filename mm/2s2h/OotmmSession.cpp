@@ -91,6 +91,7 @@ Ship::OotmmEntranceMapping sCrossGameRequest;
 std::optional<Ship::OotmmEntranceMapping> sCrossGameRetry;
 uint32_t sCrossGameRetryFrames = 0;
 std::optional<uint32_t> sLastResolvedEntrance;
+std::optional<uint32_t> sReportedEntranceSource;
 std::optional<uint32_t> sPendingWallmasterSource;
 uint16_t sGrottoReturnEntrance = 0;
 std::string sCrossGameWaitReason;
@@ -600,6 +601,12 @@ void KeepStoneTowerOrientation() {
     }
 }
 
+void ReportLocation() {
+    if (gPlayState != nullptr && OotmmSession_IsActive()) {
+        OotmmIpc_SendLocation(gPlayState->sceneId, gSaveContext.save.entrance);
+    }
+}
+
 void UpdateEntranceTransition() {
     if (gPlayState == nullptr || gSaveContext.gameMode == GAMEMODE_TITLE_SCREEN) {
         return;
@@ -629,6 +636,7 @@ void UpdateEntranceTransition() {
         sPlayerExitPending = false;
         sPendingWallmasterSource.reset();
         sLastResolvedEntrance.reset();
+        sReportedEntranceSource.reset();
         return;
     }
 
@@ -662,6 +670,10 @@ void UpdateEntranceTransition() {
     }
     sGrottoReturnEntrance = 0;
     sPendingWallmasterSource.reset();
+    if (sReportedEntranceSource != source) {
+        sReportedEntranceSource = source;
+        OotmmIpc_SendEntranceTaken(source);
+    }
     const auto* mapping = sGameState.FindEntrance(Ship::OotmmGame::Mm, source);
     if (mapping == nullptr || !mapping->ToNativeId.has_value()) {
         return;
@@ -920,6 +932,7 @@ void OotmmSession_Init() {
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(
             [](s16) { ApplySaveFlags(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(UpdateEntranceTransition);
+        GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(ReportLocation);
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(RetryInitialSave);
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnGameStateUpdate>(OotmmItemPage_FillDpadDefaults);
         if (sGameState.GetBoolSetting("fastMasks", false)) {

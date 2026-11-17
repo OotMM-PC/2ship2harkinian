@@ -217,6 +217,14 @@ bool OotmmIpc_SendCheckCollected(const std::string& checkId, bool present) {
     return sSession.SendCheckCollected("mm", checkId, present);
 }
 
+bool OotmmIpc_SendEntranceTaken(uint32_t source) {
+    return sSession.SendEntranceTaken(source);
+}
+
+bool OotmmIpc_SendLocation(int scene, uint32_t entrance) {
+    return sSession.SendLocation(scene, entrance);
+}
+
 bool OotmmIpc_IsCheckPresentationPending(const std::string& checkId) {
     return sSession.IsCheckPresentationPending("mm:" + checkId);
 }
