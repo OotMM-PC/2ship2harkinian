@@ -10,6 +10,7 @@ extern "C" {
 
 int32_t OotmmSession_TryBootDirectly(void* gameState);
 int32_t OotmmSession_IsActive(void);
+int32_t OotmmSession_SteadyDeityBeams(void);
 int32_t OotmmSession_ErIndoors(void);
 int32_t OotmmSession_SirloinIsStoredAway(struct PlayState* play);
 int32_t OotmmSession_StoreSirloin(struct PlayState* play, struct Actor* sirloin);

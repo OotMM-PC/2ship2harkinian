@@ -15051,7 +15051,9 @@ s32 Player_ActionHandler_7(Player* this, PlayState* play) {
 
             func_80833864(play, this, meleeWeaponAnim);
             if ((meleeWeaponAnim >= PLAYER_MWA_SPIN_ATTACK_1H) ||
-                ((this->transformation == PLAYER_FORM_FIERCE_DEITY) && Player_IsZTargeting(this))) {
+                ((this->transformation == PLAYER_FORM_FIERCE_DEITY) &&
+                 (Player_IsZTargeting(this) || (OotmmSession_SteadyDeityBeams() &&
+                                                CHECK_BTN_ALL(sPlayerControlInput->cur.button, BTN_Z))))) {
                 this->stateFlags2 |= PLAYER_STATE2_20000;
                 func_808332A0(play, this, 0, meleeWeaponAnim < PLAYER_MWA_SPIN_ATTACK_1H);
             }

@@ -1018,6 +1018,10 @@ extern "C" int32_t OotmmSession_IsActive(void) {
     return sGameState.IsActive() && sGameState.HasSeed() ? 1 : 0;
 }
 
+extern "C" int32_t OotmmSession_SteadyDeityBeams(void) {
+    return OotmmSession_IsActive() && gOotmmSteadyDeityBeams;
+}
+
 extern "C" int32_t OotmmSession_TryFastMask(int32_t item) {
     if (!OotmmSession_IsActive() || !sGameState.GetBoolSetting("fastMasks", false)) {
         return false;

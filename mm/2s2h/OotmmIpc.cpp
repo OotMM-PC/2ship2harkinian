@@ -81,6 +81,7 @@ extern "C" int gOotmmPvpEnabled = 0;
 extern "C" int gOotmmShowNames = 1;
 extern "C" int gOotmmGameSpeedPercent = 100;
 extern "C" int gOotmmGameSpeedSmooth = 0;
+extern "C" int gOotmmSteadyDeityBeams = 1;
 
 void OotmmIpc_Init() {
     sInventory.Reset();
@@ -95,6 +96,7 @@ void OotmmIpc_Pump() {
         gOotmmGameSpeedSmooth = sSettings.SpeedSmooth ? 1 : 0;
         gOotmmPvpEnabled = sSettings.Pvp ? 1 : 0;
         gOotmmShowNames = sSettings.ShowNames ? 1 : 0;
+        gOotmmSteadyDeityBeams = sSettings.SteadyDeityBeams ? 1 : 0;
         sSession.AcknowledgeSettings(sSettings.Revision);
     }
     if (const auto saveRequest = sSession.ConsumeSaveRequest()) {
