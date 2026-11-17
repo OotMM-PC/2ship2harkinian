@@ -30,8 +30,12 @@ void OotmmPresence_CaptureEquipDl(int32_t index, void* dl);
 void* OotmmPuppet_EyeTexture(int32_t playerForm, int32_t eyeIndex);
 void* OotmmPuppet_MouthTexture(int32_t playerForm, int32_t mouthIndex);
 
+struct Actor;
 struct PlayState;
+struct struct_801F58B0;
 void OotmmPuppet_SetTunicColor(struct PlayState* play);
+void OotmmPuppet_PrepareMaskDraw(struct PlayState* play, struct Actor* puppet, int32_t mask,
+                                 struct struct_801F58B0* fairyHair, int32_t resetFairyHair);
 
 #ifdef __cplusplus
 }

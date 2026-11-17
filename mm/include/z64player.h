@@ -663,6 +663,14 @@ typedef struct {
     /* 0x04 */ struct_80122D44_arg1_unk_04 unk_04[4];
 } struct_80122D44_arg1; // size >= 0x114
 
+// 2S2H [OoTMM]
+typedef struct struct_801F58B0 {
+    /* 0x00 */ Vec3f unk_00;
+    /* 0x0C */ Vec3f unk_0C;
+    /* 0x18 */ s16 unk_18;
+    /* 0x1A */ s16 unk_1A;
+} struct_801F58B0; // size = 0x1C
+
 typedef struct PlayerOverrideInputEntry {
     /* 0x0 */ s8 numPoints;
     /* 0x1 */ s8 curPoint;

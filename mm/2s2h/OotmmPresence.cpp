@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <cstring>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -128,7 +129,13 @@ struct PuppetState {
     bool colliderReady = false;
     u8 pvpCooldown = 0;
     Actor* pvpLastProjectile = nullptr;
+    char eyePath[128]{};
+    char mouthPath[128]{};
+    struct_801F58B0 fairyHair[3][3]{};
+    std::optional<u32> fairyHairFrame;
 };
+
+PuppetState* gDrawingPuppet = nullptr;
 
 struct PuppetSlot {
     Actor* actor = nullptr;
@@ -339,7 +346,6 @@ extern "C" void OotmmPuppet_PostLimbDraw(PlayState* play, s32 limbIndex, Gfx** d
                                          Actor* actor) {
     (void)dList2;
     (void)rot;
-    (void)actor;
     if (limbIndex == PLAYER_LIMB_SHEATH && dList1 != NULL && *dList1 != NULL &&
         gPuppetForm == PLAYER_FORM_HUMAN && gPuppetShield != PLAYER_SHIELD_NONE &&
         (gPuppetSheathType == PLAYER_MODELTYPE_SHEATH_14 || gPuppetSheathType == PLAYER_MODELTYPE_SHEATH_15)) {
@@ -364,13 +370,20 @@ extern "C" void OotmmPuppet_PostLimbDraw(PlayState* play, s32 limbIndex, Gfx** d
         }
     }
     if (limbIndex != PLAYER_LIMB_HEAD || gPuppetMask < PLAYER_MASK_TRUTH || gPuppetMask > PLAYER_MASK_DEKU ||
-        dList1 == NULL || *dList1 == NULL) {
+        dList1 == NULL || *dList1 == NULL || gDrawingPuppet == nullptr) {
         return;
     }
     if (gPuppetForm != PLAYER_FORM_HUMAN &&
         (gPuppetMask < PLAYER_MASK_FIERCE_DEITY || gPuppetMask == gPuppetForm + PLAYER_MASK_FIERCE_DEITY)) {
         return;
     }
+    bool resetFairyHair = false;
+    if (gPuppetMask == PLAYER_MASK_GREAT_FAIRY) {
+        std::optional<u32>& drawn = gDrawingPuppet->fairyHairFrame;
+        resetFairyHair = !drawn.has_value() || play->gameplayFrames - *drawn > 1;
+        drawn = play->gameplayFrames;
+    }
+    OotmmPuppet_PrepareMaskDraw(play, actor, gPuppetMask, &gDrawingPuppet->fairyHair[0][0], resetFairyHair);
     OPEN_DISPS(play->state.gfxCtx);
     gSPDisplayList(POLY_OPA_DISP++, (Gfx*)D_801C0B20[gPuppetMask - 1]);
     CLOSE_DISPS(play->state.gfxCtx);
@@ -461,8 +474,11 @@ extern "C" void* OotmmPuppet_EyeTexture(int32_t playerForm, int32_t eyeIndex) {
                              eyeIndex < PLAYER_EYES_MAX
                          ? sPlayerEyesTextures[playerForm][eyeIndex]
                          : NULL;
-    static char sPath[128];
-    return PuppetFaceTexture(sPath, sizeof(sPath), true, playerForm, eyeIndex, fallback);
+    if (gDrawingPuppet == nullptr) {
+        return fallback;
+    }
+    return PuppetFaceTexture(gDrawingPuppet->eyePath, sizeof(gDrawingPuppet->eyePath), true, playerForm, eyeIndex,
+                             fallback);
 }
 
 extern "C" void* OotmmPuppet_MouthTexture(int32_t playerForm, int32_t mouthIndex) {
@@ -470,8 +486,11 @@ extern "C" void* OotmmPuppet_MouthTexture(int32_t playerForm, int32_t mouthIndex
                              mouthIndex < PLAYER_MOUTH_MAX
                          ? sPlayerMouthTextures[playerForm][mouthIndex]
                          : NULL;
-    static char sPath[128];
-    return PuppetFaceTexture(sPath, sizeof(sPath), false, playerForm, mouthIndex, fallback);
+    if (gDrawingPuppet == nullptr) {
+        return fallback;
+    }
+    return PuppetFaceTexture(gDrawingPuppet->mouthPath, sizeof(gDrawingPuppet->mouthPath), false, playerForm,
+                             mouthIndex, fallback);
 }
 
 namespace {
@@ -563,6 +582,7 @@ void PuppetDrawFunc(Actor* actor, PlayState* play) {
     Matrix_Translate(actor->world.pos.x, actor->world.pos.y, actor->world.pos.z, MTXMODE_NEW);
     Matrix_RotateYS(actor->shape.rot.y, MTXMODE_APPLY);
     Matrix_Scale(0.01f, 0.01f, 0.01f, MTXMODE_APPLY);
+    gDrawingPuppet = state;
     gPuppetForm = state->form;
     gPuppetPlayerId = state->playerId;
     gPuppetHumanModel = state->humanModel;
@@ -587,6 +607,7 @@ void PuppetDrawFunc(Actor* actor, PlayState* play) {
     Player_DrawImpl(play, state->skelAnime.skeleton, state->skelAnime.jointTable, state->skelAnime.dListCount, 0,
                     (PlayerTransformation)state->form, state->boots, 0, OotmmPuppet_OverrideLimbDraw,
                     OotmmPuppet_PostLimbDraw, actor);
+    gDrawingPuppet = nullptr;
     gPuppetEquipDl[0] = gPuppetEquipDl[1] = gPuppetEquipDl[2] = gPuppetEquipDl[3] = NULL;
     gPuppetMask = 0;
     gPuppetCustomMask = 0;

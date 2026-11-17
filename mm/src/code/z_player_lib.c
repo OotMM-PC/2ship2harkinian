@@ -57,13 +57,6 @@
 #include "2s2h/OotmmScales.h"
 #include "2s2h/OotmmPresence.h"
 
-typedef struct {
-    /* 0x00 */ Vec3f unk_00;
-    /* 0x0C */ Vec3f unk_0C;
-    /* 0x18 */ s16 unk_18;
-    /* 0x1A */ s16 unk_1A;
-} struct_801F58B0; // size = 0x1C
-
 struct_801F58B0 D_801F58B0[3][3];
 
 #define D_801F59B0_LEN 2
@@ -3538,11 +3531,13 @@ void Player_DrawCircusLeadersMask(PlayState* play, Player* player) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+// 2S2H [OoTMM]
+static Gfx D_801C0BC0[] = {
+    gsDPSetEnvColor(0, 0, 0, 255),
+    gsSPEndDisplayList(),
+};
+
 void Player_DrawBlastMask(PlayState* play, Player* player) {
-    static Gfx D_801C0BC0[] = {
-        gsDPSetEnvColor(0, 0, 0, 255),
-        gsSPEndDisplayList(),
-    };
     static Gfx D_801C0BD0[] = {
         gsDPSetRenderMode(AA_EN | Z_CMP | Z_UPD | IM_RD | CLR_ON_CVG | CVG_DST_WRAP | ZMODE_XLU | FORCE_BL |
                               G_RM_FOG_SHADE_A,
@@ -3644,7 +3639,8 @@ Vec3f D_801C0CE8[PLAYER_FORM_MAX] = {
     { 0.0f, 0.0f, 0.0f },        // PLAYER_FORM_HUMAN
 };
 
-void Player_DrawBunnyHood(PlayState* play) {
+// 2S2H [OoTMM]
+static void Player_DrawBunnyEars(PlayState* play, BunnyEarKinematics* ears) {
     Mtx* mtx = GRAPH_ALLOC(play->state.gfxCtx, 2 * sizeof(Mtx));
     Vec3s earRot;
 
@@ -3657,16 +3653,16 @@ void Player_DrawBunnyHood(PlayState* play) {
 
     Matrix_Push();
 
-    earRot.x = sBunnyEarKinematics.rot.y + 0x3E2;
-    earRot.y = sBunnyEarKinematics.rot.z + 0xDBE;
-    earRot.z = sBunnyEarKinematics.rot.x - 0x348A;
+    earRot.x = ears->rot.y + 0x3E2;
+    earRot.y = ears->rot.z + 0xDBE;
+    earRot.z = ears->rot.x - 0x348A;
     Matrix_SetTranslateRotateYXZ(97.0f, -1203.0f, -240.0f, &earRot);
 
     Matrix_ToMtx(mtx++);
 
-    earRot.x = sBunnyEarKinematics.rot.y - 0x3E2;
-    earRot.y = -sBunnyEarKinematics.rot.z - 0xDBE;
-    earRot.z = sBunnyEarKinematics.rot.x - 0x348A;
+    earRot.x = ears->rot.y - 0x3E2;
+    earRot.y = -ears->rot.z - 0xDBE;
+    earRot.z = ears->rot.x - 0x348A;
     Matrix_SetTranslateRotateYXZ(97.0f, -1203.0f, 240.0f, &earRot);
 
     Matrix_ToMtx(mtx);
@@ -3674,6 +3670,10 @@ void Player_DrawBunnyHood(PlayState* play) {
     Matrix_Pop();
 
     CLOSE_DISPS(play->state.gfxCtx);
+}
+
+void Player_DrawBunnyHood(PlayState* play) {
+    Player_DrawBunnyEars(play, &sBunnyEarKinematics);
 }
 
 void func_80127B64(struct_801F58B0 arg0[], s32 count, Vec3f* arg2) {
@@ -3847,7 +3847,9 @@ void func_80128388(struct_801F58B0 arg0[], struct_80128388_arg1 arg1[], s32 arg2
     }
 }
 
-void Player_DrawGreatFairysMask(PlayState* play, Player* player) {
+// 2S2H [OoTMM]
+static void Player_DrawGreatFairysHair(PlayState* play, struct_801F58B0 hair[3][3], Vec3f* head, Vec3f* body,
+                                       f32 bodyLerp) {
     s32 pad;
     Mtx* mtx = GRAPH_ALLOC(play->state.gfxCtx, 6 * sizeof(Mtx));
     Vec3f sp84;
@@ -3862,25 +3864,62 @@ void Player_DrawGreatFairysMask(PlayState* play, Player* player) {
     gSPSegment(POLY_OPA_DISP++, 0x0B, mtx);
 
     Matrix_MultVec3f(&D_801C0C00, &D_801C0C54[1].unk_08);
-    Math_Vec3f_Lerp(&player->bodyPartsPos[PLAYER_BODYPART_HEAD], &player->bodyPartsPos[PLAYER_BODYPART_WAIST], 0.2f,
-                    &D_801C0C54[2].unk_08);
+    Math_Vec3f_Lerp(head, body, bodyLerp, &D_801C0C54[2].unk_08);
 
     for (i = 0; i < ARRAY_COUNT(D_801C0C0C); i++) {
         Matrix_MultVec3f(iter, &sp84);
         Matrix_MultVec3f(iter2, &sp78);
 
-        func_80127DA4(play, D_801F58B0[i], D_801C0C54, 3, &sp84, &sp78, &sp6C);
+        func_80127DA4(play, hair[i], D_801C0C54, 3, &sp84, &sp78, &sp6C);
         sp6C += 11;
 
         Matrix_Push();
         Matrix_Translate(iter->x, iter->y, iter->z, MTXMODE_APPLY);
-        func_80128388(D_801F58B0[i], D_801C0C54, 3, &mtx);
+        func_80128388(hair[i], D_801C0C54, 3, &mtx);
         Matrix_Pop();
         iter++;
         iter2++;
     }
 
     CLOSE_DISPS(play->state.gfxCtx);
+}
+
+void Player_DrawGreatFairysMask(PlayState* play, Player* player) {
+    Player_DrawGreatFairysHair(play, D_801F58B0, &player->bodyPartsPos[PLAYER_BODYPART_HEAD],
+                               &player->bodyPartsPos[PLAYER_BODYPART_WAIST], 0.2f);
+}
+
+void OotmmPuppet_PrepareMaskDraw(PlayState* play, Actor* puppet, s32 mask, struct_801F58B0* fairyHair,
+                                 s32 resetFairyHair) {
+    static BunnyEarKinematics sRestingEars;
+    struct_801F58B0(*strands)[3] = (struct_801F58B0(*)[3])fairyHair;
+    Vec3f head;
+    s32 i;
+
+    switch (mask) {
+        case PLAYER_MASK_BLAST:
+            OPEN_DISPS(play->state.gfxCtx);
+            gSPSegment(POLY_OPA_DISP++, 0x09, D_801C0BC0);
+            CLOSE_DISPS(play->state.gfxCtx);
+            break;
+
+        case PLAYER_MASK_BUNNY:
+            Player_DrawBunnyEars(play, &sRestingEars);
+            break;
+
+        case PLAYER_MASK_GREAT_FAIRY:
+            Matrix_MultZero(&head);
+            if (resetFairyHair) {
+                for (i = 0; i < ARRAY_COUNT(D_801F58B0); i++) {
+                    func_80127B64(strands[i], ARRAY_COUNT(D_801F58B0[i]), &head);
+                }
+            }
+            Player_DrawGreatFairysHair(play, strands, &head, &puppet->world.pos, 0.1f);
+            break;
+
+        default:
+            break;
+    }
 }
 
 s32 func_80128640(PlayState* play, Player* player, Gfx* dlist) {
