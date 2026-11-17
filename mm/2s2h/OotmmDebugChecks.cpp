@@ -398,6 +398,55 @@ static void ApplySetupString(const char* variable, const std::string& setup);
 
 static int sDialogResult = -1;
 
+struct CaptureCamera {
+    bool Active = false;
+    Vec3f Eye{};
+    Vec3f At{};
+    f32 Fov = 60.0f;
+};
+
+static CaptureCamera sCaptureCamera;
+
+static void SetCaptureCamera(const std::string& value) {
+    f32 parts[7] = {};
+    size_t count = 0;
+    size_t start = 0;
+    while (start <= value.size() && count < 7) {
+        const size_t end = std::min(value.find(':', start), value.size());
+        parts[count++] = std::strtof(value.substr(start, end - start).c_str(), nullptr);
+        start = end + 1;
+    }
+    sCaptureCamera.Active = count == 7;
+    sCaptureCamera.Eye = { parts[0], parts[1], parts[2] };
+    sCaptureCamera.At = { parts[3], parts[4], parts[5] };
+    sCaptureCamera.Fov = parts[6];
+}
+
+static Vec3f CaptureCameraUp() {
+    const f32 dx = sCaptureCamera.At.x - sCaptureCamera.Eye.x;
+    const f32 dy = sCaptureCamera.At.y - sCaptureCamera.Eye.y;
+    const f32 dz = sCaptureCamera.At.z - sCaptureCamera.Eye.z;
+    const bool vertical = dy * dy > 99.0f * (dx * dx + dz * dz);
+    return vertical ? Vec3f{ 0.0f, 0.0f, -1.0f } : Vec3f{ 0.0f, 1.0f, 0.0f };
+}
+
+extern "C" void OotmmDebugChecks_OverrideView(PlayState* play) {
+    if (!sCaptureCamera.Active) {
+        return;
+    }
+    Vec3f up = CaptureCameraUp();
+    View_LookAt(&play->view, &sCaptureCamera.Eye, &sCaptureCamera.At, &up);
+    play->view.fovy = sCaptureCamera.Fov;
+    play->lightCtx.fogNear = 1000;
+    play->lightCtx.zFar = 12800;
+    Interface_SetHudVisibility(HUD_VISIBILITY_NONE);
+    for (auto& list : play->actorCtx.actorLists) {
+        for (Actor* actor = list.first; actor != nullptr; actor = actor->next) {
+            actor->flags |= ACTOR_FLAG_UPDATE_CULLING_DISABLED | ACTOR_FLAG_DRAW_CULLING_DISABLED;
+        }
+    }
+}
+
 static void StartTestDialog(const std::string& name) {
     const char* directory = std::getenv("OOTMM_RUNTIME_TEST_DIR");
     if (directory == nullptr || gPlayState == nullptr) {
@@ -538,6 +587,8 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
                     }
                 }
             }
+        } else if (key == "cam") {
+            SetCaptureCamera(value);
         } else if (key == "invuln" && gPlayState != nullptr) {
             GET_PLAYER(gPlayState)->invincibilityTimer = static_cast<s8>(first);
         } else if (key == "aim" && gPlayState != nullptr) {

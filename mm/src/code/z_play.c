@@ -4,6 +4,7 @@
 #include "z64vismono.h"
 #include "z64visfbuf.h"
 #include <libultraship/bridge/consolevariablebridge.h>
+#include "2s2h/OotmmDebugChecks.h"
 
 // Variables are put before most headers as a hacky way to bypass bss reordering
 s16 sTransitionFillTimer;
@@ -1246,6 +1247,9 @@ void Play_DrawMain(PlayState* this) {
     if (1) {
         ShrinkWindow_Draw(gfxCtx);
 
+#if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
+        OotmmDebugChecks_OverrideView(this);
+#endif
         POLY_OPA_DISP = Play_SetFog(this, POLY_OPA_DISP);
         POLY_XLU_DISP = Play_SetFog(this, POLY_XLU_DISP);
 
