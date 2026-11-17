@@ -987,10 +987,7 @@ void EnLiftNuts_ResumeConversation(EnLiftNuts* this, PlayState* play) {
                 break;
         }
     } else {
-        if (OotmmNpcChecks_CanFinishMessageOffer(&this->actor)) {
-            OotmmNpcChecks_FinishMessageOffer(&this->actor);
-            this->actor.flags |= ACTOR_FLAG_TALK_OFFER_AUTO_ACCEPTED;
-        }
+        OotmmNpcChecks_ResumeAfterOffer(&this->actor);
         Actor_OfferTalkExchangeEquiCylinder(&this->actor, play, 200.0f, PLAYER_IA_MINUS1);
     }
 }

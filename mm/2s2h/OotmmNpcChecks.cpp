@@ -830,7 +830,7 @@ OfferSite ResolveOffer(Actor* actor, GetItemId item) {
             }
             return item == GI_MASK_TRUTH ? OfferSite{ "MM_SPIDER_HOUSE_SWAMP", heart } : OfferSite{};
         case ACTOR_EN_KENDO_JS:
-            return { "MM_SWORDSMAN_HEART_PIECE", heart };
+            return item == GI_HEART_PIECE ? OfferSite{ "MM_SWORDSMAN_HEART_PIECE", heart } : OfferSite{};
         case ACTOR_EN_ZOS:
             return item == GI_HEART_PIECE ? OfferSite{ "MM_ZORA_EVAN", heart } : OfferSite{};
         case ACTOR_EN_ZOT:
@@ -1213,6 +1213,13 @@ extern "C" int OotmmNpcChecks_CanFinishMessageOffer(Actor* actor) {
 extern "C" void OotmmNpcChecks_FinishMessageOffer(Actor* actor) {
     sCompletedMessageOffers.erase(actor);
     sTextDoneOffers.erase(actor);
+}
+
+extern "C" void OotmmNpcChecks_ResumeAfterOffer(Actor* actor) {
+    if (OotmmNpcChecks_CanFinishMessageOffer(actor)) {
+        OotmmNpcChecks_FinishMessageOffer(actor);
+        actor->flags |= ACTOR_FLAG_TALK_OFFER_AUTO_ACCEPTED;
+    }
 }
 
 extern "C" void OotmmNpcChecks_SetUpdatingActor(Actor* actor) {

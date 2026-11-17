@@ -5,6 +5,7 @@
  */
 
 #include "z_en_kendo_js.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include "overlays/actors/ovl_En_Maruta/z_en_maruta.h"
 
 #define FLAGS                                                                                  \
@@ -695,7 +696,9 @@ void func_80B27774(EnKendoJs* this, PlayState* play) {
         }
         func_80B26AE8(this);
         player->stateFlags1 &= ~PLAYER_STATE1_20;
+        this->actor.flags &= ~ACTOR_FLAG_TALK_OFFER_AUTO_ACCEPTED; // 2S2H [OoTMM]
     } else {
+        OotmmNpcChecks_ResumeAfterOffer(&this->actor);
         Actor_OfferTalkExchangeEquiCylinder(&this->actor, play, 1000.0f, PLAYER_IA_MINUS1);
     }
 }

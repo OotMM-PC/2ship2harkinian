@@ -27,6 +27,7 @@ int OotmmNpcChecks_PurchaseAllowed(struct Actor* actor, int getItemId, int vanil
 int OotmmNpcChecks_SmithyStage(void);
 int OotmmNpcChecks_CanFinishMessageOffer(struct Actor* actor);
 void OotmmNpcChecks_FinishMessageOffer(struct Actor* actor);
+void OotmmNpcChecks_ResumeAfterOffer(struct Actor* actor);
 void OotmmNpcChecks_SetUpdatingActor(struct Actor* actor);
 int OotmmNpcChecks_OfferTextDone(void);
 void OotmmNpcChecks_Init(void);
