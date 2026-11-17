@@ -66,6 +66,7 @@ enum ForeignModelKind {
     FM_MASTER_SWORD,
     FM_SKELETON_KEY,
     FM_DOUBLE_DEFENSE,
+    FM_MAGIC_UPGRADE,
     FM_TRIFORCE,
     FM_COIN,
     FM_FAIRY_CONTAINER,
@@ -165,6 +166,30 @@ bool DrawNative(PlayState* play, int32_t drawId) {
     return true;
 }
 
+bool DrawFlame(PlayState* play, Color_RGB8 prim, Color_RGB8 env, float scale, float offsetY) {
+    Gfx* model = LoadOptionalGfx(gEffFire1DL);
+    if (model == nullptr) {
+        return false;
+    }
+    GraphicsContext* gfxCtx = play->state.gfxCtx;
+    const int32_t frames = static_cast<int32_t>(play->state.frames);
+    const float flameScale = 0.0055f * scale;
+    Gfx_SetupDL25_Xlu(gfxCtx);
+    Matrix_Push();
+    Matrix_ReplaceRotation(&play->billboardMtxF);
+    Matrix_Translate(0.0f, -(30.0f + offsetY), -15.0f, MTXMODE_APPLY);
+    Matrix_Scale(flameScale * 1.7f, flameScale, flameScale, MTXMODE_APPLY);
+    gSPSegment(gfxCtx->polyXlu.p++, 0x08,
+               (uintptr_t)Gfx_TwoTexScroll(gfxCtx, G_TX_RENDERTILE, 0, 0, 32, 64, 1, 0,
+                                           ((-frames) & 0x7f) << 2, 32, 128));
+    MATRIX_FINALIZE_AND_LOAD(gfxCtx->polyXlu.p++, gfxCtx);
+    Matrix_Pop();
+    gDPSetPrimColor(gfxCtx->polyXlu.p++, 0x80, 0x80, prim.r, prim.g, prim.b, 192);
+    gDPSetEnvColor(gfxCtx->polyXlu.p++, env.r, env.g, env.b, 192);
+    gSPDisplayList(gfxCtx->polyXlu.p++, model);
+    return true;
+}
+
 bool DrawTrap(PlayState* play, const Ship::OotmmRenderRecipe& recipe) {
     GraphicsContext* gfxCtx = play->state.gfxCtx;
     const int32_t frames = static_cast<int32_t>(play->state.frames);
@@ -190,24 +215,7 @@ bool DrawTrap(PlayState* play, const Ship::OotmmRenderRecipe& recipe) {
     }
 
     if (variant == 1) {
-        Gfx* model = LoadOptionalGfx(gEffFire1DL);
-        if (model == nullptr) {
-            return false;
-        }
-        Gfx_SetupDL25_Xlu(gfxCtx);
-        Matrix_Push();
-        Matrix_ReplaceRotation(&play->billboardMtxF);
-        Matrix_Translate(0.0f, -30.0f, -15.0f, MTXMODE_APPLY);
-        Matrix_Scale(0.0055f * 1.7f, 0.0055f, 0.0055f, MTXMODE_APPLY);
-        gSPSegment(gfxCtx->polyXlu.p++, 0x08,
-                   (uintptr_t)Gfx_TwoTexScroll(gfxCtx, G_TX_RENDERTILE, 0, 0, 32, 64, 1, 0,
-                                               ((-frames) & 0x7f) << 2, 32, 128));
-        MATRIX_FINALIZE_AND_LOAD(gfxCtx->polyXlu.p++, gfxCtx);
-        Matrix_Pop();
-        gDPSetPrimColor(gfxCtx->polyXlu.p++, 0x80, 0x80, 255, 96, 0, 192);
-        gDPSetEnvColor(gfxCtx->polyXlu.p++, 255, 192, 0, 192);
-        gSPDisplayList(gfxCtx->polyXlu.p++, model);
-        return true;
+        return DrawFlame(play, { 255, 96, 0 }, { 255, 192, 0 }, 1.0f, 0.0f);
     }
 
     if (variant == 2) {
@@ -975,6 +983,17 @@ bool DrawForeignModel(PlayState* play, const ForeignModel& model) {
             gSPGrayscale(gfxCtx->polyXlu.p++, false);
             gSPDisplayList(gfxCtx->polyXlu.p++, dl[1]);
             break;
+        case FM_MAGIC_UPGRADE: {
+            Gfx* jar = Ship::OotmmMagicUpgradeJar(model.DisplayLists[0]);
+            if (jar == nullptr) {
+                return false;
+            }
+            Gfx_SetupDL25_Opa(gfxCtx);
+            loadOpa();
+            gSPDisplayList(gfxCtx->polyOpa.p++, jar);
+            DrawFlame(play, { 0, 255, 0 }, { 68, 255, 68 }, 1.5f, 20.0f);
+            break;
+        }
         case FM_TRIFORCE: {
             const size_t piece = model.Param >= 0 && model.Param < 3 ? model.Param : 0;
             Matrix_Scale(0.035f, 0.035f, 0.035f, MTXMODE_APPLY);
@@ -1140,6 +1159,7 @@ std::optional<ForeignModelKind> LocalRenderKind(Ship::OotmmRenderKind kind) {
         case Ship::OotmmRenderKind::MASTER_SWORD: return FM_MASTER_SWORD;
         case Ship::OotmmRenderKind::SKELETON_KEY: return FM_SKELETON_KEY;
         case Ship::OotmmRenderKind::DOUBLE_DEFENSE: return FM_DOUBLE_DEFENSE;
+        case Ship::OotmmRenderKind::MAGIC_UPGRADE: return FM_MAGIC_UPGRADE;
         case Ship::OotmmRenderKind::TRIFORCE: return FM_TRIFORCE;
         case Ship::OotmmRenderKind::COIN: return FM_COIN;
         case Ship::OotmmRenderKind::FAIRY_BOTTLE:
