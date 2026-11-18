@@ -9,6 +9,7 @@
 #include "archives/icon_item_static/icon_item_static_yar.h"
 #include "2s2h/OotmmCustomItems.h"
 #include "2s2h/OotmmOcarinaButtons.h"
+#include "2s2h/OotmmSession.h"
 
 s32 KaleidoScope_UpdateQuestStatusPoint(PauseContext* pauseCtx, s16 point);
 
@@ -233,9 +234,10 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
                         G_TX_NOLOD);
 
     for (i = 0; i < 12; i++, j += 4) {
-        if (CHECK_QUEST_ITEM(i + QUEST_SONG_SONATA) ||
-            ((i == (QUEST_SONG_LULLABY - QUEST_SONG_SONATA)) && !CHECK_QUEST_ITEM(i + QUEST_SONG_SONATA) &&
-             CHECK_QUEST_ITEM(QUEST_SONG_LULLABY_INTRO))) {
+        if ((CHECK_QUEST_ITEM(i + QUEST_SONG_SONATA) ||
+             ((i == (QUEST_SONG_LULLABY - QUEST_SONG_SONATA)) && !CHECK_QUEST_ITEM(i + QUEST_SONG_SONATA) &&
+              CHECK_QUEST_ITEM(QUEST_SONG_LULLABY_INTRO))) &&
+            !(OotmmSession_IsActive() && ((i + QUEST_SONG_SONATA) == QUEST_SONG_SUN))) {
             if ((i + QUEST_SONG_SONATA) == pauseCtx->cursorSlot[PAUSE_QUEST]) {
                 pauseCtx->questVtx[j + 0].v.ob[0] = pauseCtx->questVtx[j + 2].v.ob[0] =
                     pauseCtx->questVtx[j + 0].v.ob[0] - 2;
