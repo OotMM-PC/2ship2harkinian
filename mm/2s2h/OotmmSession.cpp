@@ -946,6 +946,7 @@ void OotmmSession_Init() {
             GET_PLAYER(gPlayState)->blastMaskTimer =
                 static_cast<s16>(sGameState.GetBlastMaskCooldownFrames());
         });
+        COND_VB_SHOULD(VB_LOWER_RAZOR_SWORD_DURABILITY, true, { *should = false; });
         COND_VB_SHOULD(VB_TERMINA_FIELD_BE_EMPTY, true, { *should = false; });
         COND_VB_SHOULD(VB_FASTER_FIRST_CYCLE, true, { *should = false; });
         GameInteractor::Instance->RegisterGameHookForID<GameInteractor::ShouldActorInit>(
