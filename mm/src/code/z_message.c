@@ -6254,7 +6254,7 @@ void Message_Update(PlayState* play) {
                             (play->msgCtx.ocarinaMode == OCARINA_MODE_PLAYED_SCARECROW_SPAWN) ||
                             (play->msgCtx.ocarinaMode == OCARINA_MODE_PLAYED_FULL_EVAN_SONG))) {
                     play->msgCtx.ocarinaMode = OCARINA_MODE_END;
-                    if (msgCtx->lastPlayedSong == OCARINA_SONG_SOARING) {
+                    if ((msgCtx->lastPlayedSong == OCARINA_SONG_SOARING) && !OotmmSongEvents_PadOwnsPlayedSong(play)) {
                         play->msgCtx.ocarinaMode = OCARINA_MODE_ACTIVE;
                     }
                 }
