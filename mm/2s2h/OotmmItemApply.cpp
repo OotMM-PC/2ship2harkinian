@@ -1279,7 +1279,6 @@ bool ApplyTrap(size_t type, Player* player) {
             return true;
         case 4:
             playerData.magic = 0;
-            CLEAR_WEEKEVENTREG(WEEKEVENTREG_DRANK_CHATEAU_ROMANI);
             HurtForTrap(player, 0, 0, 0, 0);
             return true;
         case 5:
