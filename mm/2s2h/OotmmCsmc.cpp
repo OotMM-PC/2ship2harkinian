@@ -29,6 +29,9 @@ uint8_t ResourceMgr_FileExists(const char* resName);
 
 namespace {
 
+constexpr f32 kSmallChestScale = 0.0075f;
+constexpr f32 kLargeChestScale = 0.01f;
+
 std::unordered_map<Actor*, Ship::OotmmCsmcClass> sChestOverrides;
 
 bool HasAgonyStone() {
@@ -248,12 +251,16 @@ static void CsmcChestDraw(Actor* thisx, PlayState* play) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
+bool OotmmCsmc_IsLargeChest(const Actor* chest) {
+    return chest->scale.x > kSmallChestScale;
+}
+
 void OotmmCsmc_SetChestOverride(Actor* chest, Ship::OotmmCsmcClass itemClass) {
     sChestOverrides[chest] = itemClass;
     chest->draw = CsmcChestDraw;
     const bool large = itemClass == Ship::OotmmCsmcClass::Major ||
                        itemClass == Ship::OotmmCsmcClass::BossKey;
-    Actor_SetScale(chest, large ? 0.01f : 0.0075f);
+    Actor_SetScale(chest, large ? kLargeChestScale : kSmallChestScale);
     Actor_SetFocus(chest, large ? 40.0f : 20.0f);
 }
 
@@ -278,7 +285,7 @@ void OotmmCsmc_Init() {
             const auto itemClass = ClassFor(*placement);
             const bool large = itemClass == Ship::OotmmCsmcClass::Major ||
                                itemClass == Ship::OotmmCsmcClass::BossKey;
-            Actor_SetScale(actor, large ? 0.01f : 0.0075f);
+            Actor_SetScale(actor, large ? kLargeChestScale : kSmallChestScale);
             Actor_SetFocus(actor, large ? 40.0f : 20.0f);
         });
 }

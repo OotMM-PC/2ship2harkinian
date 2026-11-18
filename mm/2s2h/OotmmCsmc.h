@@ -7,6 +7,7 @@ struct PlayState;
 
 void OotmmCsmc_Init();
 void OotmmCsmc_SetChestOverride(struct Actor* chest, Ship::OotmmCsmcClass itemClass);
+bool OotmmCsmc_IsLargeChest(const struct Actor* chest);
 void OotmmCsmc_ClearChestOverrides();
 
 void OotmmCsmc_DrawGlitter(PlayState* play, Actor* actor, const Ship::OotmmPlacement& placement);

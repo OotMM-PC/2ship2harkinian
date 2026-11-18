@@ -12,6 +12,8 @@
 #include "OotmmXflags.h"
 #include "OotmmSession.h"
 
+#include <libultraship/bridge/consolevariablebridge.h>
+
 #include <cmath>
 
 extern "C" {
@@ -411,9 +413,9 @@ void OotmmChecks_Init() {
     });
 
     REGISTER_VB_SHOULD(VB_PLAY_SLOW_CHEST_CS, {
-        if (sActiveChest != nullptr) {
-            *should = sActiveChest->Major;
-        }
+        const EnBox* chest = va_arg(args, EnBox*);
+        *should = OotmmCsmc_IsLargeChest(&chest->dyna.actor) &&
+                  !CVarGetInteger("gEnhancements.Timesavers.FastChests", 0);
     });
 
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>(
