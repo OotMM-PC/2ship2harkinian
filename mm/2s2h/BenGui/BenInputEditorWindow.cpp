@@ -375,6 +375,17 @@ void BenInputEditorWindow::DrawButtonLineEditMappingButton(uint8_t port, N64Butt
                 if (stickAxisThreshold == 100) {
                     ImGui::EndDisabled();
                 }
+
+                bool strongestDirectionOnly = globalSettings->GetStickButtonsStrongestDirectionOnly();
+                if (ImGui::Checkbox(StringHelper::Sprintf("Strongest direction only##%s", id.c_str()).c_str(),
+                                    &strongestDirectionOnly)) {
+                    globalSettings->SetStickButtonsStrongestDirectionOnly(strongestDirectionOnly);
+                    globalSettings->SaveToConfig();
+                }
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
+                    ImGui::SetTooltip("When both axes of a stick are mapped to buttons, a push between two\n"
+                                      "directions presses only the button of the direction it leans toward most.");
+                }
             }
 
             if (sdlAxisDirectionToButtonMapping->AxisIsTrigger()) {
