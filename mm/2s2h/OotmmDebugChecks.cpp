@@ -21,6 +21,7 @@ struct OotmmDebugSfxRequest {
 };
 extern OotmmDebugSfxRequest sSfxRequests[0x100];
 extern u8 sSfxRequestWriteIndex;
+extern SceneEntranceTableEntry sSceneEntranceTable[];
 }
 #include "OotmmFaroresWind.h"
 #include "OotmmItemApply.h"
@@ -31,16 +32,20 @@ extern u8 sSfxRequestWriteIndex;
 #include "OotmmIpc.h"
 #include "OotmmOwls.h"
 #include <libultraship/bridge/OotmmRuntimeTest.h>
+#include <libultraship/bridge/OotmmStateDump.h>
 #include <libultraship/bridge/consolevariablebridge.h>
 #include "OotmmSession.h"
 #include "OotmmTriforce.h"
 #include "OotmmSaveMenu.h"
+#include "ShipUtils.h"
+#include "build.h"
 
 #include <algorithm>
 #include <atomic>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -241,6 +246,193 @@ void DrawDropSection() {
     ImGui::EndDisabled();
 }
 
+void GoToEntrance(int32_t wanted) {
+    const int32_t entrance = OotmmSession_ApplyResolvedMmEntrance(wanted);
+    if (entrance >= 0) {
+        gPlayState->nextEntrance = entrance;
+        gPlayState->transitionTrigger = TRANS_TRIGGER_START;
+        gPlayState->transitionType = TRANS_TYPE_INSTANT;
+        gSaveContext.nextTransitionType = TRANS_TYPE_INSTANT;
+    }
+}
+
+struct TeleportPlace {
+    const char* Name;
+    int32_t EntranceScene;
+};
+
+#define DEFINE_SCENE(_name, _enumValue, _textId, _drawConfig, _restrictionFlags, _persistentCycleFlags, \
+                     entranceSceneId, _betterMapSelectIndex, humanName)                                 \
+    { humanName, ENTR_SCENE_##entranceSceneId },
+#define DEFINE_SCENE_UNSET(_enumValue)
+const TeleportPlace kTeleportPlaces[] = {
+#include "tables/scene_table.h"
+};
+#undef DEFINE_SCENE
+#undef DEFINE_SCENE_UNSET
+
+std::vector<TeleportPlace> sTeleportPlaces;
+int sTeleportPlace = 0;
+int sTeleportSpawn = 0;
+char sTeleportFilter[64] = {};
+
+void BuildTeleportPlaces() {
+    if (!sTeleportPlaces.empty()) {
+        return;
+    }
+    for (const TeleportPlace& place : kTeleportPlaces) {
+        if (place.EntranceScene != ENTR_SCENE_GROTTOS && sSceneEntranceTable[place.EntranceScene].tableCount > 0) {
+            sTeleportPlaces.push_back(place);
+        }
+    }
+    std::sort(sTeleportPlaces.begin(), sTeleportPlaces.end(),
+              [](const TeleportPlace& a, const TeleportPlace& b) { return std::strcmp(a.Name, b.Name) < 0; });
+}
+
+void DrawTeleportSection() {
+    ImGui::SeparatorText("Teleport");
+    BuildTeleportPlaces();
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12.0f);
+    ImGui::InputTextWithHint("##TeleportFilter", "Filter", sTeleportFilter, sizeof(sTeleportFilter));
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12.0f);
+    if (ImGui::BeginCombo("Place", sTeleportPlaces[sTeleportPlace].Name)) {
+        for (int i = 0; i < static_cast<int>(sTeleportPlaces.size()); i++) {
+            if (MatchesFilter(sTeleportPlaces[i].Name, sTeleportFilter) &&
+                ImGui::Selectable(sTeleportPlaces[i].Name, i == sTeleportPlace)) {
+                sTeleportPlace = i;
+                sTeleportSpawn = 0;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    const TeleportPlace& place = sTeleportPlaces[sTeleportPlace];
+    const int spawns = sSceneEntranceTable[place.EntranceScene].tableCount;
+    ImGui::SetNextItemWidth(ImGui::GetFontSize() * 12.0f);
+    if (ImGui::BeginCombo("Entrance", ("Spawn " + std::to_string(sTeleportSpawn)).c_str())) {
+        for (int i = 0; i < spawns; i++) {
+            if (ImGui::Selectable(("Spawn " + std::to_string(i)).c_str(), i == sTeleportSpawn)) {
+                sTeleportSpawn = i;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(gPlayState == nullptr);
+    if (ImGui::Button("Go##Teleport")) {
+        GoToEntrance(Entrance_Create(place.EntranceScene, sTeleportSpawn, 0));
+    }
+    ImGui::EndDisabled();
+}
+
+nlohmann::json BuildStateDump() {
+    PlayState* play = gPlayState;
+    const Player* player = GET_PLAYER(play);
+    const Camera* camera = play->cameraPtrs[play->activeCamId];
+    const auto& sceneFlags = play->actorCtx.sceneFlags;
+    nlohmann::json actors = nlohmann::json::array();
+    for (int category = 0; category < ACTORCAT_MAX; category++) {
+        for (const Actor* actor = play->actorCtx.actorLists[category].first; actor != nullptr; actor = actor->next) {
+            actors.push_back({ { "id", actor->id },
+                               { "params", actor->params },
+                               { "category", category },
+                               { "room", actor->room },
+                               { "flags", actor->flags },
+                               { "pos", { actor->world.pos.x, actor->world.pos.y, actor->world.pos.z } },
+                               { "yaw", actor->shape.rot.y },
+                               { "health", actor->colChkInfo.health },
+                               { "updates", actor->update != nullptr },
+                               { "draws", actor->draw != nullptr } });
+        }
+    }
+    return {
+        { "game", "mm" },
+        { "build", { { "version", std::string(gBuildVersion) }, { "commit", std::string(gGitCommitHash) } } },
+        { "session",
+          { { "seed", OotmmSession_GetState().GetSeedId() },
+            { "player", OotmmSession_GetState().GetPlayerId() },
+            { "inventoryRevision", OotmmIpc_GetInventory().GetRevision() },
+            { "presentationPending", OotmmItemPresentation_IsPending() },
+            { "trapsApplied", OotmmItemApply_TrapsApplied() } } },
+        { "player",
+          { { "pos", { player->actor.world.pos.x, player->actor.world.pos.y, player->actor.world.pos.z } },
+            { "yaw", player->actor.shape.rot.y },
+            { "velocity", { player->actor.velocity.x, player->actor.velocity.y, player->actor.velocity.z } },
+            { "speed", player->speedXZ },
+            { "stateFlags1", player->stateFlags1 },
+            { "stateFlags2", player->stateFlags2 },
+            { "stateFlags3", player->stateFlags3 },
+            { "csAction", player->csAction },
+            { "actionFunc", Ship::OotmmStateDump_CodeOffset(reinterpret_cast<const void*>(player->actionFunc)) },
+            { "upperActionFunc",
+              Ship::OotmmStateDump_CodeOffset(reinterpret_cast<const void*>(player->upperActionFunc)) },
+            { "form", player->transformation },
+            { "mask", player->currentMask },
+            { "heldItemAction", player->heldItemAction },
+            { "itemAction", player->itemAction },
+            { "invincibilityTimer", player->invincibilityTimer },
+            { "heldActor", player->heldActor != nullptr ? player->heldActor->id : -1 },
+            { "rideActor", player->rideActor != nullptr ? player->rideActor->id : -1 },
+            { "health", gSaveContext.save.saveInfo.playerData.health },
+            { "healthCapacity", gSaveContext.save.saveInfo.playerData.healthCapacity },
+            { "magic", gSaveContext.save.saveInfo.playerData.magic },
+            { "bItem", BUTTON_ITEM_EQUIP(CUR_FORM, EQUIP_SLOT_B) },
+            { "cItems",
+              { BUTTON_ITEM_EQUIP(CUR_FORM, EQUIP_SLOT_C_LEFT), BUTTON_ITEM_EQUIP(CUR_FORM, EQUIP_SLOT_C_DOWN),
+                BUTTON_ITEM_EQUIP(CUR_FORM, EQUIP_SLOT_C_RIGHT) } } } },
+        { "play",
+          { { "scene", play->sceneId },
+            { "sceneName", Ship_GetSceneName(play->sceneId) },
+            { "room", play->roomCtx.curRoom.num },
+            { "entrance", gSaveContext.save.entrance },
+            { "nextEntrance", play->nextEntrance },
+            { "day", gSaveContext.save.day },
+            { "time", gSaveContext.save.time },
+            { "frames", play->gameplayFrames },
+            { "transitionTrigger", play->transitionTrigger },
+            { "transitionMode", play->transitionMode },
+            { "cutsceneState", play->csCtx.state },
+            { "cutsceneId", CutsceneManager_GetCurrentCsId() },
+            { "pauseState", play->pauseCtx.state },
+            { "message", play->msgCtx.currentTextId },
+            { "messageMode", play->msgCtx.msgMode },
+            { "ocarinaMode", play->msgCtx.ocarinaMode },
+            { "ocarinaAction", play->msgCtx.ocarinaAction },
+            { "lastPlayedSong", play->msgCtx.lastPlayedSong },
+            { "camera", play->activeCamId },
+            { "cameraSetting", camera != nullptr ? camera->setting : -1 },
+            { "cameraMode", camera != nullptr ? camera->mode : -1 } } },
+        { "flags",
+          { { "switches",
+              { sceneFlags.switches[0], sceneFlags.switches[1], sceneFlags.switches[2], sceneFlags.switches[3] } },
+            { "chest", sceneFlags.chest },
+            { "clearedRoom", sceneFlags.clearedRoom },
+            { "clearedRoomTemp", sceneFlags.clearedRoomTemp },
+            { "collectible",
+              { sceneFlags.collectible[0], sceneFlags.collectible[1], sceneFlags.collectible[2],
+                sceneFlags.collectible[3] } } } },
+        { "actors", actors },
+    };
+}
+
+std::string sStateDumpPath;
+bool sStateDumpFailed = false;
+
+void DrawStateDumpSection() {
+    ImGui::SeparatorText("State dump");
+    ImGui::TextWrapped("Saves the player, scene, flags and every actor to a file for bug reports.");
+    ImGui::BeginDisabled(gPlayState == nullptr || gGameState != &gPlayState->state);
+    if (ImGui::Button("Save state dump")) {
+        sStateDumpPath = Ship::OotmmStateDump_Write("mm", BuildStateDump());
+        sStateDumpFailed = sStateDumpPath.empty();
+    }
+    ImGui::EndDisabled();
+    if (sStateDumpFailed) {
+        ImGui::TextDisabled("The dump could not be written.");
+    } else if (!sStateDumpPath.empty()) {
+        ImGui::TextWrapped("Saved %s", sStateDumpPath.c_str());
+    }
+}
+
 struct NpcOption {
     std::string NativeId;
     std::string Label;
@@ -318,13 +510,7 @@ void DrawNpcSection() {
     const NpcOption& selected = sNpcOptions[sNpcSelection];
     ImGui::BeginDisabled(gPlayState == nullptr || selected.Entrance < 0);
     if (ImGui::Button("Go")) {
-        const int32_t entrance = OotmmSession_ApplyResolvedMmEntrance(selected.Entrance);
-        if (entrance >= 0) {
-            gPlayState->nextEntrance = entrance;
-            gPlayState->transitionTrigger = TRANS_TRIGGER_START;
-            gPlayState->transitionType = TRANS_TYPE_INSTANT;
-            gSaveContext.nextTransitionType = TRANS_TYPE_INSTANT;
-        }
+        GoToEntrance(selected.Entrance);
     }
     ImGui::EndDisabled();
     const bool collected = OotmmNpcChecks_IsCollected(selected.NativeId.c_str()) != 0;
@@ -363,6 +549,8 @@ void OotmmDebugChecks_DrawTab() {
     }
     DrawDropSection();
     DrawNpcSection();
+    DrawTeleportSection();
+    DrawStateDumpSection();
 }
 
 #if !defined(NDEBUG) || defined(OOTMM_RUNTIME_TEST)
