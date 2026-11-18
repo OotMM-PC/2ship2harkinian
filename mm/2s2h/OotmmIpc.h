@@ -44,3 +44,4 @@ extern "C" int gOotmmShowNames;
 extern "C" int gOotmmGameSpeedPercent;
 extern "C" int gOotmmGameSpeedSmooth;
 extern "C" int gOotmmSteadyDeityBeams;
+extern "C" int gOotmmStopTransformSlide;

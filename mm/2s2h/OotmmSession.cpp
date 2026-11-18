@@ -820,6 +820,9 @@ void DeleteFormChangeEffects() {
 }
 
 void ResetFormChange(Player* player) {
+    if (gOotmmStopTransformSlide) {
+        player->speedXZ = 0.0f;
+    }
     player->actor.speed = 0.0f;
     player->actor.velocity = { 0.0f, 0.0f, 0.0f };
     player->actor.world.pos = sFormChangePos;
