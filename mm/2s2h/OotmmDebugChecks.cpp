@@ -727,6 +727,19 @@ static void ApplySetupString(const char* variable, const std::string& setup) {
             gPlayState->nextEntrance = static_cast<u16>(first);
             gPlayState->transitionTrigger = TRANS_TRIGGER_START;
             gPlayState->transitionType = TRANS_TYPE_FADE_BLACK;
+        } else if (key == "dump" && gPlayState != nullptr) {
+            Ship::OotmmStateDump_Write("mm", BuildStateDump());
+        } else if (key == "teleport" && gPlayState != nullptr) {
+            BuildTeleportPlaces();
+            std::ofstream names(Ship::Context::GetPathRelativeToAppDirectory("teleport-places.txt"));
+            for (const TeleportPlace& place : sTeleportPlaces) {
+                names << place.Name << " | " << static_cast<int>(sSceneEntranceTable[place.EntranceScene].tableCount)
+                      << "\n";
+            }
+            if (first >= 0 && first < static_cast<long>(sTeleportPlaces.size()) && second >= 0 &&
+                second < sSceneEntranceTable[sTeleportPlaces[first].EntranceScene].tableCount) {
+                GoToEntrance(Entrance_Create(sTeleportPlaces[first].EntranceScene, second, 0));
+            }
         } else if (key == "bombnear" && gPlayState != nullptr) {
             Player* holder = GET_PLAYER(gPlayState);
             Actor* best = nullptr;
@@ -1249,6 +1262,7 @@ void OotmmDebugChecks_Init() {
                 { "strayFairies", std::vector<int>(std::begin(gSaveContext.save.saveInfo.inventory.strayFairies), std::begin(gSaveContext.save.saveInfo.inventory.strayFairies) + 5) },
                 { "skullTokenCount", gSaveContext.save.saveInfo.skullTokenCount },
                 { "swordEquip", GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SWORD) },
+                { "swordHealth", gSaveContext.save.saveInfo.playerData.swordHealth },
                 { "fierceDeity", INV_CONTENT(ITEM_MASK_FIERCE_DEITY) },
                 { "sceneFlags", { gPlayState->actorCtx.sceneFlags.chest, gPlayState->actorCtx.sceneFlags.switches[0], gPlayState->actorCtx.sceneFlags.switches[1], gPlayState->actorCtx.sceneFlags.collectible[0] } },
                 { "rupees", gSaveContext.save.saveInfo.playerData.rupees },
