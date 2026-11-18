@@ -1067,7 +1067,7 @@ void EnKakasi_IdleUnderground(EnKakasi* this, PlayState* play) {
                                   ((BREG(1) != 0) || (play->msgCtx.ocarinaMode == summonMode)),
                               this)) {
         this->picto.actor.flags &= ~ACTOR_FLAG_LOCK_ON_DISABLED;
-        if (!freeScarecrow) {
+        if (!freeScarecrow || play->msgCtx.msgMode == MSGMODE_TEXT_CLOSING) {
             play->msgCtx.ocarinaMode = OCARINA_MODE_END;
         }
         this->actionFunc = EnKakasi_SetupRiseOutOfGround;
