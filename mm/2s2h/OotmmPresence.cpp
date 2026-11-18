@@ -147,6 +147,7 @@ struct PuppetSlot {
 
 std::unordered_map<uint16_t, PuppetSlot> gPuppets;
 std::unordered_map<Actor*, PuppetState*> gStateByActor;
+std::vector<std::pair<Actor*, std::unique_ptr<PuppetState>>> gRetiredStates;
 uint32_t gLocalSeq = 0;
 bool gPvpEnabled = false;
 
@@ -678,6 +679,9 @@ void DropPuppet(PuppetSlot& slot) {
         }
         gStateByActor.erase(slot.actor);
         Actor_Kill(slot.actor);
+        if (slot.state != nullptr) {
+            gRetiredStates.emplace_back(slot.actor, std::move(slot.state));
+        }
         slot.actor = nullptr;
     }
 }
@@ -694,6 +698,7 @@ void PresenceTick() {
         return;
     }
     const uint16_t localPlayer = static_cast<uint16_t>(OotmmSession_GetState().GetPlayerId());
+    std::erase_if(gRetiredStates, [](const auto& retired) { return !ActorStillSpawned(gPlayState, retired.first); });
     for (auto& [id, slot] : gPuppets) {
         if (slot.actor != nullptr && !ActorStillSpawned(gPlayState, slot.actor)) {
             if (slot.state != nullptr && slot.state->colliderReady) {
@@ -889,5 +894,6 @@ extern "C" void OotmmPresence_Init(void) {
         }
         gStateByActor.clear();
         gPuppets.clear();
+        gRetiredStates.clear();
     });
 }
