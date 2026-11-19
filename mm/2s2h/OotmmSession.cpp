@@ -611,7 +611,6 @@ void UpdateEntranceTransition() {
     if (gPlayState == nullptr || gSaveContext.gameMode == GAMEMODE_TITLE_SCREEN) {
         return;
     }
-    KeepStoneTowerOrientation();
     if (sCrossGameRetry.has_value()) {
         gPlayState->transitionTrigger = TRANS_TRIGGER_OFF;
         if (++sCrossGameRetryFrames >= 60) {
@@ -917,6 +916,7 @@ void OotmmSession_Init() {
             [](s16) { InitializeSave(); });
         GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSceneInit>(
             [](s8, s8) {
+                KeepStoneTowerOrientation();
                 SpawnStoredSirloin();
                 SpawnLonePeakCollision();
                 if (gPlayState != nullptr && gPlayState->colCtx.colHeader != nullptr) {
