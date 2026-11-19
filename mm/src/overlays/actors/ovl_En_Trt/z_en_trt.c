@@ -8,6 +8,7 @@
 #include "objects/object_trt/object_trt.h"
 #include "objects/gameplay_keep/gameplay_keep.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
+#include "2s2h/OotmmNpcChecks.h"
 #include "2s2h/OotmmShops.h"
 #include "2s2h/OotmmSession.h"
 #include <libultraship/bridge/consolevariablebridge.h>
@@ -1033,7 +1034,11 @@ void EnTrt_TryToGiveRedPotion(EnTrt* this, PlayState* play) {
 
 void EnTrt_ItemGiven(EnTrt* this, PlayState* play) {
     Player* player = GET_PLAYER(play);
+    s32 offerDone = OotmmNpcChecks_CanFinishMessageOffer(&this->actor);
 
+    if (offerDone) { // 2S2H [OoTMM]
+        OotmmNpcChecks_FinishMessageOffer(&this->actor);
+    }
     if (this->cutsceneState == ENTRT_CUTSCENESTATE_STOPPED) {
         if (CutsceneManager_IsNext(this->csId)) {
             CutsceneManager_StartWithPlayerCsAndSetFlag(this->csId, &this->actor);
@@ -1048,7 +1053,7 @@ void EnTrt_ItemGiven(EnTrt* this, PlayState* play) {
             CutsceneManager_Queue(this->csId);
         }
     }
-    if (Actor_TalkOfferAccepted(&this->actor, &play->state)) {
+    if (Actor_TalkOfferAccepted(&this->actor, &play->state) || offerDone) { // 2S2H [OoTMM]
         switch (this->textId) {
             case 0x889:
                 this->textId = 0x88A;
