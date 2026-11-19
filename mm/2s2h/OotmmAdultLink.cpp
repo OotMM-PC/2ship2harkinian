@@ -332,10 +332,6 @@ extern "C" void OotmmAdultLink_SetTunicColor(struct PlayState* play) {
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
-extern "C" Gfx* OotmmAdultLink_CullSegmentDL(void) {
-    return sCullBackDL;
-}
-
 extern "C" void OotmmAdultLink_Init(void) {
     GameInteractor::Instance->RegisterGameHook<GameInteractor::OnSaveLoad>([](s16) {
         if (ComputeIsAdult()) {

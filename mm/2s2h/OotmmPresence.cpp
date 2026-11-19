@@ -465,7 +465,6 @@ extern "C" void OotmmPuppet_SetTunicColor(PlayState* play) {
     uint8_t b;
     OotmmEquipment_TunicColorOf(gPuppetTunic, &r, &g, &b);
     OPEN_DISPS(play->state.gfxCtx);
-    gSPSegment(POLY_OPA_DISP++, 0x0C, (uintptr_t)OotmmAdultLink_CullSegmentDL());
     gDPSetEnvColor(POLY_OPA_DISP++, r, g, b, 0);
     CLOSE_DISPS(play->state.gfxCtx);
 }
@@ -605,6 +604,9 @@ void PuppetDrawFunc(Actor* actor, PlayState* play) {
     if (state->form == PLAYER_FORM_HUMAN && state->humanModel == 0) {
         OotmmEquipment_UpdatePuppetTunicTint(state->playerId, state->tunic);
     }
+    GraphicsContext* gfxCtx = play->state.gfxCtx;
+    gSPSegment(gfxCtx->polyOpa.p++, 0x0C, (uintptr_t)gCullBackDList);
+    gSPSegment(gfxCtx->polyXlu.p++, 0x0C, (uintptr_t)gCullBackDList);
     Player_DrawImpl(play, state->skelAnime.skeleton, state->skelAnime.jointTable, state->skelAnime.dListCount, 0,
                     (PlayerTransformation)state->form, state->boots, 0, OotmmPuppet_OverrideLimbDraw,
                     OotmmPuppet_PostLimbDraw, actor);

@@ -17,7 +17,6 @@ float OotmmAdultLink_VanillaHumanRootScale(void);
 Gfx* OotmmAdultLink_BowStringDL(Gfx* childDL);
 float OotmmAdultLink_MeleeWeaponLength(int32_t meleeWeapon, float childLength);
 void OotmmAdultLink_SetTunicColor(struct PlayState* play);
-Gfx* OotmmAdultLink_CullSegmentDL(void);
 
 #ifdef __cplusplus
 }
