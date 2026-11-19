@@ -10,6 +10,8 @@
 #include "2s2h/OotmmCustomItems.h"
 #include "2s2h/OotmmOcarinaButtons.h"
 #include "2s2h/OotmmSession.h"
+#include "2s2h/OotmmSongPage.h"
+#include "2s2h/OotmmSongsPlayer.h"
 
 s32 KaleidoScope_UpdateQuestStatusPoint(PauseContext* pauseCtx, s16 point);
 
@@ -128,6 +130,7 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
     PauseContext* pauseCtx = &play->pauseCtx;
     s16 sp1CA; // colorSetR and numOcarinaButtons
     s16 sp1C8; // colorSetG and ocarinaButtonIndex
+    const OcarinaSongButtons* songButtons; // 2S2H [OoTMM]
     s16 sp1C6;
     s16 sp1C4;
     s16 var_v1;
@@ -234,10 +237,13 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
                         G_TX_NOLOD);
 
     for (i = 0; i < 12; i++, j += 4) {
-        if ((CHECK_QUEST_ITEM(i + QUEST_SONG_SONATA) ||
-             ((i == (QUEST_SONG_LULLABY - QUEST_SONG_SONATA)) && !CHECK_QUEST_ITEM(i + QUEST_SONG_SONATA) &&
-              CHECK_QUEST_ITEM(QUEST_SONG_LULLABY_INTRO))) &&
-            !(OotmmSession_IsActive() && ((i + QUEST_SONG_SONATA) == QUEST_SONG_SUN))) {
+        if (OotmmSongPage_Active()
+                ? (OotmmSongPage_SlotSong(i) != 0)
+                : ((CHECK_QUEST_ITEM(i + QUEST_SONG_SONATA) || // 2S2H [OoTMM]
+                    ((i == (QUEST_SONG_LULLABY - QUEST_SONG_SONATA)) && // 2S2H [OoTMM]
+                     !CHECK_QUEST_ITEM(i + QUEST_SONG_SONATA) &&        // 2S2H [OoTMM]
+                     CHECK_QUEST_ITEM(QUEST_SONG_LULLABY_INTRO))) &&    // 2S2H [OoTMM]
+                   !(OotmmSession_IsActive() && ((i + QUEST_SONG_SONATA) == QUEST_SONG_SUN)))) {
             if ((i + QUEST_SONG_SONATA) == pauseCtx->cursorSlot[PAUSE_QUEST]) {
                 pauseCtx->questVtx[j + 0].v.ob[0] = pauseCtx->questVtx[j + 2].v.ob[0] =
                     pauseCtx->questVtx[j + 0].v.ob[0] - 2;
@@ -252,8 +258,9 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
                     pauseCtx->questVtx[j + 2].v.ob[1] - 4;
             }
 
-            gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, sQuestSongsPrimRed[i], sQuestSongsPrimGreen[i],
-                            sQuestSongsPrimBlue[i], pauseCtx->alpha);
+            gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, sQuestSongsPrimRed[OotmmSongPage_ColorSlot(i)],
+                            sQuestSongsPrimGreen[OotmmSongPage_ColorSlot(i)],
+                            sQuestSongsPrimBlue[OotmmSongPage_ColorSlot(i)], pauseCtx->alpha);
             gSPVertex(POLY_OPA_DISP++, &pauseCtx->questVtx[j], 4, 0);
             gSP1Quadrangle(POLY_OPA_DISP++, 0, 2, 3, 1, 0);
         }
@@ -411,13 +418,17 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
                    (pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE_CURSOR_ON_SONG)) {
             // Draw the buttons for playing a song
             sp1C8 = pauseCtx->ocarinaSongIndex;
-            sp1CA = gOcarinaSongButtons[sp1C8].numButtons;
+            songButtons = AudioOcarina_OotmmSongButtons(OotmmSongPage_HoverSong(play));
+            if (songButtons == NULL) { // 2S2H [OoTMM]
+                songButtons = &gOcarinaSongButtons[sp1C8];
+            }
+            sp1CA = songButtons->numButtons; // 2S2H [OoTMM]
 
             i = j;
 
             for (k = 0; k < sp1CA; k++, j += 4) {
                 pauseCtx->questVtx[j + 0].v.ob[1] = pauseCtx->questVtx[j + 1].v.ob[1] =
-                    pauseCtx->ocarinaButtonsY[gOcarinaSongButtons[sp1C8].buttonIndex[k]];
+                    pauseCtx->ocarinaButtonsY[songButtons->buttonIndex[k]]; // 2S2H [OoTMM]
 
                 pauseCtx->questVtx[j + 2].v.ob[1] = pauseCtx->questVtx[j + 3].v.ob[1] =
                     pauseCtx->questVtx[j + 0].v.ob[1] - 12;
@@ -425,9 +436,9 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
                 gDPPipeSync(POLY_OPA_DISP++);
 
                 if (pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE_CURSOR_ON_SONG) {
-                    if (!Ootmm_IsOcarinaButtonAvailable(gOcarinaSongButtons[sp1C8].buttonIndex[k])) {
+                    if (!Ootmm_IsOcarinaButtonAvailable(songButtons->buttonIndex[k])) {
                         gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 191, 191, 191, 200);
-                    } else if (gOcarinaSongButtons[sp1C8].buttonIndex[k] == OCARINA_BTN_A) {
+                    } else if (songButtons->buttonIndex[k] == OCARINA_BTN_A) { // 2S2H [OoTMM]
                         gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 80, 150, 255, 200);
                     } else {
                         gDPSetPrimColor(POLY_OPA_DISP++, 0, 0, 255, 255, 50, 200);
@@ -440,7 +451,7 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
                 gSPVertex(POLY_OPA_DISP++, &pauseCtx->questVtx[j], 4, 0);
 
                 POLY_OPA_DISP = Gfx_DrawTexQuadIA8(
-                    POLY_OPA_DISP, sOcarinaButtonTextures[gOcarinaSongButtons[sp1C8].buttonIndex[k]], 16, 16, 0);
+                    POLY_OPA_DISP, sOcarinaButtonTextures[songButtons->buttonIndex[k]], 16, 16, 0); // 2S2H [OoTMM]
             }
 
             if (pauseCtx->mainState != PAUSE_MAIN_STATE_IDLE_CURSOR_ON_SONG) {
@@ -568,6 +579,8 @@ void KaleidoScope_DrawQuestStatus(PlayState* play) {
         }
     }
 
+    OotmmSongPage_DrawPageIndicator(play);
+
     CLOSE_DISPS(play->state.gfxCtx);
 }
 
@@ -623,6 +636,8 @@ void KaleidoScope_UpdateQuestCursor(PlayState* play) {
 
     pauseCtx->nameColorSet = PAUSE_NAME_COLOR_SET_WHITE;
     pauseCtx->cursorColorSet = PAUSE_CURSOR_COLOR_SET_WHITE;
+
+    OotmmSongPage_ConsumePageToggle(play);
 
     // != PAUSE_MAIN_STATE_IDLE
     if ((pauseCtx->state == PAUSE_STATE_MAIN) &&
@@ -780,6 +795,7 @@ void KaleidoScope_UpdateQuestCursor(PlayState* play) {
             }
 
             cursor = pauseCtx->cursorPoint[PAUSE_QUEST];
+            cursorItem = OotmmSongPage_CursorItem(play, cursorItem);
             pauseCtx->cursorItem[pauseCtx->pageIndex] = cursorItem;
             pauseCtx->cursorSlot[pauseCtx->pageIndex] = cursor;
 
@@ -787,7 +803,9 @@ void KaleidoScope_UpdateQuestCursor(PlayState* play) {
                 (pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE) && (pauseCtx->cursorSpecialPos == 0)) {
                 if ((cursor >= QUEST_SONG_SONATA) && (cursor <= QUEST_SONG_SUN)) {
                     // Handle part of the ocarina songs playback
-                    if ((CHECK_QUEST_ITEM(pauseCtx->cursorPoint[PAUSE_QUEST]) ||
+                    OotmmSongPage_EnterHover(play);
+                    if (!OotmmSongPage_Active() &&
+                        (CHECK_QUEST_ITEM(pauseCtx->cursorPoint[PAUSE_QUEST]) || // 2S2H [OoTMM]
                          ((cursor == QUEST_SONG_LULLABY) && !CHECK_QUEST_ITEM(pauseCtx->cursorPoint[PAUSE_QUEST]) &&
                           CHECK_QUEST_ITEM(QUEST_SONG_LULLABY_INTRO))) &&
                         (msgCtx->msgLength == 0)) {
@@ -900,7 +918,7 @@ void KaleidoScope_UpdateQuestCursor(PlayState* play) {
                     pauseCtx->mainState = PAUSE_MAIN_STATE_IDLE;
                     AudioOcarina_SetInstrument(OCARINA_INSTRUMENT_OFF);
                 }
-            } else if ((pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE_CURSOR_ON_SONG) &&
+            } else if ((pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE_CURSOR_ON_SONG) && !OotmmSongPage_Active() &&
                        CHECK_BTN_ALL(CONTROLLER1(&play->state)->press.button, BTN_A) && (msgCtx->msgLength == 0) &&
                        (cursor >= QUEST_SONG_SONATA) && (cursor <= QUEST_SONG_SUN)) {
                 pauseCtx->mainState = PAUSE_MAIN_STATE_SONG_PLAYBACK_INIT;

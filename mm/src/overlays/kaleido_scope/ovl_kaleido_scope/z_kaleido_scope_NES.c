@@ -24,6 +24,7 @@
 #include "2s2h/OotmmSaveMenu.h"
 #include "2s2h/OotmmSession.h"
 #include "2s2h/OotmmCustomItems.h"
+#include "2s2h/OotmmSongPage.h"
 
 #include "2s2h_assets.h"
 
@@ -418,7 +419,11 @@ void Kaleido_LoadItemNameStatic(void** segment, u32 texIndex) {
         gItemNameStrayFairiesENGTex,
     };
 
-    const char* ootmmName = texIndex < 0x100 ? OotmmCustomItems_NameTexture(texIndex) : NULL;
+    const char* ootmmName = OotmmSongPage_NameTexture();
+
+    if ((ootmmName == NULL) && (texIndex < 0x100)) { // 2S2H [OoTMM]
+        ootmmName = OotmmCustomItems_NameTexture(texIndex);
+    }
 
     if (ootmmName != NULL) {
         *segment = (void*)ootmmName;
@@ -1496,7 +1501,7 @@ void KaleidoScope_UpdateNamePanel(PlayState* play) {
     } else if (pauseCtx->nameColorSet == PAUSE_NAME_COLOR_SET_WHITE) {
         if (((pauseCtx->pageIndex == PAUSE_QUEST) && (pauseCtx->cursorSlot[PAUSE_QUEST] >= QUEST_SONG_SONATA) &&
              (pauseCtx->cursorSlot[PAUSE_QUEST] <= QUEST_SONG_SUN) &&
-             (pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE_CURSOR_ON_SONG)) ||
+             (pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE_CURSOR_ON_SONG) && !OotmmSongPage_Active()) ||
             ((pauseCtx->pageIndex == PAUSE_QUEST) && (pauseCtx->cursorSlot[PAUSE_QUEST] == QUEST_BOMBERS_NOTEBOOK)) ||
             (pauseCtx->pageIndex == PAUSE_ITEM) || (pauseCtx->pageIndex == PAUSE_MASK)) {
 

@@ -348,7 +348,10 @@ extern "C" void OotmmItemPage_DrawPageIndicator(PlayState* play) {
     if (pages < 2) {
         return;
     }
+    OotmmItemPage_DrawPageNumber(play, static_cast<int>(sPage + 1), static_cast<int>(pages), 27, 6);
+}
 
+extern "C" void OotmmItemPage_DrawPageNumber(PlayState* play, int page, int pages, int column, int row) {
     OPEN_DISPS(play->state.gfxCtx);
 
     Gfx* polyOpa = POLY_OPA_DISP;
@@ -358,9 +361,9 @@ extern "C" void OotmmItemPage_DrawPageIndicator(PlayState* play) {
     GfxPrint printer;
     GfxPrint_Init(&printer);
     GfxPrint_Open(&printer, gfx);
-    GfxPrint_SetColor(&printer, 255, 255, 255, pauseCtx->alpha);
-    GfxPrint_SetPos(&printer, 27, 6);
-    GfxPrint_Printf(&printer, "%d/%d (L)", static_cast<int>(sPage + 1), static_cast<int>(pages));
+    GfxPrint_SetColor(&printer, 255, 255, 255, play->pauseCtx.alpha);
+    GfxPrint_SetPos(&printer, column, row);
+    GfxPrint_Printf(&printer, "%d/%d (L)", page, pages);
 
     gfx = GfxPrint_Close(&printer);
     GfxPrint_Destroy(&printer);
