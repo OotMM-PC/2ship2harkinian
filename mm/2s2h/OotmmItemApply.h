@@ -22,7 +22,10 @@ int32_t OotmmItemApply_OwnedTradeItems(uint8_t slot, uint8_t* outItems, int32_t 
 void OotmmItemApply_SetTradeItemOwned(uint8_t slot, uint8_t item, int32_t owned);
 void OotmmItemApply_RecordTradeGrant(uint8_t item);
 int32_t OotmmItemApply_ConsumeTradeItem(uint8_t item, uint8_t slot);
-int32_t OotmmItemApply_ToggleTradeItem(uint8_t slot);
+// The owned items before and after the current one in a trade slot; 0 when fewer than two are owned.
+int32_t OotmmItemApply_TradeCycleNeighbors(uint8_t slot, uint8_t* outLeft, uint8_t* outRight);
+// Moves a trade slot to its previous (negative) or next owned item and updates the buttons holding it.
+int32_t OotmmItemApply_StepTradeItem(uint8_t slot, int32_t direction);
 void OotmmItemApply_RememberTradeItems(void);
 void OotmmItemApply_ResetTradeCycle(void);
 

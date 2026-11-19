@@ -1671,7 +1671,7 @@ extern "C" int32_t OotmmItemApply_ConsumeTradeItem(uint8_t item, uint8_t slot) {
     return 1;
 }
 
-extern "C" int32_t OotmmItemApply_ToggleTradeItem(uint8_t slot) {
+extern "C" int32_t OotmmItemApply_TradeCycleNeighbors(uint8_t slot, uint8_t* outLeft, uint8_t* outRight) {
     if (!OotmmSession_IsActive()) {
         return 0;
     }
@@ -1679,9 +1679,25 @@ extern "C" int32_t OotmmItemApply_ToggleTradeItem(uint8_t slot) {
     if (owned.size() < 2) {
         return 0;
     }
-    auto& current = gSaveContext.save.saveInfo.inventory.items[slot];
-    const auto found = std::find(owned.begin(), owned.end(), current);
-    current = found == owned.end() || found + 1 == owned.end() ? owned.front() : *(found + 1);
+    const auto found = std::find(owned.begin(), owned.end(), gSaveContext.save.saveInfo.inventory.items[slot]);
+    if (found == owned.end()) {
+        *outLeft = owned.back();
+        *outRight = owned.front();
+    } else {
+        const size_t index = static_cast<size_t>(found - owned.begin());
+        *outLeft = owned[(index + owned.size() - 1) % owned.size()];
+        *outRight = owned[(index + 1) % owned.size()];
+    }
+    return 1;
+}
+
+extern "C" int32_t OotmmItemApply_StepTradeItem(uint8_t slot, int32_t direction) {
+    uint8_t left;
+    uint8_t right;
+    if (!OotmmItemApply_TradeCycleNeighbors(slot, &left, &right)) {
+        return 0;
+    }
+    gSaveContext.save.saveInfo.inventory.items[slot] = direction < 0 ? left : right;
     RefreshTradeButtons(slot);
     return 1;
 }

@@ -10,6 +10,7 @@
 #include "2s2h/BenGui/HudEditor.h"
 #include "2s2h/GameInteractor/GameInteractor.h"
 #include "2s2h/OotmmCustomItems.h"
+#include "2s2h/OotmmItemCycle.h"
 #include "2s2h/OotmmItemPage.h"
 #include <libultraship/bridge/consolevariablebridge.h>
 
@@ -378,6 +379,8 @@ void KaleidoScope_DrawItemSelect(PlayState* play) {
         }
     }
 
+    OotmmItemCycle_Draw(play);
+
     CLOSE_DISPS(play->state.gfxCtx);
 
     OotmmItemPage_DrawPageIndicator(play);
@@ -429,7 +432,7 @@ void KaleidoScope_UpdateItemCursor(PlayState* play) {
             // cursor is currently on a slot
             pauseCtx->cursorColorSet = PAUSE_CURSOR_COLOR_SET_YELLOW;
 
-            if (ABS_ALT(pauseCtx->stickAdjX) > 30) {
+            if (!OotmmItemCycle_Active(play) && (ABS_ALT(pauseCtx->stickAdjX) > 30)) {
                 cursorPoint = pauseCtx->cursorPoint[PAUSE_ITEM];
                 cursorXIndex = pauseCtx->cursorXIndex[PAUSE_ITEM];
                 cursorYIndex = pauseCtx->cursorYIndex[PAUSE_ITEM];
@@ -585,7 +588,7 @@ void KaleidoScope_UpdateItemCursor(PlayState* play) {
 
         if (pauseCtx->cursorSpecialPos == 0) {
             // move cursor up/down
-            if (ABS_ALT(pauseCtx->stickAdjY) > 30) {
+            if (!OotmmItemCycle_Active(play) && (ABS_ALT(pauseCtx->stickAdjY) > 30)) {
                 moveCursorResult = PAUSE_CURSOR_RESULT_NONE;
 
                 cursorPoint = pauseCtx->cursorPoint[PAUSE_ITEM];
@@ -622,6 +625,7 @@ void KaleidoScope_UpdateItemCursor(PlayState* play) {
 
             cursorSlot = pauseCtx->cursorPoint[PAUSE_ITEM];
             pauseCtx->cursorColorSet = PAUSE_CURSOR_COLOR_SET_YELLOW;
+            OotmmItemCycle_Update(play, cursorSlot);
 
             if (moveCursorResult == PAUSE_CURSOR_RESULT_SLOT) {
                 cursorItem = gSaveContext.save.saveInfo.inventory.items[pauseCtx->cursorPoint[PAUSE_ITEM]];
@@ -793,6 +797,7 @@ void KaleidoScope_UpdateItemCursor(PlayState* play) {
                     }
                 } else if ((pauseCtx->debugEditor == DEBUG_EDITOR_NONE) && (pauseCtx->state == PAUSE_STATE_MAIN) &&
                            (pauseCtx->mainState == PAUSE_MAIN_STATE_IDLE) &&
+                           !OotmmItemCycle_CanCycle(play, cursorSlot) &&
                            CHECK_BTN_ALL(CONTROLLER1(&play->state)->press.button, BTN_A) && (msgCtx->msgLength == 0)) {
                     if (GameInteractor_Should(VB_KALEIDO_DISPLAY_ITEM_TEXT, true, &cursorItem)) {
                         // Give description on item through a message box
