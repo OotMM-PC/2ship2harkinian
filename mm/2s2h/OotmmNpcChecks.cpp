@@ -1320,6 +1320,11 @@ void OotmmNpcChecks_Init(void) {
                 sTextDoneOffers[actor].Read = false;
                 return;
             }
+            if (offer.Repeat == GI_RECOVERY_HEART) {
+                sCompletedMessageOffers[actor] = site;
+                sTextDoneOffers[actor].Frames = 30;
+                sTextDoneOffers[actor].Read = false;
+            }
             *item = offer.Repeat;
             return;
         }
