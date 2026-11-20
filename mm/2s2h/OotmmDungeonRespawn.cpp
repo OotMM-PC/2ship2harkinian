@@ -175,6 +175,26 @@ bool IsDungeonScene(int16_t scene) {
     }
 }
 
+bool IsDungeonEntrance(uint16_t entrance) {
+    switch (entrance & ~0xF) {
+        case ENTRANCE(WOODFALL_TEMPLE, 0):
+        case ENTRANCE(SNOWHEAD_TEMPLE, 0):
+        case ENTRANCE(GREAT_BAY_TEMPLE, 0):
+        case ENTRANCE(STONE_TOWER_TEMPLE_INVERTED, 0):
+        case ENTRANCE(STONE_TOWER_TEMPLE, 0):
+        case ENTRANCE(SWAMP_SPIDER_HOUSE, 0):
+        case ENTRANCE(OCEANSIDE_SPIDER_HOUSE, 0):
+        case ENTRANCE(BENEATH_THE_WELL, 0):
+        case ENTRANCE(BENEATH_THE_WELL, 1):
+        case ENTRANCE(IKANA_CASTLE, 3):
+        case ENTRANCE(SECRET_SHRINE, 0):
+        case ENTRANCE(PIRATES_FORTRESS_EXTERIOR, 0):
+            return true;
+        default:
+            return false;
+    }
+}
+
 bool KeepsRecord(int16_t scene) {
     return scene == SCENE_SPOT00 ||
            (scene == SCENE_00KEIKOKU && static_cast<uint16_t>(gSaveContext.save.entrance) == kTerminaFieldMoonCrash);
@@ -240,8 +260,11 @@ void OnSceneReady(int16_t scene) {
     }
     auto& store = Ensure();
     if (IsDungeonScene(scene)) {
-        if (!store.Current.has_value()) {
-            store.Current = FromRespawn(gSaveContext.respawn[RESPAWN_MODE_DOWN]);
+        const Record arrival = FromRespawn(gSaveContext.respawn[RESPAWN_MODE_DOWN]);
+        if (!store.Current.has_value() ||
+            (IsDungeonEntrance(static_cast<uint16_t>(gSaveContext.save.entrance)) &&
+             (store.Current->Game != arrival.Game || (store.Current->Entrance & ~0xF) != (arrival.Entrance & ~0xF)))) {
+            store.Current = arrival;
             store.Pending = false;
             Persist();
         }
