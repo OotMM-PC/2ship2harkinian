@@ -70,6 +70,7 @@ namespace {
 
 Ship::OotmmGameState sGameState;
 bool sBootedIntoGame = false;
+std::optional<uint16_t> sBootArrival;
 constexpr int kBootInventoryWaitFrames = 300;
 int sBootInventoryWait = 0;
 
@@ -303,6 +304,17 @@ std::optional<uint16_t> ResolveMmEntrance(uint32_t entrance) {
     }
     sCowGrottoVariant = -1;
     return static_cast<uint16_t>(entrance);
+}
+
+std::optional<uint16_t> BootSpawn() {
+    const auto bootEntrance = sGameState.GetBootConfig().BootEntrance;
+    if (!bootEntrance.has_value()) {
+        return std::nullopt;
+    }
+    if (*bootEntrance == kOotmmDungeonRespawnEntrance || *bootEntrance == kOotmmFwCrossEntrance) {
+        return sBootArrival;
+    }
+    return ResolveMmEntrance(*bootEntrance);
 }
 
 bool IsResolvedReloadTarget(uint32_t entrance) {
@@ -756,11 +768,13 @@ void BootIntoGame(GameState* gameState) {
         } else {
             SPDLOG_ERROR("[OoTMM] Dungeon entrance arrival without an MM dungeon entrance");
         }
+        sBootArrival = static_cast<uint16_t>(target);
     } else if (bootEntrance == kOotmmFwCrossEntrance) {
         if (const auto arrival = OotmmFaroresWind_PrepareArrival(static_cast<int32_t>(slot)); arrival.has_value()) {
             target = *arrival;
             gSaveContext.save.entrance = *arrival;
         }
+        sBootArrival = static_cast<uint16_t>(target);
     } else if (bootEntrance.has_value()) {
         const auto entrance = bootEntrance;
         if (const auto resolved = ResolveMmEntrance(*entrance); resolved.has_value()) {
@@ -1157,11 +1171,7 @@ extern "C" int32_t OotmmSession_ReturnToSpawn(void) {
     if (!OotmmSession_IsActive() || gPlayState == nullptr) {
         return 0;
     }
-    const auto& boot = sGameState.GetBootConfig();
-    if (!boot.BootEntrance.has_value()) {
-        return 0;
-    }
-    const auto target = ResolveMmEntrance(*boot.BootEntrance);
+    const auto target = BootSpawn();
     if (!target.has_value()) {
         return 0;
     }
@@ -1322,8 +1332,8 @@ extern "C" void OotmmSession_RedirectMoonCrashRespawn(void) {
     std::optional<uint16_t> spawn;
     if (!IsEntranceShuffle()) {
         spawn = ENTRANCE(SOUTH_CLOCK_TOWN, 0);
-    } else if (const auto bootEntrance = sGameState.GetBootConfig().BootEntrance; bootEntrance.has_value()) {
-        spawn = ResolveMmEntrance(*bootEntrance);
+    } else {
+        spawn = BootSpawn();
     }
     if (!spawn.has_value()) {
         spawn = InitialMmSpawn();
