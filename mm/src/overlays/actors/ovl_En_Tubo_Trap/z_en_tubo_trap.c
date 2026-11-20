@@ -320,5 +320,5 @@ void EnTuboTrap_Update(Actor* thisx, PlayState* play) {
 }
 
 void EnTuboTrap_Draw(Actor* thisx, PlayState* play) {
-    Gfx_DrawDListOpa(play, gameplay_dangeon_keep_DL_017EA0);
+    Gfx_DrawDListOpa(play, (Gfx*)OotmmXflags_CsmcDL(thisx, "Pot", gameplay_dangeon_keep_DL_017EA0));
 }
