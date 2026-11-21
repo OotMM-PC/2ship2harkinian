@@ -13,6 +13,10 @@ void func_800AE930(CollisionContext* colCtx, EffectTireMark* this, Vec3f* pos, f
     u32 spA0;
     Vec3s* vtxList = colCtx->colHeader->vtxList;
 
+    if (this == NULL) { // 2S2H [OoTMM]
+        return;
+    }
+
     if ((bgId != BGCHECK_SCENE) || (this->numElements >= (ARRAY_COUNT(this->elements) - 1)) || (colPoly == NULL)) {
         func_800AEF44(this);
         return;
@@ -126,8 +130,13 @@ void func_800AE930(CollisionContext* colCtx, EffectTireMark* this, Vec3f* pos, f
 }
 
 void func_800AEF44(EffectTireMark* this) {
-    EffectTireMarkElement* elem = &this->elements[this->numElements - 1];
+    EffectTireMarkElement* elem;
 
+    if (this == NULL) { // 2S2H [OoTMM]
+        return;
+    }
+
+    elem = &this->elements[this->numElements - 1];
     elem->flags |= EFFECT_TIRE_MARK_ELEMENT_FLAG_2;
 }
 
