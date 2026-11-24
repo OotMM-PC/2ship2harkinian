@@ -314,8 +314,9 @@ extern "C" int OotmmCustomItems_WearingDekuShield(void) {
     }
     const auto& inventory = OotmmIpc_GetInventory();
     const bool deku = inventory.Has("MM_SHIELD_DEKU") || inventory.Has("SHARED_SHIELD_DEKU");
-    const bool hero = inventory.Has("MM_SHIELD_HERO") || inventory.Has("SHARED_SHIELD_HYLIAN");
-    return deku && !hero ? 1 : 0;
+    const bool better = inventory.Has("MM_SHIELD_HERO") || inventory.Has("SHARED_SHIELD_HYLIAN") ||
+                        inventory.Has("MM_SHIELD_MIRROR") || inventory.Has("SHARED_SHIELD_MIRROR");
+    return deku && !better ? 1 : 0;
 }
 
 extern "C" const char* OotmmCustomItems_DekuShieldIcon(void) {

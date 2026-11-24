@@ -4229,7 +4229,9 @@ u8 Item_GiveImpl(PlayState* play, u8 item) {
         return ITEM_NONE;
 
     } else if ((item >= ITEM_SHIELD_HERO) && (item <= ITEM_SHIELD_MIRROR)) {
-        if (GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD) != (u16)(item - ITEM_SHIELD_HERO + EQUIP_VALUE_SHIELD_HERO)) {
+        if (OotmmSession_IsActive()
+                ? GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD) < (u16)(item - ITEM_SHIELD_HERO + EQUIP_VALUE_SHIELD_HERO)
+                : GET_CUR_EQUIP_VALUE(EQUIP_TYPE_SHIELD) != (u16)(item - ITEM_SHIELD_HERO + EQUIP_VALUE_SHIELD_HERO)) {
             SET_EQUIP_VALUE(EQUIP_TYPE_SHIELD, item - ITEM_SHIELD_HERO + EQUIP_VALUE_SHIELD_HERO);
             // 2S2H [Randomizer] Added a nullptr check so that we can call this function outside of gameplay for logic
             if (gPlayState != NULL) {
